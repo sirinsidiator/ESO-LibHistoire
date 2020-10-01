@@ -1,0 +1,22 @@
+## Title: LibHistoire
+## Author: sirinsidiator
+## Version: @VERSION_NUMBER@
+## AddOnVersion: @BUILD_NUMBER@
+## APIVersion: @API_VERSION@
+## IsLibrary: true
+## DependsOn: LibDebugLogger
+## SavedVariables: LibHistoire_Data LibHistoire_NameDictionary LibHistoire_GuildHistory LibHistoire_GuildMembers
+## Description: |c000000|u1:800::|u|u1:800::.|u|u1:800::.|u|u1:800::|u|t256:256:LibHistoire/histoire.dds|t|u1:800::.|u|u1:800::.|u|u1:800::.|u|u1:800::.|u|u1:800::.|u|rHisty takes good care of all your data, so others don't have to.
+##
+## This Add-on is not created by, affiliated with or sponsored by ZeniMax Media Inc. or its affiliates. 
+## The Elder Scrolls® and related logos are registered trademarks or trademarks of ZeniMax Media Inc. in the United States and/or other countries. 
+## All rights reserved
+##
+## You can read the full terms at https://account.elderscrollsonline.com/add-on-terms
+
+StartUp.lua
+DisplayNameCache.lua
+guildHistoryCache/GuildHistoryCacheEntry.lua
+guildHistoryCache/GuildHistoryCacheCategory.lua
+guildHistoryCache/GuildHistoryCache.lua
+api.lua
