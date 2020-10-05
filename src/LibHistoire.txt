@@ -16,6 +16,7 @@
 
 StartUp.lua
 DisplayNameCache.lua
+guildHistoryCache/controls.xml
 guildHistoryCache/GuildHistoryCacheEntry.lua
 guildHistoryCache/GuildHistoryCacheCategory.lua
 guildHistoryCache/GuildHistoryCache.lua

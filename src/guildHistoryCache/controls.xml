@@ -1,0 +1,8 @@
+<GuiXml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sir.insidi.at/or/schema/esoui.xsd">
+    <Controls>
+        <Texture name="LibHistoireLinkedIconTemplate" textureFile="LibHistoire/image/unlinked_down.dds" hidden="true" mouseEnabled="true" virtual="true">
+            <Anchor point="BOTTOMRIGHT" offsetX="-40" offsetY="10" />
+            <Dimensions x="32" y="32" />
+        </Texture>
+    </Controls>
+</GuiXml>
