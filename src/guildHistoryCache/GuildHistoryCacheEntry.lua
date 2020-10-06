@@ -9,6 +9,7 @@ local logger = internal.logger
 local AGS = AwesomeGuildStore -- TODO get rid of AGS dependency -> extract codec into a separate lib
 local EncodeData = AGS.internal.EncodeData
 local DecodeData = AGS.internal.DecodeData
+local EncodeValue = AGS.internal.EncodeValue
 
 local GuildHistoryCacheEntry = ZO_Object:Subclass()
 internal.class.GuildHistoryCacheEntry = GuildHistoryCacheEntry
@@ -25,6 +26,7 @@ local INDEX_EVENT_ID = 9 -- integer
 
 local VERSION = 1
 local FIELD_SEPARATOR = ";"
+local EVENT_ID_SEARCH_STRING_TEMPLATE = ";%s;"
 local FIELD_FORMAT = {
     [1] = {
         "integer", -- version
@@ -143,6 +145,10 @@ local CURRENT_PARAMS_FORMAT = PARAMS_FORMAT[VERSION]
 
 local temp = {}
 
+function GuildHistoryCacheEntry.CreateEventIdSearchString(eventId)
+    return string.format(EVENT_ID_SEARCH_STRING_TEMPLATE, EncodeValue("integer", eventId))
+end
+
 function GuildHistoryCacheEntry:New(...)
     local object = ZO_Object.New(self)
     object:Initialize(...)
@@ -150,12 +156,25 @@ function GuildHistoryCacheEntry:New(...)
 end
 
 function GuildHistoryCacheEntry:Initialize(cacheCategory, guildIdOrSerializedData, category, eventIndex)
+    self.valid = true
     self.cacheCategory = cacheCategory
     if category then
         -- assume it's a new entry and get data from the api
         local now = GetTimeStamp()
         self.info = {GetGuildEventInfo(guildIdOrSerializedData, category, eventIndex)}
         self.info[INDEX_EVENT_TIME] = now - self.info[INDEX_EVENT_TIME] -- convert to absolute time
+
+        local idOffset, timeOffset = self.cacheCategory:GetOffsets()
+        if idOffset then
+            if self:GetEventId() < idOffset then
+                self.valid = false
+                logger:Warn("EventId %d is smaller than the stored id offset %d", self:GetEventId(), idOffset)
+            end
+            if self:GetEventTime() < timeOffset then
+                self.valid = false
+                logger:Warn("EventTime %d is before the stored time offset %d", self:GetEventTime(), timeOffset)
+            end
+        end
     else
         -- assume it's a stored entry and deserialize it
         self.info = self:Deserialize(guildIdOrSerializedData)
@@ -212,6 +231,10 @@ function GuildHistoryCacheEntry:Deserialize(serializedData)
     return info
 end
 
+function GuildHistoryCacheEntry:IsValid()
+    return self.valid
+end
+
 function GuildHistoryCacheEntry:GetEventType()
     return self.info[INDEX_EVENT_TYPE]
 end
@@ -224,8 +247,11 @@ function GuildHistoryCacheEntry:GetEventId()
     return self.info[INDEX_EVENT_ID]
 end
 
-function GuildHistoryCacheEntry:GetParams()
-    return self.info[INDEX_PARAM_1],
+function GuildHistoryCacheEntry:Unpack()
+    return self.info[INDEX_EVENT_TYPE],
+        self.info[INDEX_EVENT_ID],
+        self.info[INDEX_EVENT_TIME],
+        self.info[INDEX_PARAM_1],
         self.info[INDEX_PARAM_2],
         self.info[INDEX_PARAM_3],
         self.info[INDEX_PARAM_4],
