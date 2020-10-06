@@ -37,10 +37,8 @@ function GuildHistoryCache:Initialize(nameCache, saveData)
 
     RegisterForEvent(EVENT_GUILD_HISTORY_REFRESHED, function()
         logger:Info("EVENT_GUILD_HISTORY_REFRESHED")
-    end)
-    RegisterForEvent(EVENT_GUILD_HISTORY_CATEGORY_UPDATED, function(_, guildId, category)
-        logger:Info("EVENT_GUILD_HISTORY_CATEGORY_UPDATED")
-        self:OnEventsReceived(guildId, category)
+        -- happens when permissions change and events change visibility
+        -- TODO handle this
     end)
     RegisterForEvent(EVENT_GUILD_HISTORY_RESPONSE_RECEIVED, function(_, guildId, category)
         logger:Info("EVENT_GUILD_HISTORY_RESPONSE_RECEIVED")
@@ -49,48 +47,56 @@ function GuildHistoryCache:Initialize(nameCache, saveData)
 
     self.linkedIcon = WINDOW_MANAGER:CreateControlFromVirtual("LibHistoireLinkedIcon", ZO_GuildHistory, "LibHistoireLinkedIconTemplate")
     local icon = self.linkedIcon
+    local tooltipShowing = false
+
+    local function SetupTooltip(tooltip, cache)
+        InitializeTooltip(tooltip, icon, RIGHT, 0, 0)
+
+        local storedEventCount = cache:GetNumEntries()
+        SetTooltipText(tooltip, zo_strformat("Stored events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(storedEventCount)))
+        local firstStoredEvent = cache:GetEntry(1)
+        if firstStoredEvent then
+            local date, time = FormatAchievementLinkTimestamp(firstStoredEvent:GetEventTime())
+            SetTooltipText(tooltip, zo_strformat("Oldest stored event: |cffffff<<1>> <<2>>|r", date, time))
+        else
+            SetTooltipText(tooltip, "Stored events: |cffffff-|r")
+        end
+
+        local lastStoredEvent = cache:GetEntry(storedEventCount)
+        if lastStoredEvent then
+            local date, time = FormatAchievementLinkTimestamp(lastStoredEvent:GetEventTime())
+            SetTooltipText(tooltip, zo_strformat("Newest stored event: |cffffff<<1>> <<2>>|r", date, time))
+        end
+
+        if cache:HasLinked() then
+            SetTooltipText(tooltip, "History has been linked to stored events", 0, 1, 0)
+        else
+            SetTooltipText(tooltip, "History has not linked to stored events yet", 1, 0, 0)
+            SetTooltipText(tooltip, zo_strformat("Unlinked events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumUnlinkedEntries())))
+            local firstUnlinkedEvent = cache:GetUnlinkedEntry(1)
+            if firstUnlinkedEvent then
+                local date, time = FormatAchievementLinkTimestamp(firstUnlinkedEvent:GetEventTime())
+                SetTooltipText(tooltip, zo_strformat("Oldest unlinked event: |cffffff<<1>> <<2>>|r", date, time))
+                if lastStoredEvent then
+                    local delta = firstUnlinkedEvent:GetEventTime() - lastStoredEvent:GetEventTime()
+                    local deltaDate = ZO_FormatTime(delta, TIME_FORMAT_STYLE_DESCRIPTIVE_MINIMAL)
+                    local percentage = 100 - delta / (GetTimeStamp() - lastStoredEvent:GetEventTime()) * 100
+                    SetTooltipText(tooltip, string.format("Missing time: |cffffff%s (%.1f%%)|r", deltaDate, percentage))
+                end
+            end
+        end
+    end
+
     icon:SetHandler("OnMouseEnter", function()
         local cache = self:GetSelectedCache()
         if cache then
-            InitializeTooltip(InformationTooltip, icon, RIGHT, 0, 0)
-
-            local storedEventCount = cache:GetNumEntries()
-            SetTooltipText(InformationTooltip, zo_strformat("Stored events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(storedEventCount)))
-            local firstStoredEvent = cache:GetEntry(1)
-            if firstStoredEvent then
-                local date, time = FormatAchievementLinkTimestamp(firstStoredEvent:GetEventTime())
-                SetTooltipText(InformationTooltip, zo_strformat("Oldest stored event: |cffffff<<1>> <<2>>|r", date, time))
-            else
-                SetTooltipText(InformationTooltip, "Stored events: |cffffff-|r")
-            end
-
-            local lastStoredEvent = cache:GetEntry(storedEventCount)
-            if lastStoredEvent then
-                local date, time = FormatAchievementLinkTimestamp(lastStoredEvent:GetEventTime())
-                SetTooltipText(InformationTooltip, zo_strformat("Newest stored event: |cffffff<<1>> <<2>>|r", date, time))
-            end
-
-            if cache:HasLinked() then
-                SetTooltipText(InformationTooltip, "History has been linked to stored events", 0, 1, 0)
-            else
-                SetTooltipText(InformationTooltip, "History has not linked to stored events yet", 1, 0, 0)
-                SetTooltipText(InformationTooltip, zo_strformat("Unlinked events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumUnlinkedEntries())))
-                local firstUnlinkedEvent = cache:GetUnlinkedEntry(1)
-                if firstUnlinkedEvent then
-                    local date, time = FormatAchievementLinkTimestamp(firstUnlinkedEvent:GetEventTime())
-                    SetTooltipText(InformationTooltip, zo_strformat("Oldest unlinked event: |cffffff<<1>> <<2>>|r", date, time))
-                    if lastStoredEvent then
-                        local delta = firstUnlinkedEvent:GetEventTime() - lastStoredEvent:GetEventTime()
-                        local deltaDate = ZO_FormatTime(delta, TIME_FORMAT_STYLE_DESCRIPTIVE_MINIMAL)
-                        local percentage = 100 - delta / (GetTimeStamp() - lastStoredEvent:GetEventTime()) * 100
-                        SetTooltipText(InformationTooltip, string.format("Missing time: |cffffff%s (%.1f%%)|r", deltaDate, percentage))
-                    end
-                end
-            end
+            tooltipShowing = true
+            SetupTooltip(InformationTooltip, cache)
         end
     end)
     icon:SetHandler("OnMouseExit", function()
         ClearTooltip(InformationTooltip)
+        tooltipShowing = false
     end)
 
     SecurePostHook(GUILD_HISTORY, "SetGuildId",function(manager, guildId)
@@ -121,15 +127,22 @@ function GuildHistoryCache:Initialize(nameCache, saveData)
         SecurePostHook(info, "selectionFunction", OnSelectionChanged)
     end
 
-    internal.callbackObject:RegisterCallback(lib.callback.HISTORY_LINKED, function(guildId, category)
-        logger:Info("history has become linked", guildId, category)
+    local function RefreshLinkInformation(guildId, category)
         local manager = GUILD_HISTORY
         if manager.guildId == guildId and manager.selectedCategory == category then
             self:UpdateLinkedIcon()
+            if tooltipShowing then
+                local cache = self:GetSelectedCache()
+                SetupTooltip(InformationTooltip, cache)
+            end
         end
-    end)
+    end
+
+    internal:RegisterCallback(internal.callback.UNLINKED_EVENTS_ADDED, RefreshLinkInformation)
+    internal:RegisterCallback(internal.callback.HISTORY_LINKED, RefreshLinkInformation)
 
     self:UpdateAllCategories()
+    self:UpdateLinkedIcon()
 end
 
 function GuildHistoryCache:GetSelectedCache()
@@ -153,7 +166,7 @@ end
 
 function GuildHistoryCache:UpdateAllCategories()
     logger:Info("UpdateAllCategories")
-    for i = 1, #GUILD_HISTORY_CATEGORIES do -- TODO should use LibAsync to process all
+    for i = 1, #GUILD_HISTORY_CATEGORIES do
         local category = GUILD_HISTORY_CATEGORIES[i]
         for index = 1, GetNumGuilds() do
             local guildId = GetGuildId(index)
