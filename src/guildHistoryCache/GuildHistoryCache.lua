@@ -9,20 +9,13 @@ local logger = internal.logger
 local GuildHistoryCache = ZO_Object:Subclass()
 internal.class.GuildHistoryCache = GuildHistoryCache
 
+local GuildHistoryRequestManager = internal.class.GuildHistoryRequestManager
 local GuildHistoryCacheCategory = internal.class.GuildHistoryCacheCategory
 local GuildHistoryCacheEntry = internal.class.GuildHistoryCacheEntry
 local RegisterForEvent = internal.RegisterForEvent
 
 local LINKED_ICON = "LibHistoire/image/linked_down.dds"
 local UNLINKED_ICON = "LibHistoire/image/unlinked_down.dds"
-
-local GUILD_HISTORY_CATEGORIES = {
-    GUILD_HISTORY_ALLIANCE_WAR,
-    GUILD_HISTORY_BANK,
-    GUILD_HISTORY_COMBAT,
-    GUILD_HISTORY_GENERAL,
-    GUILD_HISTORY_STORE
-}
 
 function GuildHistoryCache:New(...)
     local object = ZO_Object.New(self)
@@ -34,16 +27,6 @@ function GuildHistoryCache:Initialize(nameCache, saveData)
     self.nameCache = nameCache
     self.saveData = saveData
     self.cache = {}
-
-    RegisterForEvent(EVENT_GUILD_HISTORY_REFRESHED, function()
-        logger:Info("EVENT_GUILD_HISTORY_REFRESHED")
-        -- happens when permissions change and events change visibility
-        -- TODO handle this
-    end)
-    RegisterForEvent(EVENT_GUILD_HISTORY_RESPONSE_RECEIVED, function(_, guildId, category)
-        logger:Info("EVENT_GUILD_HISTORY_RESPONSE_RECEIVED")
-        self:OnEventsReceived(guildId, category)
-    end)
 
     self.linkedIcon = WINDOW_MANAGER:CreateControlFromVirtual("LibHistoireLinkedIcon", ZO_GuildHistory, "LibHistoireLinkedIconTemplate")
     local icon = self.linkedIcon
@@ -144,7 +127,7 @@ function GuildHistoryCache:Initialize(nameCache, saveData)
     internal:RegisterCallback(internal.callback.HISTORY_BEGIN_LINKING, RefreshLinkInformation)
     internal:RegisterCallback(internal.callback.HISTORY_LINKED, RefreshLinkInformation)
 
-    self:UpdateAllCategories()
+    self.requestManager = GuildHistoryRequestManager:New(self)
     self:UpdateLinkedIcon()
 end
 
@@ -165,24 +148,6 @@ function GuildHistoryCache:UpdateLinkedIcon()
         logger:Debug("hide linked icon")
         self.linkedIcon:SetHidden(true)
     end
-end
-
-function GuildHistoryCache:UpdateAllCategories()
-    logger:Info("UpdateAllCategories")
-    for i = 1, #GUILD_HISTORY_CATEGORIES do
-        local category = GUILD_HISTORY_CATEGORIES[i]
-        for index = 1, GetNumGuilds() do
-            local guildId = GetGuildId(index)
-            logger:Info("update %d for %d", category, guildId)
-            if HasGuildHistoryCategoryEverBeenRequested(guildId, category) then
-                self:OnEventsReceived(guildId, category)
-            end
-        end
-    end
-end
-
-function GuildHistoryCache:OnEventsReceived(guildId, category)
-    self:GetOrCreateCategoryCache(guildId, category):ReceiveEvents()
 end
 
 function GuildHistoryCache:GetOrCreateCategoryCache(guildId, category)

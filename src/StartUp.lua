@@ -9,12 +9,28 @@ assert(not _G[LIB_IDENTIFIER], LIB_IDENTIFIER .. " is already loaded")
 local lib = {}
 _G[LIB_IDENTIFIER] = lib
 
+local nextNamespaceId = 1
+
 local function RegisterForEvent(event, callback)
-    return EVENT_MANAGER:RegisterForEvent(LIB_IDENTIFIER, event, callback)
+    local namespace = LIB_IDENTIFIER .. nextNamespaceId
+    EVENT_MANAGER:RegisterForEvent(namespace, event, callback)
+    nextNamespaceId = nextNamespaceId + 1
+    return namespace
 end
 
-local function UnregisterForEvent(event)
-    return EVENT_MANAGER:UnregisterForEvent(LIB_IDENTIFIER, event)
+local function UnregisterForEvent(namespace, event)
+    return EVENT_MANAGER:UnregisterForEvent(namespace, event)
+end
+
+local function RegisterForUpdate(interval, callback)
+    local namespace = LIB_IDENTIFIER .. nextNamespaceId
+    EVENT_MANAGER:RegisterForUpdate(namespace, interval, callback)
+    nextNamespaceId = nextNamespaceId + 1
+    return namespace
+end
+
+local function UnregisterForUpdate(namespace)
+    return EVENT_MANAGER:UnregisterForUpdate(namespace)
 end
 
 local callbackObject = ZO_CallbackObject:New()
@@ -30,6 +46,8 @@ lib.internal = {
     logger = LibDebugLogger(LIB_IDENTIFIER),
     RegisterForEvent = RegisterForEvent,
     UnregisterForEvent = UnregisterForEvent,
+    RegisterForUpdate = RegisterForUpdate,
+    UnregisterForUpdate = UnregisterForUpdate,
 }
 local internal = lib.internal
 
@@ -50,9 +68,10 @@ function internal:Initialize()
     local logger = self.logger
     logger:Debug("Initializing LibHistoire...")
 
-    RegisterForEvent(EVENT_ADD_ON_LOADED, function(event, name)
+    local namespace
+    namespace = RegisterForEvent(EVENT_ADD_ON_LOADED, function(event, name)
         if(name ~= LIB_IDENTIFIER) then return end
-        UnregisterForEvent(EVENT_ADD_ON_LOADED)
+        UnregisterForEvent(namespace, EVENT_ADD_ON_LOADED)
         self:InitializeSaveData()
         logger:Debug("Saved Variables loaded")
 
