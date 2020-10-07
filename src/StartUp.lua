@@ -23,6 +23,7 @@ lib.internal = {
     callback = {
         UNLINKED_EVENTS_ADDED = "HistyHasAddedUnlinkedEvents",
         EVENT_STORED = "HistyStoredAnEvent",
+        HISTORY_BEGIN_LINKING = "HistyHasStartedLinkingEvents",
         HISTORY_LINKED = "HistyHasLinkedEvents",
     },
     class = {},

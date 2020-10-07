@@ -70,6 +70,10 @@ function GuildHistoryCacheCategory:HasLinked()
     return not self.unlinkedEvents
 end
 
+function GuildHistoryCacheCategory:IsProcessing()
+    return self.storeEventsTask ~= nil
+end
+
 function GuildHistoryCacheCategory:GetNumUnlinkedEntries()
     if not self.unlinkedEvents then return 0 end
     return #self.unlinkedEvents
@@ -280,16 +284,19 @@ function GuildHistoryCacheCategory:SeparateReceivedEvents(events)
 end
 
 function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
+    if hasLinked then
+        internal:FireCallbacks(internal.callback.HISTORY_BEGIN_LINKING, self.guildId, self.category, #events)
+    end
     if #events == 0 then return end
     local task = internal:CreateAsyncTask()
     task:For(1, #events):Do(function(i)
         self:StoreEvent(events[i])
     end):Then(function()
         logger:Debug("finished storing events")
+        self.storeEventsTask = nil
         if hasLinked then
             internal:FireCallbacks(internal.callback.HISTORY_LINKED, self.guildId, self.category)
         end
-        self.storeEventsTask = nil
         if self.hasPendingEvents then
             self.hasPendingEvents = false
             self:ReceiveEvents()

@@ -68,7 +68,9 @@ function GuildHistoryCache:Initialize(nameCache, saveData)
             SetTooltipText(tooltip, zo_strformat("Newest stored event: |cffffff<<1>> <<2>>|r", date, time))
         end
 
-        if cache:HasLinked() then
+        if cache:IsProcessing() then
+            SetTooltipText(tooltip, "Unlinked Events are being processed...", 1, 1, 0)
+        elseif cache:HasLinked() then
             SetTooltipText(tooltip, "History has been linked to stored events", 0, 1, 0)
         else
             SetTooltipText(tooltip, "History has not linked to stored events yet", 1, 0, 0)
@@ -139,6 +141,7 @@ function GuildHistoryCache:Initialize(nameCache, saveData)
     end
 
     internal:RegisterCallback(internal.callback.UNLINKED_EVENTS_ADDED, RefreshLinkInformation)
+    internal:RegisterCallback(internal.callback.HISTORY_BEGIN_LINKING, RefreshLinkInformation)
     internal:RegisterCallback(internal.callback.HISTORY_LINKED, RefreshLinkInformation)
 
     self:UpdateAllCategories()
