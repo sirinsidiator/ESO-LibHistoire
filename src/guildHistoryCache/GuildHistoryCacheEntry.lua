@@ -6,10 +6,9 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
-local AGS = AwesomeGuildStore -- TODO get rid of AGS dependency -> extract codec into a separate lib
-local EncodeData = AGS.internal.EncodeData
-local DecodeData = AGS.internal.DecodeData
-local EncodeValue = AGS.internal.EncodeValue
+local EncodeData = internal.EncodeData
+local DecodeData = internal.DecodeData
+local EncodeValue = internal.EncodeValue
 
 local GuildHistoryCacheEntry = ZO_Object:Subclass()
 internal.class.GuildHistoryCacheEntry = GuildHistoryCacheEntry

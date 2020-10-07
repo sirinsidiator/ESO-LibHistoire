@@ -7,9 +7,8 @@ local internal = lib.internal
 local logger = internal.logger
 
 local GuildHistoryCacheEntry = internal.class.GuildHistoryCacheEntry
-local AGS = AwesomeGuildStore -- TODO get rid of AGS dependency -> extract codec into a separate lib
-local WriteToSavedVariable = AGS.internal.WriteToSavedVariable
-local ReadFromSavedVariable = AGS.internal.ReadFromSavedVariable
+local WriteToSavedVariable = internal.WriteToSavedVariable
+local ReadFromSavedVariable = internal.ReadFromSavedVariable
 
 local SERVER_NAME = GetWorldName()
 local MAX_RECEIVED_EVENTS = 500
