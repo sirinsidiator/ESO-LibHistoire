@@ -37,31 +37,56 @@ function GuildHistoryRequestManager:Initialize(cache)
         self:QueueRequest(categoryCache)
         self:SendNextRequest()
     end)
+    RegisterForEvent(EVENT_GUILD_SELF_JOINED_GUILD, function(guildId)
+        self:RefillQueueForGuild(guildId)
+        self:Start()
+        self:SendNextRequest()
+    end)
+    RegisterForEvent(EVENT_GUILD_SELF_LEFT_GUILD, function(guildId)
+        -- TODO handle this
+        end)
 
-    local watchDogHandle
     local function ensureQueueIsActive()
         if #self.queue == 0 then
             self:RefillQueue()
         end
         if #self.queue == 0 then
             logger:Info("no more requests needed - UnregisterForUpdate")
-            UnregisterForUpdate(watchDogHandle)
+            self:Stop()
             return
         end
         self:SendNextRequest()
     end
-    watchDogHandle = RegisterForUpdate(WATCHDOG_TIMER, ensureQueueIsActive)
+    self.ensureQueueIsActive = ensureQueueIsActive
     self:UpdateAllCategories()
+    self:Start()
+end
+
+function GuildHistoryRequestManager:Start()
+    if not self.watchDogHandle then
+        self.watchDogHandle = RegisterForUpdate(WATCHDOG_TIMER, self.ensureQueueIsActive)
+    end
+end
+
+function GuildHistoryRequestManager:Stop()
+    if self.watchDogHandle then
+        UnregisterForUpdate(self.watchDogHandle)
+        self.watchDogHandle = nil
+    end
+end
+
+local function ForEachCategory(callback, guildId)
+    for category = 1, GetNumGuildHistoryCategories() do
+        if GUILD_HISTORY_CATEGORIES[category] then
+            callback(guildId, category)
+        end
+    end
 end
 
 local function ForEachGuildAndCategory(callback)
-    for category = 1, GetNumGuildHistoryCategories() do
-        if GUILD_HISTORY_CATEGORIES[category] then
-            for index = 1, GetNumGuilds() do
-                local guildId = GetGuildId(index)
-                callback(guildId, category)
-            end
-        end
+    for index = 1, GetNumGuilds() do
+        local guildId = GetGuildId(index)
+        ForEachCategory(callback, guildId)
     end
 end
 
@@ -78,6 +103,14 @@ end
 function GuildHistoryRequestManager:RefillQueue()
     logger:Info("RefillQueue")
     ForEachGuildAndCategory(function(guildId, category)
+        local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
+        self:QueueRequest(categoryCache)
+    end)
+end
+
+function GuildHistoryRequestManager:RefillQueueForGuild(guildId)
+    logger:Info("RefillQueueForGuild")
+    ForEachCategory(function(_, category)
         local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
         self:QueueRequest(categoryCache)
     end)
