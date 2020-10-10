@@ -12,6 +12,21 @@ local UnregisterForUpdate = internal.UnregisterForUpdate
 
 local WATCHDOG_TIMER = 15000
 
+local function ForEachCategory(callback, guildId)
+    for category = 1, GetNumGuildHistoryCategories() do
+        if GUILD_HISTORY_CATEGORIES[category] then
+            callback(guildId, category)
+        end
+    end
+end
+
+local function ForEachGuildAndCategory(callback)
+    for index = 1, GetNumGuilds() do
+        local guildId = GetGuildId(index)
+        ForEachCategory(callback, guildId)
+    end
+end
+
 local GuildHistoryRequestManager = ZO_Object:Subclass()
 internal.class.GuildHistoryRequestManager = GuildHistoryRequestManager
 
@@ -25,10 +40,41 @@ function GuildHistoryRequestManager:Initialize(cache)
     self.cache = cache
     self.queue = {}
 
+    local function TestStorage()
+        ForEachGuildAndCategory(function(guildId, category)
+            local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
+
+            local numEvents = GetNumGuildEvents(guildId, category)
+            if categoryCache.lastIndex == numEvents then
+                logger:Debug("%d/%d: lastIndex matches event count", guildId, category)
+            else
+                logger:Warn("%d/%d: lastIndex does not match event count", guildId, category)
+            end
+        end)
+    end
+
+    SLASH_COMMANDS["/gtest8"] = TestStorage
+
     RegisterForEvent(EVENT_GUILD_HISTORY_REFRESHED, function()
-        logger:Info("EVENT_GUILD_HISTORY_REFRESHED")
-        -- happens when permissions change and events change visibility
-        -- TODO handle this
+        logger:Debug("EVENT_GUILD_HISTORY_REFRESHED")
+        ForEachGuildAndCategory(function(guildId, category)
+            local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
+            if not HasGuildHistoryCategoryEverBeenRequested(guildId, category) then
+                logger:Debug("detected reset of %d/%d", guildId, category)
+                categoryCache:ResetUnlinkedEvents()
+                self:QueueRequest(categoryCache)
+                internal:FireCallbacks(internal.callback.HISTORY_RELOADED, guildId, category)
+            end
+        end)
+
+        logger:Debug("send request")
+        self:SendNextRequest()
+        if #self.queue > 0 then
+            logger:Debug("more requests left - restart watchdog")
+            self:Start()
+        end
+
+        TestStorage()
     end)
     RegisterForEvent(EVENT_GUILD_HISTORY_RESPONSE_RECEIVED, function(_, guildId, category)
         local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
@@ -71,21 +117,6 @@ function GuildHistoryRequestManager:Stop()
     if self.watchDogHandle then
         UnregisterForUpdate(self.watchDogHandle)
         self.watchDogHandle = nil
-    end
-end
-
-local function ForEachCategory(callback, guildId)
-    for category = 1, GetNumGuildHistoryCategories() do
-        if GUILD_HISTORY_CATEGORIES[category] then
-            callback(guildId, category)
-        end
-    end
-end
-
-local function ForEachGuildAndCategory(callback)
-    for index = 1, GetNumGuilds() do
-        local guildId = GetGuildId(index)
-        ForEachCategory(callback, guildId)
     end
 end
 

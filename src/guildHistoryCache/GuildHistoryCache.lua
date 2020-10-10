@@ -150,6 +150,12 @@ function GuildHistoryCache:UpdateLinkedIcon()
     end
 end
 
+function GuildHistoryCache:HasCategoryCache(guildId, category)
+    if not self.cache[guildId] then return false end
+    if not self.cache[guildId][category] then return false end
+    return true
+end
+
 function GuildHistoryCache:GetOrCreateCategoryCache(guildId, category)
     if not self.cache[guildId] then
         self.cache[guildId] = {}

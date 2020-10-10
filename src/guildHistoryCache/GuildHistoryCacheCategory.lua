@@ -42,17 +42,24 @@ function GuildHistoryCacheCategory:Initialize(nameCache, saveData, guildId, cate
     self.guildId = guildId
     self.category = category
 
-    self.lastIndex = 0
     self.events = {}
-    self.eventIndexLookup = {}
     self.eventIdList = {}
+    self.eventIndexLookup = {}
+
+    -- add placeholders - deserialization will happen lazily
     for i = 1, #self.saveData do
-        self.events[i] = false -- add placeholders - deserialization will happen lazily
+        self.events[i] = false
     end
+
     -- make sure the first and last event are deserialized
     self:GetEntry(1)
     self:GetEntry(self:GetNumEntries())
 
+    self:ResetUnlinkedEvents()
+end
+
+function GuildHistoryCacheCategory:ResetUnlinkedEvents()
+    self.lastIndex = 0
     -- we store everything in a temporary table until we find the last stored event
     self.unlinkedEvents = {}
 end
@@ -67,6 +74,10 @@ end
 
 function GuildHistoryCacheCategory:HasLinked()
     return not self.unlinkedEvents
+end
+
+function GuildHistoryCacheCategory:IsFor(guildId, category)
+    return self.guildId == guildId and self.category == category
 end
 
 function GuildHistoryCacheCategory:IsProcessing()
@@ -98,6 +109,19 @@ function GuildHistoryCacheCategory:GetEntry(i)
     return self.events[i]
 end
 
+local function EventIterator(categoryCache, index)
+    index = index + 1
+    local event = categoryCache:GetEntry(index)
+    if event then
+        return index, event
+    end
+end
+
+function GuildHistoryCacheCategory:GetIterator(startEventId)
+    local index = self:FindIndexFor(startEventId)
+    return EventIterator, self, index
+end
+
 function GuildHistoryCacheCategory:FindIndexFor(eventId)
     -- lookup if we know the answer already
     if self.eventIndexLookup[eventId] then
@@ -117,7 +141,7 @@ function GuildHistoryCacheCategory:FindIndexFor(eventId)
     for i = closestIndex, #saveData do
         -- if a match was found, deserialize the event and check if it is really a match
         if PlainStringFind(saveData[i], serialized) then
-            local event = self:GetEvent(i)
+            local event = self:GetEntry(i)
             if event:GetEventId() == eventId then
                 return i
             end
