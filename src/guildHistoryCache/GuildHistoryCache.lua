@@ -87,6 +87,10 @@ function GuildHistoryCache:Initialize(nameCache, saveData)
     SecurePostHook(GUILD_HISTORY, "SetGuildId",function(manager, guildId)
         logger:Info("selected guild changed to ", guildId)
         self:UpdateLinkedIcon()
+        if tooltipShowing then
+            local cache = self:GetSelectedCache()
+            SetupTooltip(InformationTooltip, cache)
+        end
     end)
 
     local function OnSelectionChanged(control, data, selected, reselectingDuringRebuild)
