@@ -31,7 +31,6 @@ function GuildHistoryRequestManager:Initialize(cache)
         -- TODO handle this
     end)
     RegisterForEvent(EVENT_GUILD_HISTORY_RESPONSE_RECEIVED, function(_, guildId, category)
-        logger:Info("EVENT_GUILD_HISTORY_RESPONSE_RECEIVED")
         local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
         categoryCache:ReceiveEvents()
         self:QueueRequest(categoryCache)
@@ -51,7 +50,7 @@ function GuildHistoryRequestManager:Initialize(cache)
             self:RefillQueue()
         end
         if #self.queue == 0 then
-            logger:Info("no more requests needed - UnregisterForUpdate")
+            logger:Info("No more requests needed")
             self:Stop()
             return
         end
@@ -91,7 +90,6 @@ local function ForEachGuildAndCategory(callback)
 end
 
 function GuildHistoryRequestManager:UpdateAllCategories()
-    logger:Info("UpdateAllCategories")
     ForEachGuildAndCategory(function(guildId, category)
         if HasGuildHistoryCategoryEverBeenRequested(guildId, category) then
             local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
@@ -101,7 +99,6 @@ function GuildHistoryRequestManager:UpdateAllCategories()
 end
 
 function GuildHistoryRequestManager:RefillQueue()
-    logger:Info("RefillQueue")
     ForEachGuildAndCategory(function(guildId, category)
         local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
         self:QueueRequest(categoryCache)
@@ -109,7 +106,6 @@ function GuildHistoryRequestManager:RefillQueue()
 end
 
 function GuildHistoryRequestManager:RefillQueueForGuild(guildId)
-    logger:Info("RefillQueueForGuild")
     ForEachCategory(function(_, category)
         local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
         self:QueueRequest(categoryCache)
@@ -118,7 +114,6 @@ end
 
 function GuildHistoryRequestManager:QueueRequest(categoryCache)
     if not categoryCache:HasLinked() then
-        logger:Info("QueueRequest for %d/%d", categoryCache.guildId, categoryCache.category)
         self.queue[#self.queue + 1] = categoryCache
     end
 end
@@ -130,5 +125,4 @@ function GuildHistoryRequestManager:SendNextRequest()
 
     local guildId, category = categoryCache.guildId, categoryCache.category
     local success = RequestMoreGuildHistoryCategoryEvents(categoryCache.guildId, categoryCache.category, true)
-    logger:Info("SendNextRequest for %d/%d: %s", guildId, category, tostring(success))
 end

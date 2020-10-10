@@ -185,7 +185,9 @@ function GuildHistoryCacheCategory:ReceiveEvents()
 
     local events, hasReachedLastStoredEventId, hasEncounteredInvalidEvent = self:GetFilteredReceivedEvents()
     local eventsBefore, eventsAfter = self:SeparateReceivedEvents(events)
-    logger:Info("Add %d + %d events in guild %s (%d) category %d", #eventsBefore, #eventsAfter, GetGuildName(self.guildId), self.guildId, self.category)
+    if #events > 0 then
+        logger:Info("Add %d + %d events in guild %s (%d) category %s (%d)", #eventsBefore, #eventsAfter, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
+    end
 
     local unlinkedEvents = self.unlinkedEvents
     if unlinkedEvents then
@@ -206,12 +208,11 @@ function GuildHistoryCacheCategory:ReceiveEvents()
 
     if hasEncounteredInvalidEvent then
         if self.storedEventsTask then
-            logger:Debug("has found invalid events and has a queued task")
             self.hasPendingEvents = true
         else
-            logger:Debug("has found invalid events, but no queued task")
             zo_callLater(function() self:ReceiveEvents() end, 0)
         end
+        logger:Debug("Has found invalid events")
     end
 end
 
@@ -291,9 +292,9 @@ function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
     task:For(1, #events):Do(function(i)
         self:StoreEvent(events[i])
     end):Then(function()
-        logger:Debug("finished storing events")
         self.storeEventsTask = nil
         if hasLinked then
+            logger:Info("Linked %d events in guild %s (%d) category %s (%d)", #events, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
             internal:FireCallbacks(internal.callback.HISTORY_LINKED, self.guildId, self.category)
         end
         if self.hasPendingEvents then

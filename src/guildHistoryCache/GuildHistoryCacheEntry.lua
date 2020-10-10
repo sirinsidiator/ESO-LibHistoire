@@ -202,7 +202,7 @@ function GuildHistoryCacheEntry:Serialize()
     temp[1] = VERSION
     temp[2] = info[INDEX_EVENT_TIME] - timeOffset
     temp[3] = eventId - idOffset
-    if temp[3] < 0 then internal.logger:Warn("negative offset id detected") end
+    if temp[3] < 0 then internal.logger:Warn("Negative eventId after subtracting offset") end
     temp[4] = params
     local serializedData = EncodeData(temp, CURRENT_FIELD_FORMAT, FIELD_SEPARATOR)
     return serializedData

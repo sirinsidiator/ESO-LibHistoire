@@ -85,7 +85,6 @@ function GuildHistoryCache:Initialize(nameCache, saveData)
     end)
 
     SecurePostHook(GUILD_HISTORY, "SetGuildId",function(manager, guildId)
-        logger:Info("selected guild changed to ", guildId)
         self:UpdateLinkedIcon()
         if tooltipShowing then
             local cache = self:GetSelectedCache()
@@ -95,7 +94,6 @@ function GuildHistoryCache:Initialize(nameCache, saveData)
 
     local function OnSelectionChanged(control, data, selected, reselectingDuringRebuild)
         if selected then
-            logger:Info("selected category changed to ", data.categoryId)
             self:UpdateLinkedIcon()
         end
     end
@@ -145,11 +143,9 @@ end
 function GuildHistoryCache:UpdateLinkedIcon()
     local cache = self:GetSelectedCache()
     if cache then
-        logger:Debug("show and update linked icon")
         self.linkedIcon:SetTexture(cache:HasLinked() and LINKED_ICON or UNLINKED_ICON)
         self.linkedIcon:SetHidden(false)
     else
-        logger:Debug("hide linked icon")
         self.linkedIcon:SetHidden(true)
     end
 end
@@ -157,12 +153,10 @@ end
 function GuildHistoryCache:GetOrCreateCategoryCache(guildId, category)
     if not self.cache[guildId] then
         self.cache[guildId] = {}
-        logger:Info("create cache for guild %s (%d)", GetGuildName(guildId), guildId)
     end
     local guildCache = self.cache[guildId]
     if not guildCache[category] then
         guildCache[category] = GuildHistoryCacheCategory:New(self.nameCache, self.saveData, guildId, category)
-        logger:Info("create cache for category %d in guild %s (%d)", category, GetGuildName(guildId), guildId)
     end
     return guildCache[category]
 end
