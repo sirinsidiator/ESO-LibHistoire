@@ -53,7 +53,7 @@ function GuildHistoryRequestManager:Initialize(cache)
         end)
     end
 
-    SLASH_COMMANDS["/gtest8"] = TestStorage
+    SLASH_COMMANDS["/gtest3"] = TestStorage
 
     RegisterForEvent(EVENT_GUILD_HISTORY_REFRESHED, function()
         logger:Debug("EVENT_GUILD_HISTORY_REFRESHED")

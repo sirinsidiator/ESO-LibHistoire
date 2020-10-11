@@ -83,30 +83,45 @@ function internal:Initialize()
         self.nameCache = self.class.DisplayNameCache:New(LibHistoire_NameDictionary)
         self.historyCache = self.class.GuildHistoryCache:New(self.nameCache, LibHistoire_GuildHistory)
 
-        local l5
-        SLASH_COMMANDS["/gtest5"] = function(afterId)
-            if l5 then
-                l5:Stop()
-                l5 = nil
+        local function ParseInput(input)
+            local guildIndex, category, eventId = input:match("(%d) (%d) ?(.*)")
+            if(not guildIndex) then
+                return GetGuildId(1), 1, nil
+            end
+            guildIndex = tonumber(guildIndex) or 1
+            category = tonumber(category) or 1
+            return GetGuildId(guildIndex), category, tonumber(eventId)
+        end
+
+        SLASH_COMMANDS["/gtest1"] = function(input)
+            local guildId, category = ParseInput(input)
+            local cache = self.historyCache:GetOrCreateCategoryCache(guildId, category)
+            logger:Info("rescan events:", cache:RescanEvents())
+        end
+
+        local listener
+        SLASH_COMMANDS["/gtest2"] = function(input)
+            if listener then
+                listener:Stop()
+                listener = nil
                 logger:Info("stopped listener")
             else
-                local guildId = GetGuildId(3)
-                local category = 2
-                l5 = lib:CreateGuildHistoryListener(guildId, category)
-                l5:SetNextEventCallback(function(eventType, eventId, eventTime, p1, p2, p3, p4, p5, p6)
+                local guildId, category, afterId = ParseInput(input)
+                listener = lib:CreateGuildHistoryListener(guildId, category)
+                listener:SetNextEventCallback(function(eventType, eventId, eventTime, p1, p2, p3, p4, p5, p6)
                     logger:Debug("next event - guildId: %d, category: %d, eventId: %d", guildId, category, eventId)
                 end)
-                l5:SetMissedEventCallback(function(eventType, eventId, eventTime, p1, p2, p3, p4, p5, p6)
+                listener:SetMissedEventCallback(function(eventType, eventId, eventTime, p1, p2, p3, p4, p5, p6)
                     logger:Debug("missed event - guildId: %d, category: %d, eventId: %d", guildId, category, eventId)
                 end)
-                l5:SetHistoryReloadedCallback(function()
+                listener:SetHistoryReloadedCallback(function()
                     logger:Debug("History has reloaded - guildId: %d, category: %d", guildId, category)
                 end)
-                if afterId ~= "" then
+                if afterId then
                     logger:Info("set after event id", afterId)
-                    l5:SetAfterEventId(tonumber(afterId))
+                    listener:SetAfterEventId(afterId)
                 end
-                l5:Start()
+                listener:Start()
                 logger:Info("started listener")
             end
         end

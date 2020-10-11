@@ -155,25 +155,13 @@ function GuildHistoryCacheEntry:New(...)
 end
 
 function GuildHistoryCacheEntry:Initialize(cacheCategory, guildIdOrSerializedData, category, eventIndex)
-    self.valid = true
+    self.valid = nil
     self.cacheCategory = cacheCategory
     if category then
         -- assume it's a new entry and get data from the api
         local now = GetTimeStamp()
         self.info = {GetGuildEventInfo(guildIdOrSerializedData, category, eventIndex)}
         self.info[INDEX_EVENT_TIME] = now - self.info[INDEX_EVENT_TIME] -- convert to absolute time
-
-        local idOffset, timeOffset = self.cacheCategory:GetOffsets()
-        if idOffset then
-            if self:GetEventId() < idOffset then
-                self.valid = false
-                logger:Warn("EventId %d is smaller than the stored id offset %d", self:GetEventId(), idOffset)
-            end
-            if self:GetEventTime() < timeOffset then
-                self.valid = false
-                logger:Warn("EventTime %d is before the stored time offset %d", self:GetEventTime(), timeOffset)
-            end
-        end
     else
         -- assume it's a stored entry and deserialize it
         self.info = self:Deserialize(guildIdOrSerializedData)
@@ -231,6 +219,14 @@ function GuildHistoryCacheEntry:Deserialize(serializedData)
 end
 
 function GuildHistoryCacheEntry:IsValid()
+    if self.valid == nil then
+        if self:GetEventTime() < 0 then
+            self.valid = false
+            logger:Warn("EventTime %d is negative", self:GetEventTime())
+        else
+            self.valid = true
+        end
+    end
     return self.valid
 end
 

@@ -45,6 +45,7 @@ function GuildHistoryCacheCategory:Initialize(nameCache, saveData, guildId, cate
     self.events = {}
     self.eventIdList = {}
     self.eventIndexLookup = {}
+    self.eventIndexLookupDirty = false
 
     -- add placeholders - deserialization will happen lazily
     for i = 1, #self.saveData do
@@ -175,16 +176,32 @@ function GuildHistoryCacheCategory:FindClosestIndexFor(eventId)
     return 0
 end
 
-function GuildHistoryCacheCategory:StoreEvent(event)
+function GuildHistoryCacheCategory:StoreEvent(event, missing)
     local index = #self.events + 1
     self.events[index] = event
     if not self.saveData.idOffset then self.saveData.idOffset = event:GetEventId() end
     if not self.saveData.timeOffset then self.saveData.timeOffset = event:GetEventTime() end
     WriteToSavedVariable(self.saveData, index, event:Serialize())
+
+    if missing then
+        self.eventIndexLookupDirty = true
+    else
+        local eventId = event:GetEventId()
+        self.eventIdList[#self.eventIdList + 1] = eventId
+        self.eventIndexLookup[eventId] = index
+    end
+    internal:FireCallbacks(internal.callback.EVENT_STORED, self.guildId, self.category, event, index, missing)
+end
+
+function GuildHistoryCacheCategory:InsertEvent(event, index)
+    table.insert(self.events, index, event)
+    table.insert(self.saveData, index, "") -- insert a placeholder so all indices are moved up by one
+    WriteToSavedVariable(self.saveData, index, event:Serialize())
+
     local eventId = event:GetEventId()
     self.eventIdList[#self.eventIdList + 1] = eventId
-    self.eventIndexLookup[eventId] = index
-    internal:FireCallbacks(internal.callback.EVENT_STORED, self.guildId, self.category, event, index)
+    self.eventIndexLookupDirty = true
+    internal:FireCallbacks(internal.callback.EVENT_STORED, self.guildId, self.category, event, index, true)
 end
 
 function GuildHistoryCacheCategory:CanReceiveMoreEvents()
@@ -201,8 +218,184 @@ function GuildHistoryCacheCategory:GetFirstAndLastUnlinkedEventId()
     end
 end
 
+local function GuildEventIterator(self, i)
+    i = i + 1
+    if i > GetNumGuildEvents(self.guildId, self.category) then return end
+    return i
+end
+
+local function GetGuildEventIterator(self, startIndex)
+    return GuildEventIterator, self, (startIndex or 1) - 1
+end
+
+function GuildHistoryCacheCategory:GetMissingEvents(task, missingEvents)
+    local missingEvents = {}
+    local hasEncounteredInvalidEvent = false
+    local guildId, category = self.guildId, self.category
+    self.lastIndex = 0
+    task:For(GetGuildEventIterator(self)):Do(function(index)
+        local eventId = select(9, GetGuildEventInfo(guildId, category, index))
+        if self:FindIndexFor(eventId) == 0 then
+            local event = GuildHistoryCacheEntry:New(self, guildId, category, index)
+            if(event:IsValid()) then
+                missingEvents[#missingEvents + 1] = event
+            else
+                hasEncounteredInvalidEvent = true
+            end
+        end
+        self.lastIndex = index
+    end)
+    return missingEvents, hasEncounteredInvalidEvent
+end
+
+function GuildHistoryCacheCategory:SeparateMissingEvents(missingEvents)
+    local eventsBefore = {}
+    local eventsInside = {}
+    local eventsAfter = {}
+
+    local firstStoredEntry = self:GetEntry(1)
+    local firstStoredEventId = firstStoredEntry and firstStoredEntry:GetEventId() or 0
+    local lastStoredEntry = self:GetEntry(self:GetNumEntries())
+    local lastStoredEventId = lastStoredEntry and lastStoredEntry:GetEventId() or 0
+
+    for i = 1, #missingEvents do
+        local event = missingEvents[i]
+        local eventId = event:GetEventId()
+        if firstStoredEntry and eventId < firstStoredEventId then
+            eventsBefore[#eventsBefore + 1] = event
+        elseif not lastStoredEntry or eventId > lastStoredEventId then
+            eventsAfter[#eventsAfter + 1] = event
+        else
+            eventsInside[#eventsInside + 1] = event
+        end
+    end
+
+    return eventsBefore, eventsInside, eventsAfter
+end
+
+function GuildHistoryCacheCategory:StoreMissingEventsBefore(eventsBefore, callback)
+    if #eventsBefore == 0 then callback() return end
+
+    -- deserialize all stored events as we need to save them again with the new offsets
+    local storedEntries = {}
+    local taskA = internal:CreateAsyncTask()
+    taskA:For(1, self:GetNumEntries()):Do(function(i)
+        storedEntries[i] = self:GetEntry(i)
+    end):Then(function()
+        ZO_ClearTable(self.events)
+        ZO_ClearTable(self.saveData)
+        local taskC = internal:CreateAsyncTask()
+        taskC:For(ipairs(eventsBefore)):Do(function(i, event)
+            self:StoreEvent(event, true)
+        end):Then(function()
+            local taskD = internal:CreateAsyncTask()
+            taskD:For(ipairs(storedEntries)):Do(function(i, event)
+                local index = #self.events + 1
+                self.events[index] = event
+                WriteToSavedVariable(self.saveData, index, event:Serialize())
+            end):Then(callback)
+        end)
+    end)
+end
+
+function GuildHistoryCacheCategory:StoreMissingEventsInside(eventsInside, callback)
+    if #eventsInside == 0 then callback() return end
+
+    local startIndex = 2
+    local events = self.events
+    local lastEventId = events[1]:GetEventId()
+
+    local function GetProperIndexFor(eventId)
+        for j = startIndex, #events do
+            local nextEventId = events[j]:GetEventId()
+            if eventId > lastEventId and eventId < nextEventId then
+                lastEventId = eventId
+                startIndex = j + 1
+                return j
+            end
+            lastEventId = nextEventId
+        end
+    end
+
+    local task = internal:CreateAsyncTask()
+    task:For(ipairs(eventsInside)):Do(function(i, event)
+        local eventId = event:GetEventId()
+        local index = GetProperIndexFor(eventId)
+        if index then
+            self:InsertEvent(event, index)
+        else
+            logger:Warn("Could not find proper index for insertion of event with id %d", eventId)
+        end
+    end):Then(callback)
+end
+
+function GuildHistoryCacheCategory:StoreMissingEventsAfter(eventsAfter, callback)
+    if #eventsAfter == 0 then callback() return end
+
+    local task = internal:CreateAsyncTask()
+    task:For(ipairs(eventsAfter)):Do(function(i, event)
+        self:StoreEvent(event, false)
+    end):Then(callback)
+end
+
+function GuildHistoryCacheCategory:RescanEvents()
+    if self.rescanEventsTask or self.unlinkedEvents then return false end
+
+    local guildId, category = self.guildId, self.category
+    local guildName, categoryName = GetGuildName(guildId), GetString("SI_GUILDHISTORYCATEGORY", category)
+    logger:Info("Start rescanning events in guild %s (%d) category %s (%d)", guildName, guildId, categoryName, category)
+
+    self.rescanEventsTask = internal:CreateAsyncTask()
+    local task = self.rescanEventsTask
+    local missingEvents, hasEncounteredInvalidEvent = self:GetMissingEvents(task)
+    local eventsBefore, eventsInside, eventsAfter
+
+    task:Then(function()
+        table.sort(missingEvents, ByEventIdAsc)
+    end):Then(function()
+        eventsBefore, eventsInside, eventsAfter = self:SeparateMissingEvents(missingEvents)
+        logger:Info("Detected %d + %d + %d missing events in guild %s (%d) category %s (%d)", #eventsBefore, #eventsInside, #eventsAfter, guildName, guildId, categoryName, category)
+    end):Then(function()
+        self:StoreMissingEventsBefore(eventsBefore, function()
+            self:StoreMissingEventsInside(eventsInside, function()
+                self:StoreMissingEventsAfter(eventsAfter, function()
+                    self:RebuildEventLookup()
+                    logger:Info("Finished rescanning events in guild %s (%d) category %s (%d)", guildName, guildId, categoryName, category)
+                    self.rescanEventsTask = nil
+                    if hasEncounteredInvalidEvent then
+                        ZO_Alert(UI_ALERT_CATEGORY_ERROR, SOUNDS.NEGATIVE_CLICK, "Found invalid events while rescanning history") -- TODO rescan
+                    end
+
+                    if self.hasPendingEvents then
+                        self.hasPendingEvents = false
+                        self:ReceiveEvents()
+                    end
+                end)
+            end)
+        end)
+    end)
+
+    return true
+end
+
+function GuildHistoryCacheCategory:RebuildEventLookup()
+    if self.eventIndexLookupDirty then
+        ZO_ClearTable(self.eventIdList)
+        ZO_ClearTable(self.eventIndexLookup)
+        for index = 1, #self.events do
+            local event = self.events[index]
+            if event then
+                local eventId = event:GetEventId()
+                self.eventIdList[#self.eventIdList + 1] = eventId
+                self.eventIndexLookup[eventId] = index
+            end
+        end
+        self.eventIndexLookupDirty = false
+    end
+end
+
 function GuildHistoryCacheCategory:ReceiveEvents()
-    if self.storeEventsTask then
+    if self.storeEventsTask or self.rescanEventsTask then
         self.hasPendingEvents = true
         return
     end
@@ -314,7 +507,7 @@ function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
     if #events == 0 then return end
     local task = internal:CreateAsyncTask()
     task:For(1, #events):Do(function(i)
-        self:StoreEvent(events[i])
+        self:StoreEvent(events[i], false)
     end):Then(function()
         self.storeEventsTask = nil
         if hasLinked then
