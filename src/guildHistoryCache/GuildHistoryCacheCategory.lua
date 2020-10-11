@@ -411,8 +411,8 @@ function GuildHistoryCacheCategory:ReceiveEvents()
         local hasOlder = self:AddOlderUnlinkedEvents(eventsBefore)
         local hasNewer = self:AddNewestUnlinkedEvents(eventsAfter)
 
-        -- if we reached the end and still haven't linked up with the stored history we do so now
-        if hasReachedLastStoredEventId or not self:CanReceiveMoreEvents() then
+        -- if there is nothing stored yet, or  we reached the end and still haven't linked up with the stored history we do so now
+        if #self.events == 0 or hasReachedLastStoredEventId or not self:CanReceiveMoreEvents() then
             self.unlinkedEvents = nil
             self.storeEventsTask = self:StoreReceivedEvents(unlinkedEvents, true)
         elseif hasOlder or hasNewer then
