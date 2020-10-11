@@ -131,7 +131,11 @@ function internal:Initialize()
             end
         end
 
-        logger:Debug("Initialization complete")
+        local count = 0
+        for _, events in pairs(LibHistoire_GuildHistory) do
+            count = count + #events
+        end
+        logger:Debug("Initialization complete - holding %d guild history events", count)
     end)
 end
 
