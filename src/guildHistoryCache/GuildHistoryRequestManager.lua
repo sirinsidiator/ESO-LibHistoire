@@ -82,7 +82,14 @@ function GuildHistoryRequestManager:Initialize(cache)
         self:QueueRequest(categoryCache)
         self:SendNextRequest()
     end)
+
+    local guildNames = internal.guildNames
+    for i = 1, GetNumGuilds() do
+        local guildId = GetGuildId(i)
+        guildNames[guildId] = GetGuildName(guildId)
+    end
     RegisterForEvent(EVENT_GUILD_SELF_JOINED_GUILD, function(guildId)
+        guildNames[guildId] = GetGuildName(guildId)
         self:RefillQueueForGuild(guildId)
         self:Start()
         self:SendNextRequest()

@@ -5,7 +5,7 @@
 ## APIVersion: @API_VERSION@
 ## IsLibrary: true
 ## DependsOn: LibDebugLogger LibAsync
-## SavedVariables: LibHistoire_Data LibHistoire_NameDictionary LibHistoire_GuildHistory LibHistoire_GuildMembers
+## SavedVariables: LibHistoire_GuildNames LibHistoire_NameDictionary LibHistoire_GuildHistory
 ## Description: |c000000|u1:800::|u|u1:800::.|u|u1:800::.|u|u1:800::|u|t256:256:LibHistoire/histoire.dds|t|u1:800::.|u|u1:800::.|u|u1:800::.|u|u1:800::.|u|u1:800::.|u|rHisty takes good care of all your data, so others don't have to.
 ##
 ## This Add-on is not created by, affiliated with or sponsored by ZeniMax Media Inc. or its affiliates. 

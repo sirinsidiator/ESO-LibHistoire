@@ -65,8 +65,13 @@ function internal:UnregisterCallback(...)
 end
 
 function internal:InitializeSaveData()
+    LibHistoire_GuildNames = LibHistoire_GuildNames or {}
     LibHistoire_NameDictionary = LibHistoire_NameDictionary or {}
     LibHistoire_GuildHistory = LibHistoire_GuildHistory or {}
+
+    local server = GetWorldName()
+    self.guildNames = LibHistoire_GuildNames[server] or {}
+    LibHistoire_GuildNames[server] = self.guildNames
 end
 
 function internal:Initialize()
