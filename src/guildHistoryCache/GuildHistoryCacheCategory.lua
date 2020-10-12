@@ -401,15 +401,20 @@ function GuildHistoryCacheCategory:ReceiveEvents()
     end
 
     local events, hasReachedLastStoredEventId, hasEncounteredInvalidEvent = self:GetFilteredReceivedEvents()
-    local eventsBefore, eventsAfter = self:SeparateReceivedEvents(events)
+    local eventsBefore, eventsAfter, hasEventsBetween = self:SeparateReceivedEvents(events)
     if #events > 0 then
         logger:Info("Add %d + %d events in guild %s (%d) category %s (%d)", #eventsBefore, #eventsAfter, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
     end
 
     local unlinkedEvents = self.unlinkedEvents
     if unlinkedEvents then
-        local hasOlder = self:AddOlderUnlinkedEvents(eventsBefore)
-        local hasNewer = self:AddNewestUnlinkedEvents(eventsAfter)
+        local hasOlder, hasNewer
+        if hasEventsBetween then
+            hasOlder = self:AddUnsortedUnlinkedEvents(eventsBefore)
+        else
+            hasOlder = self:AddOlderUnlinkedEvents(eventsBefore)
+            hasNewer = self:AddNewestUnlinkedEvents(eventsAfter)
+        end
 
         -- if there is nothing stored yet, or  we reached the end and still haven't linked up with the stored history we do so now
         if #self.events == 0 or hasReachedLastStoredEventId or not self:CanReceiveMoreEvents() then
@@ -420,6 +425,7 @@ function GuildHistoryCacheCategory:ReceiveEvents()
         end
     else
         assert(#eventsBefore == 0, "Got events before when already linked")
+        -- TODO should trigger a rescan
         self.storeEventsTask = self:StoreReceivedEvents(eventsAfter)
     end
 
@@ -470,7 +476,7 @@ function GuildHistoryCacheCategory:SeparateReceivedEvents(events)
         local eventId = events[1]:GetEventId()
         if not lastEventId then
             table.sort(events, ByEventIdAsc)
-            eventId = events[1]:GetEventId()
+            eventId = events[1]:GetEventId() -- need to fetch it again after sorting
             lastEventId = eventId - 1
             firstEventId = eventId + 1
         elseif eventId > lastEventId then
@@ -479,6 +485,7 @@ function GuildHistoryCacheCategory:SeparateReceivedEvents(events)
             table.sort(events, ByEventIdDesc)
         else
             logger:Warn("First event %d needs to go somewhere between %d and %d", eventId, firstEventId, lastEventId)
+            return events, {}, true
         end
 
         for i = 1, #events do
@@ -492,12 +499,15 @@ function GuildHistoryCacheCategory:SeparateReceivedEvents(events)
                 eventsBefore[#eventsBefore + 1] = entry
                 firstEventId = eventId
             else
+                -- TODO this seems to happen in some rare case. Need to figure out why and fix it
+                -- may be related to when the session has a lot of negative event times
                 logger:Warn("Event %d (%d) needs to go somewhere between %d and %d", eventId, i, firstEventId, lastEventId)
+                return events, {}, true
             end
         end
     end
 
-    return eventsBefore, eventsAfter
+    return eventsBefore, eventsAfter, false
 end
 
 function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
@@ -520,6 +530,16 @@ function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
         end
     end)
     return task
+end
+
+function GuildHistoryCacheCategory:AddUnsortedUnlinkedEvents(unsortedEvents)
+    if #unsortedEvents == 0 then return false end
+    local events = self.unlinkedEvents
+    for i = 1, #unsortedEvents do
+        events[#events + 1] = unsortedEvents[i]
+    end
+    table.sort(events, ByEventIdAsc)
+    return true
 end
 
 function GuildHistoryCacheCategory:AddOlderUnlinkedEvents(eventsBefore)
