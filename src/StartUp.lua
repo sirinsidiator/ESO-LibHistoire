@@ -88,49 +88,6 @@ function internal:Initialize()
         self.nameCache = self.class.DisplayNameCache:New(LibHistoire_NameDictionary)
         self.historyCache = self.class.GuildHistoryCache:New(self.nameCache, LibHistoire_GuildHistory)
 
-        local function ParseInput(input)
-            local guildIndex, category, eventId = input:match("(%d) (%d) ?(.*)")
-            if(not guildIndex) then
-                return GetGuildId(1), 1, nil
-            end
-            guildIndex = tonumber(guildIndex) or 1
-            category = tonumber(category) or 1
-            return GetGuildId(guildIndex), category, tonumber(eventId)
-        end
-
-        SLASH_COMMANDS["/gtest1"] = function(input)
-            local guildId, category = ParseInput(input)
-            local cache = self.historyCache:GetOrCreateCategoryCache(guildId, category)
-            logger:Info("rescan events:", cache:RescanEvents())
-        end
-
-        local listener
-        SLASH_COMMANDS["/gtest2"] = function(input)
-            if listener then
-                listener:Stop()
-                listener = nil
-                logger:Info("stopped listener")
-            else
-                local guildId, category, afterId = ParseInput(input)
-                listener = lib:CreateGuildHistoryListener(guildId, category)
-                listener:SetNextEventCallback(function(eventType, eventId, eventTime, p1, p2, p3, p4, p5, p6)
-                    logger:Debug("next event - guildId: %d, category: %d, eventId: %d", guildId, category, eventId)
-                end)
-                listener:SetMissedEventCallback(function(eventType, eventId, eventTime, p1, p2, p3, p4, p5, p6)
-                    logger:Debug("missed event - guildId: %d, category: %d, eventId: %d", guildId, category, eventId)
-                end)
-                listener:SetHistoryReloadedCallback(function()
-                    logger:Debug("History has reloaded - guildId: %d, category: %d", guildId, category)
-                end)
-                if afterId then
-                    logger:Info("set after event id", afterId)
-                    listener:SetAfterEventId(afterId)
-                end
-                listener:Start()
-                logger:Info("started listener")
-            end
-        end
-
         local count = 0
         for _, events in pairs(LibHistoire_GuildHistory) do
             count = count + #events
