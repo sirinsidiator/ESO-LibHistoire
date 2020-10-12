@@ -424,8 +424,11 @@ function GuildHistoryCacheCategory:ReceiveEvents()
             internal:FireCallbacks(internal.callback.UNLINKED_EVENTS_ADDED, self.guildId, self.category)
         end
     else
-        assert(#eventsBefore == 0, "Got events before when already linked")
-        -- TODO should trigger a rescan
+        if #eventsBefore > 0 then
+            logger:Warn("Got eventsBefore when already linked - do a rescan")
+            zo_callLater(function() self:RescanEvents() end, 0)
+            return
+        end
         self.storeEventsTask = self:StoreReceivedEvents(eventsAfter)
     end
 
