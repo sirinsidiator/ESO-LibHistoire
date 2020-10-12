@@ -11,7 +11,7 @@ local WriteToSavedVariable = internal.WriteToSavedVariable
 local ReadFromSavedVariable = internal.ReadFromSavedVariable
 
 local SERVER_NAME = GetWorldName()
-local MAX_RECEIVED_EVENTS = 500
+local RETRY_ON_INVALID_DELAY = 5000
 
 local function Ascending(a, b)
     return b > a
@@ -427,7 +427,7 @@ function GuildHistoryCacheCategory:ReceiveEvents()
         if self.storedEventsTask then
             self.hasPendingEvents = true
         else
-            zo_callLater(function() self:ReceiveEvents() end, 0)
+            zo_callLater(function() self:ReceiveEvents() end, RETRY_ON_INVALID_DELAY)
         end
         logger:Debug("Has found invalid events")
     end
