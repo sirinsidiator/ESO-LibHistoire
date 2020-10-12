@@ -40,42 +40,23 @@ function GuildHistoryRequestManager:Initialize(cache)
     self.cache = cache
     self.queue = {}
 
-    local function TestStorage()
-        ForEachGuildAndCategory(function(guildId, category)
-            local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
-
-            local numEvents = GetNumGuildEvents(guildId, category)
-            if categoryCache.lastIndex == numEvents then
-                logger:Debug("%d/%d: lastIndex matches event count", guildId, category)
-            else
-                logger:Warn("%d/%d: lastIndex does not match event count", guildId, category)
-            end
-        end)
-    end
-
-    SLASH_COMMANDS["/gtest3"] = TestStorage
-
     RegisterForEvent(EVENT_GUILD_HISTORY_REFRESHED, function()
-        logger:Debug("EVENT_GUILD_HISTORY_REFRESHED")
         ForEachGuildAndCategory(function(guildId, category)
             local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
-            if not HasGuildHistoryCategoryEverBeenRequested(guildId, category) then
-                logger:Debug("detected reset of %d/%d", guildId, category)
+            if not HasGuildHistoryCategoryEverBeenRequested(guildId, category) or categoryCache.lastIndex ~= GetNumGuildEvents(guildId, category) then
+                logger:Info("Detected reset of guild %s (%d) category %s (%d)", GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
                 categoryCache:ResetUnlinkedEvents()
                 self:QueueRequest(categoryCache)
                 internal:FireCallbacks(internal.callback.HISTORY_RELOADED, guildId, category)
             end
         end)
 
-        logger:Debug("send request")
         self:SendNextRequest()
         if #self.queue > 0 then
-            logger:Debug("more requests left - restart watchdog")
             self:Start()
         end
-
-        TestStorage()
     end)
+
     RegisterForEvent(EVENT_GUILD_HISTORY_RESPONSE_RECEIVED, function(_, guildId, category)
         local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
         categoryCache:ReceiveEvents()
