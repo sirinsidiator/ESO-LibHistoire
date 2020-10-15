@@ -303,11 +303,11 @@ function GuildHistoryCacheCategory:StoreMissingEventsInside(eventsInside, callba
 
     local startIndex = 2
     local events = self.events
-    local lastEventId = events[1]:GetEventId()
+    local lastEventId = self:GetEntry(1):GetEventId()
 
     local function GetProperIndexFor(eventId)
         for j = startIndex, #events do
-            local nextEventId = events[j]:GetEventId()
+            local nextEventId = self:GetEntry(j):GetEventId()
             if eventId > lastEventId and eventId < nextEventId then
                 lastEventId = eventId
                 startIndex = j + 1
