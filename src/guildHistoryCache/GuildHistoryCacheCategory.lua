@@ -46,6 +46,7 @@ function GuildHistoryCacheCategory:Initialize(nameCache, saveData, guildId, cate
     self.eventIdList = {}
     self.eventIndexLookup = {}
     self.eventIndexLookupDirty = false
+    self.progressDirty = true
 
     -- add placeholders - deserialization will happen lazily
     for i = 1, #self.saveData do
@@ -53,8 +54,8 @@ function GuildHistoryCacheCategory:Initialize(nameCache, saveData, guildId, cate
     end
 
     -- make sure the first and last event are deserialized
-    self:GetEntry(1)
-    self:GetEntry(self:GetNumEntries())
+    self:GetOldestEvent()
+    self:GetNewestEvent()
 
     self:ResetUnlinkedEvents()
 end
@@ -85,7 +86,7 @@ function GuildHistoryCacheCategory:IsProcessing()
     return self.storeEventsTask ~= nil
 end
 
-function GuildHistoryCacheCategory:GetNumUnlinkedEntries()
+function GuildHistoryCacheCategory:GetNumUnlinkedEvents()
     if not self.unlinkedEvents then return 0 end
     return #self.unlinkedEvents
 end
@@ -95,11 +96,11 @@ function GuildHistoryCacheCategory:GetUnlinkedEntry(i)
     return self.unlinkedEvents[i]
 end
 
-function GuildHistoryCacheCategory:GetNumEntries()
+function GuildHistoryCacheCategory:GetNumEvents()
     return #self.events
 end
 
-function GuildHistoryCacheCategory:GetEntry(i)
+function GuildHistoryCacheCategory:GetEvent(i)
     if self.events[i] == false then -- if there is a placeholder we first need to deserialize it
         local serializedData = ReadFromSavedVariable(self.saveData, i)
         self.events[i] = GuildHistoryCacheEntry:New(self, serializedData)
@@ -110,9 +111,17 @@ function GuildHistoryCacheCategory:GetEntry(i)
     return self.events[i]
 end
 
+function GuildHistoryCacheCategory:GetOldestEvent()
+    return self:GetEvent(1)
+end
+
+function GuildHistoryCacheCategory:GetNewestEvent()
+    return self:GetEvent(self:GetNumEvents())
+end
+
 local function EventIterator(categoryCache, index)
     index = index + 1
-    local event = categoryCache:GetEntry(index)
+    local event = categoryCache:GetEvent(index)
     if event then
         return index, event
     end
@@ -142,7 +151,7 @@ function GuildHistoryCacheCategory:FindIndexFor(eventId)
     for i = closestIndex, #saveData do
         -- if a match was found, deserialize the event and check if it is really a match
         if PlainStringFind(saveData[i], serialized) then
-            local event = self:GetEntry(i)
+            local event = self:GetEvent(i)
             if event:GetEventId() == eventId then
                 return i
             end
@@ -253,9 +262,9 @@ function GuildHistoryCacheCategory:SeparateMissingEvents(missingEvents)
     local eventsInside = {}
     local eventsAfter = {}
 
-    local firstStoredEntry = self:GetEntry(1)
+    local firstStoredEntry = self:GetOldestEvent()
     local firstStoredEventId = firstStoredEntry and firstStoredEntry:GetEventId() or 0
-    local lastStoredEntry = self:GetEntry(self:GetNumEntries())
+    local lastStoredEntry = self:GetNewestEvent()
     local lastStoredEventId = lastStoredEntry and lastStoredEntry:GetEventId() or 0
 
     for i = 1, #missingEvents do
@@ -277,10 +286,10 @@ function GuildHistoryCacheCategory:StoreMissingEventsBefore(eventsBefore, callba
     if #eventsBefore == 0 then callback() return end
 
     -- deserialize all stored events as we need to save them again with the new offsets
-    local storedEntries = {}
+    local storedEvents = {}
     local taskA = internal:CreateAsyncTask()
-    taskA:For(1, self:GetNumEntries()):Do(function(i)
-        storedEntries[i] = self:GetEntry(i)
+    taskA:For(1, self:GetNumEvents()):Do(function(i)
+        storedEvents[i] = self:GetEvent(i)
     end):Then(function()
         ZO_ClearTable(self.events)
         ZO_ClearTable(self.saveData)
@@ -289,7 +298,7 @@ function GuildHistoryCacheCategory:StoreMissingEventsBefore(eventsBefore, callba
             self:StoreEvent(event, true)
         end):Then(function()
             local taskD = internal:CreateAsyncTask()
-            taskD:For(ipairs(storedEntries)):Do(function(i, event)
+            taskD:For(ipairs(storedEvents)):Do(function(i, event)
                 local index = #self.events + 1
                 self.events[index] = event
                 WriteToSavedVariable(self.saveData, index, event:Serialize())
@@ -303,11 +312,11 @@ function GuildHistoryCacheCategory:StoreMissingEventsInside(eventsInside, callba
 
     local startIndex = 2
     local events = self.events
-    local lastEventId = self:GetEntry(1):GetEventId()
+    local lastEventId = self:GetOldestEvent():GetEventId()
 
     local function GetProperIndexFor(eventId)
         for j = startIndex, #events do
-            local nextEventId = self:GetEntry(j):GetEventId()
+            local nextEventId = self:GetEvent(j):GetEventId()
             if eventId > lastEventId and eventId < nextEventId then
                 lastEventId = eventId
                 startIndex = j + 1
@@ -421,6 +430,7 @@ function GuildHistoryCacheCategory:ReceiveEvents()
             self.unlinkedEvents = nil
             self.storeEventsTask = self:StoreReceivedEvents(unlinkedEvents, true)
         elseif hasOlder or hasNewer then
+            self.progressDirty = true
             internal:FireCallbacks(internal.callback.UNLINKED_EVENTS_ADDED, self.guildId, self.category)
         end
     else
@@ -444,7 +454,7 @@ end
 
 function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
     local guildId, category = self.guildId, self.category
-    local lastStoredEntry = self:GetEntry(self:GetNumEntries())
+    local lastStoredEntry = self:GetNewestEvent()
     local lastStoredEventId = lastStoredEntry and lastStoredEntry:GetEventId() or 0
     local numEvents = GetNumGuildEvents(guildId, category)
     local nextIndex = self.lastIndex + 1
@@ -524,6 +534,7 @@ function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
     end):Then(function()
         self.storeEventsTask = nil
         if hasLinked then
+            self.progressDirty = true
             logger:Info("Linked %d events in guild %s (%d) category %s (%d)", #events, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
             internal:FireCallbacks(internal.callback.HISTORY_LINKED, self.guildId, self.category)
         end
@@ -563,4 +574,29 @@ function GuildHistoryCacheCategory:AddNewestUnlinkedEvents(eventsAfter)
         events[#events + 1] = eventsAfter[i]
     end
     return true
+end
+
+function GuildHistoryCacheCategory:GetProgress()
+    if self.progressDirty then
+        if self:HasLinked() then
+            self.progress = 1
+            self.missingTime = 0
+        else
+            local lastStoredEvent = self:GetNewestEvent()
+            local firstUnlinkedEvent = self:GetUnlinkedEntry(1)
+            if lastStoredEvent and firstUnlinkedEvent then
+                self.missingTime = firstUnlinkedEvent:GetEventTime() - lastStoredEvent:GetEventTime()
+                self.progress = 1 - self.missingTime / (GetTimeStamp() - lastStoredEvent:GetEventTime())
+            else
+                self.progress = 0
+                self.missingTime = -1
+            end
+        end
+        self.progressDirty = false
+    end
+    return self.progress, self.missingTime
+end
+
+function GuildHistoryCacheCategory:IsAggregated()
+    return false
 end

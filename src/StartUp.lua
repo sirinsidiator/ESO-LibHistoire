@@ -42,6 +42,8 @@ lib.internal = {
         HISTORY_BEGIN_LINKING = "HistyHasStartedLinkingEvents",
         HISTORY_LINKED = "HistyHasLinkedEvents",
         HISTORY_RELOADED = "HistyHasDetectedAHistoryReload",
+        SELECTED_GUILD_CHANGED = "HistyDetectedTheSelectedGuildHasChanged",
+        SELECTED_CATEGORY_CHANGED = "HistyDetectedTheSelectedCategoryHasChanged",
     },
     class = {},
     logger = LibDebugLogger(LIB_IDENTIFIER),
@@ -65,6 +67,14 @@ function internal:UnregisterCallback(...)
 end
 
 function internal:InitializeSaveData()
+    LibHistoire_Settings = LibHistoire_Settings or {
+        version = 1,
+        statusWindow = {
+            enabled = true,
+            locked = true
+        }
+    }
+
     LibHistoire_GuildNames = LibHistoire_GuildNames or {}
     LibHistoire_NameDictionary = LibHistoire_NameDictionary or {}
     LibHistoire_GuildHistory = LibHistoire_GuildHistory or {}
@@ -86,7 +96,11 @@ function internal:Initialize()
         logger:Debug("Saved Variables loaded")
 
         self.nameCache = self.class.DisplayNameCache:New(LibHistoire_NameDictionary)
-        self.historyCache = self.class.GuildHistoryCache:New(self.nameCache, LibHistoire_GuildHistory)
+        self.historyAdapter = self.class.GuildHistoryAdapter:New()
+        self.statusTooltip = self.class.GuildHistoryStatusTooltip:New()
+        self.historyCache = self.class.GuildHistoryCache:New(self.nameCache, self.statusTooltip, LibHistoire_GuildHistory)
+
+        self.statusWindow = self.class.GuildHistoryStatusWindow:New(self.historyAdapter, self.statusTooltip, LibHistoire_Settings.statusWindow)
 
         local count = 0
         for _, events in pairs(LibHistoire_GuildHistory) do

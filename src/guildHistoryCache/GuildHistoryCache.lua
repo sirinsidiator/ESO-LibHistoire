@@ -10,7 +10,7 @@ local GuildHistoryCache = ZO_Object:Subclass()
 internal.class.GuildHistoryCache = GuildHistoryCache
 
 local GuildHistoryRequestManager = internal.class.GuildHistoryRequestManager
-local GuildHistoryCacheCategory = internal.class.GuildHistoryCacheCategory
+local GuildHistoryCacheGuild = internal.class.GuildHistoryCacheGuild
 local GuildHistoryCacheEntry = internal.class.GuildHistoryCacheEntry
 local RegisterForEvent = internal.RegisterForEvent
 
@@ -23,94 +23,41 @@ function GuildHistoryCache:New(...)
     return object
 end
 
-function GuildHistoryCache:Initialize(nameCache, saveData)
+function GuildHistoryCache:Initialize(nameCache, statusTooltip, saveData)
     self.nameCache = nameCache
+    self.statusTooltip = statusTooltip
     self.saveData = saveData
     self.cache = {}
 
     self.linkedIcon = WINDOW_MANAGER:CreateControlFromVirtual("LibHistoireLinkedIcon", ZO_GuildHistory, "LibHistoireLinkedIconTemplate")
     local icon = self.linkedIcon
-    local tooltipShowing = false
-
-    local function SetupTooltip(tooltip, cache)
-        InitializeTooltip(tooltip, icon, RIGHT, 0, 0)
-
-        local storedEventCount = cache:GetNumEntries()
-        SetTooltipText(tooltip, zo_strformat("Stored events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(storedEventCount)))
-        local firstStoredEvent = cache:GetEntry(1)
-        if firstStoredEvent then
-            local date, time = FormatAchievementLinkTimestamp(firstStoredEvent:GetEventTime())
-            SetTooltipText(tooltip, zo_strformat("Oldest stored event: |cffffff<<1>> <<2>>|r", date, time))
-        else
-            SetTooltipText(tooltip, "Stored events: |cffffff-|r")
-        end
-
-        local lastStoredEvent = cache:GetEntry(storedEventCount)
-        if lastStoredEvent then
-            local date, time = FormatAchievementLinkTimestamp(lastStoredEvent:GetEventTime())
-            SetTooltipText(tooltip, zo_strformat("Newest stored event: |cffffff<<1>> <<2>>|r", date, time))
-        end
-
-        if cache:IsProcessing() then
-            SetTooltipText(tooltip, "Unlinked Events are being processed...", 1, 1, 0)
-        elseif cache:HasLinked() then
-            SetTooltipText(tooltip, "History has been linked to stored events", 0, 1, 0)
-        else
-            SetTooltipText(tooltip, "History has not linked to stored events yet", 1, 0, 0)
-            SetTooltipText(tooltip, zo_strformat("Unlinked events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumUnlinkedEntries())))
-            local firstUnlinkedEvent = cache:GetUnlinkedEntry(1)
-            if firstUnlinkedEvent then
-                local date, time = FormatAchievementLinkTimestamp(firstUnlinkedEvent:GetEventTime())
-                SetTooltipText(tooltip, zo_strformat("Oldest unlinked event: |cffffff<<1>> <<2>>|r", date, time))
-                if lastStoredEvent then
-                    local delta = firstUnlinkedEvent:GetEventTime() - lastStoredEvent:GetEventTime()
-                    local deltaDate = ZO_FormatTime(delta, TIME_FORMAT_STYLE_DESCRIPTIVE_MINIMAL)
-                    local percentage = 100 - delta / (GetTimeStamp() - lastStoredEvent:GetEventTime()) * 100
-                    SetTooltipText(tooltip, string.format("Missing time: |cffffff%s (%.1f%%)|r", deltaDate, percentage))
-                end
-            end
-        end
-    end
 
     icon:SetHandler("OnMouseEnter", function()
         local cache = self:GetSelectedCache()
         if cache then
-            tooltipShowing = true
-            SetupTooltip(InformationTooltip, cache)
+            statusTooltip:Show(icon, cache)
         end
     end)
     icon:SetHandler("OnMouseExit", function()
-        ClearTooltip(InformationTooltip)
-        tooltipShowing = false
+        statusTooltip:Hide()
     end)
 
     SecurePostHook(GUILD_HISTORY, "SetGuildId",function(manager, guildId)
         self:UpdateLinkedIcon()
-        if tooltipShowing then
+        if statusTooltip:GetTarget() == icon then
             local cache = self:GetSelectedCache()
-            SetupTooltip(InformationTooltip, cache)
+            statusTooltip:Show(icon, cache)
         end
     end)
 
     local function OnSelectionChanged(control, data, selected, reselectingDuringRebuild)
         if selected then
+            logger:Debug("Selected a node", data)
             self:UpdateLinkedIcon()
         end
     end
 
-    local function HookAllChildren(node)
-        for i = 1, #node.children do
-            local child = node.children[i]
-            SecurePostHook(child, "selectionFunction", OnSelectionChanged)
-            if child.children then
-                HookAllChildren(child)
-            end
-        end
-    end
-
-    local categoryTree = GUILD_HISTORY.categoryTree
-    HookAllChildren(categoryTree.rootNode)
-    for key, info in pairs(categoryTree.templateInfo) do
+    for key, info in pairs(GUILD_HISTORY.categoryTree.templateInfo) do
         SecurePostHook(info, "selectionFunction", OnSelectionChanged)
     end
 
@@ -118,9 +65,9 @@ function GuildHistoryCache:Initialize(nameCache, saveData)
         local manager = GUILD_HISTORY
         if manager.guildId == guildId and manager.selectedCategory == category then
             self:UpdateLinkedIcon()
-            if tooltipShowing then
+            if statusTooltip:GetTarget() == icon then
                 local cache = self:GetSelectedCache()
-                SetupTooltip(InformationTooltip, cache)
+                statusTooltip:Show(icon, cache)
             end
         end
     end
@@ -150,19 +97,25 @@ function GuildHistoryCache:UpdateLinkedIcon()
     end
 end
 
-function GuildHistoryCache:HasCategoryCache(guildId, category)
+function GuildHistoryCache:HasGuildCache(guildId)
     if not self.cache[guildId] then return false end
-    if not self.cache[guildId][category] then return false end
+    return true
+end
+
+function GuildHistoryCache:GetOrCreateGuildCache(guildId)
+    if not self.cache[guildId] then
+        self.cache[guildId] = GuildHistoryCacheGuild:New(self.nameCache, self.saveData, guildId)
+    end
+    return self.cache[guildId]
+end
+
+function GuildHistoryCache:HasCategoryCache(guildId, category)
+    if not self.cache[guildId] or not self.cache[guildId]:HasCategoryCache(category) then return false end
     return true
 end
 
 function GuildHistoryCache:GetOrCreateCategoryCache(guildId, category)
-    if not self.cache[guildId] then
-        self.cache[guildId] = {}
-    end
-    local guildCache = self.cache[guildId]
-    if not guildCache[category] then
-        guildCache[category] = GuildHistoryCacheCategory:New(self.nameCache, self.saveData, guildId, category)
-    end
-    return guildCache[category]
+    local guildCache = self:GetOrCreateGuildCache(guildId)
+    local categoryCache = guildCache:GetOrCreateCategoryCache(category)
+    return categoryCache
 end
