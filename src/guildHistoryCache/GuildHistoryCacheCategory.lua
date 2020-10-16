@@ -83,7 +83,7 @@ function GuildHistoryCacheCategory:IsFor(guildId, category)
 end
 
 function GuildHistoryCacheCategory:IsProcessing()
-    return self.storeEventsTask ~= nil
+    return self.storeEventsTask ~= nil or self.rescanEventsTask ~= nil
 end
 
 function GuildHistoryCacheCategory:GetNumUnlinkedEvents()
@@ -348,7 +348,7 @@ function GuildHistoryCacheCategory:StoreMissingEventsAfter(eventsAfter, callback
 end
 
 function GuildHistoryCacheCategory:RescanEvents()
-    if self.rescanEventsTask or self.unlinkedEvents then return false end
+    if self:IsProcessing() or not self:HasLinked() then return false end
 
     local guildId, category = self.guildId, self.category
     local guildName, categoryName = GetGuildName(guildId), GetString("SI_GUILDHISTORYCATEGORY", category)
@@ -404,7 +404,7 @@ function GuildHistoryCacheCategory:RebuildEventLookup()
 end
 
 function GuildHistoryCacheCategory:ReceiveEvents()
-    if self.storeEventsTask or self.rescanEventsTask then
+    if self:IsProcessing() then
         self.hasPendingEvents = true
         return
     end
@@ -427,8 +427,7 @@ function GuildHistoryCacheCategory:ReceiveEvents()
 
         -- if there is nothing stored yet, or  we reached the end and still haven't linked up with the stored history we do so now
         if #self.events == 0 or hasReachedLastStoredEventId or not self:CanReceiveMoreEvents() then
-            self.unlinkedEvents = nil
-            self.storeEventsTask = self:StoreReceivedEvents(unlinkedEvents, true)
+            self:LinkHistory()
         elseif hasOlder or hasNewer then
             self.progressDirty = true
             internal:FireCallbacks(internal.callback.UNLINKED_EVENTS_ADDED, self.guildId, self.category)
@@ -450,6 +449,14 @@ function GuildHistoryCacheCategory:ReceiveEvents()
         end
         logger:Debug("Has found invalid events")
     end
+end
+
+function GuildHistoryCacheCategory:LinkHistory()
+    if self:IsProcessing() or self:HasLinked() then return false end
+    local unlinkedEvents = self.unlinkedEvents
+    self.unlinkedEvents = nil
+    self.storeEventsTask = self:StoreReceivedEvents(unlinkedEvents, true)
+    return true
 end
 
 function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
@@ -525,9 +532,10 @@ end
 
 function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
     if hasLinked then
+        logger:Info("Begin linking %d events in guild %s (%d) category %s (%d)", #events, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
         internal:FireCallbacks(internal.callback.HISTORY_BEGIN_LINKING, self.guildId, self.category, #events)
     end
-    if #events == 0 then return end
+
     local task = internal:CreateAsyncTask()
     task:For(1, #events):Do(function(i)
         self:StoreEvent(events[i], false)
@@ -535,7 +543,7 @@ function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
         self.storeEventsTask = nil
         if hasLinked then
             self.progressDirty = true
-            logger:Info("Linked %d events in guild %s (%d) category %s (%d)", #events, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
+            logger:Info("Finished linking %d events in guild %s (%d) category %s (%d)", #events, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
             internal:FireCallbacks(internal.callback.HISTORY_LINKED, self.guildId, self.category)
         end
         if self.hasPendingEvents then

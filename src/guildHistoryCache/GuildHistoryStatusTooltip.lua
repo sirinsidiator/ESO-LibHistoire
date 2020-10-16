@@ -40,7 +40,7 @@ function GuildHistoryStatusTooltip:Show(target, cache)
     if cache:IsAggregated() then
         SetTooltipText(tooltip, "For progress details check each category")
     elseif cache:IsProcessing() then
-        SetTooltipText(tooltip, "Unlinked Events are being processed...", 1, 1, 0)
+        SetTooltipText(tooltip, "Events are being processed...", 1, 1, 0)
     elseif cache:HasLinked() then
         SetTooltipText(tooltip, "History has been linked to stored events", 0, 1, 0)
     else
@@ -60,6 +60,13 @@ function GuildHistoryStatusTooltip:Show(target, cache)
         end
     end
 
+    self.target = target
+end
+
+function GuildHistoryStatusTooltip:ShowText(target, text)
+    local tooltip = self.control
+    InitializeTooltip(tooltip, target, RIGHT, 0, 0)
+    SetTooltipText(tooltip, text)
     self.target = target
 end
 

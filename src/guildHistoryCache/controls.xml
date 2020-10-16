@@ -38,6 +38,22 @@
             </Controls>
         </Control>
 
+        <Control name="LibHistoireGuildHistoryStatusCategoryRowTemplate" inherits="LibHistoireGuildHistoryStatusGuildRowTemplate" virtual="true">
+            <Controls>
+                <Button name="$(parent)RescanButton" mouseOverBlendMode="ADD" inherits="ZO_ButtonBehaviorClickSound">
+                    <Dimensions x="32" y="32" />
+                    <Anchor point="TOPRIGHT" offsetY="-5" />
+                    <Textures normal="/esoui/art/help/help_tabicon_feedback_up.dds" pressed="/esoui/art/help/help_tabicon_feedback_down.dds" mouseOver="/esoui/art/help/help_tabicon_feedback_over.dds" />
+                </Button>
+
+                <Button name="$(parent)ForceLinkButton" mouseOverBlendMode="ADD" inherits="ZO_ButtonBehaviorClickSound">
+                    <Dimensions x="32" y="32" />
+                    <Anchor point="TOPRIGHT" offsetY="-5" />
+                    <Textures normal="LibHistoire/image/linked_up.dds" pressed="LibHistoire/image/linked_down.dds" mouseOver="LibHistoire/image/linked_over.dds" />
+                </Button>
+            </Controls>
+        </Control>
+
         <TopLevelControl name="LibHistoireGuildHistoryStatusWindow" hidden="true" mouseEnabled="true" clampedToScreen="true">
             <Dimensions x="540" y="415" />
             <Controls>

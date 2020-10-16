@@ -186,33 +186,128 @@ local function DestroyRow(rowControl)
     ZO_ObjectPool_DefaultResetControl(rowControl)
 end
 
-function GuildHistoryStatusWindow:InitializeBaseList(listControl, OnSelect)
+function GuildHistoryStatusWindow:InitializeBaseList(listControl, template, OnInit, OnUpdate)
     local function InitializeRow(rowControl, entry)
         if not rowControl.initialized then
             InitializeProgress(rowControl)
             InitializeHighlight(rowControl)
             InitializeTooltip(rowControl, self.statusTooltip)
-            InitializeClickHandler(rowControl, OnSelect)
+            OnInit(rowControl)
             rowControl.initialized = true
         end
 
         SetLabel(rowControl, entry)
         SetProgress(rowControl, entry)
         SetSelected(rowControl, entry)
+        if OnUpdate then
+            OnUpdate(rowControl, entry)
+        end
     end
 
     ZO_ScrollList_Initialize(listControl)
-    ZO_ScrollList_AddDataType(listControl, DATA_ENTRY, "LibHistoireGuildHistoryStatusGuildRowTemplate", ROW_HEIGHT, InitializeRow, nil, nil, DestroyRow)
+    ZO_ScrollList_AddDataType(listControl, DATA_ENTRY, template, ROW_HEIGHT, InitializeRow, nil, nil, DestroyRow)
     ZO_ScrollList_AddResizeOnScreenResize(listControl)
 end
 
 function GuildHistoryStatusWindow:InitializeGuildList(listControl)
-    self:InitializeBaseList(listControl, function(entry)
-        logger:Debug("selected guild", entry.value)
+    local function OnSelectRow(entry)
         self.historyAdapter:SelectGuildByIndex(entry.value)
+    end
+
+    self:InitializeBaseList(listControl, "LibHistoireGuildHistoryStatusGuildRowTemplate", function(rowControl)
+        InitializeClickHandler(rowControl, OnSelectRow)
     end)
+
     self.emptyGuildListRow = CreateControlFromVirtual("$(parent)EmptyRow", listControl, "ZO_SortFilterListEmptyRow_Keyboard")
     GetControl(self.emptyGuildListRow, "Message"):SetText("No Guilds")
+end
+
+local CONFIRM_DIALOG_ID = "LibHistoire_Confirm"
+local function GetConfirmDialog()
+    if(not ESO_Dialogs[CONFIRM_DIALOG_ID]) then
+        ESO_Dialogs[CONFIRM_DIALOG_ID] = {
+            canQueue = true,
+            title = {
+                text = "Are you sure?",
+            },
+            mainText = {
+                text = "Forcing the history to link will produce a hole in your data.",
+            },
+            buttons = {
+                [1] = {
+                    text = SI_DIALOG_CONFIRM,
+                    callback = function(dialog) end,
+                },
+                [2] = {
+                    text = SI_DIALOG_CANCEL,
+                }
+            }
+        }
+    end
+    return ESO_Dialogs[CONFIRM_DIALOG_ID]
+end
+
+function GuildHistoryStatusWindow:ShowConfirmForceLinkDialog(callback)
+    local dialog = GetConfirmDialog()
+    dialog.buttons[1].callback = callback
+    ZO_Dialogs_ShowDialog(CONFIRM_DIALOG_ID)
+end
+
+function GuildHistoryStatusWindow:InitializeCategoryList(listControl)
+    local function OnSelectRow(entry)
+        self.historyAdapter:SelectCategory(entry.value)
+    end
+
+    self:InitializeBaseList(listControl, "LibHistoireGuildHistoryStatusCategoryRowTemplate", function(rowControl)
+        InitializeClickHandler(rowControl, OnSelectRow)
+
+        local forceLinkButton = rowControl:GetNamedChild("ForceLinkButton")
+        forceLinkButton:SetHandler("OnMouseUp", function(control, button, isInside, ctrl, alt, shift, command)
+            if(isInside and button == MOUSE_BUTTON_INDEX_LEFT) then
+                self:ShowConfirmForceLinkDialog(function()
+                    local entry = ZO_ScrollList_GetData(rowControl)
+                    if entry.cache:LinkHistory() then
+                        rowControl.forceLinkButton:SetEnabled(false)
+                    end
+                end)
+                PlaySound("Click")
+            end
+        end, "LibHistoire_Click")
+        forceLinkButton:SetHandler("OnMouseEnter", function()
+            self.statusTooltip:ShowText(forceLinkButton, "Force history to link now")
+        end, "LibHistoire_Tooltip")
+        forceLinkButton:SetHandler("OnMouseExit", function()
+            self.statusTooltip:Hide()
+        end, "LibHistoire_Tooltip")
+        rowControl.forceLinkButton = forceLinkButton
+
+        local rescanButton = rowControl:GetNamedChild("RescanButton")
+        rescanButton:SetHandler("OnMouseUp", function(control, button, isInside, ctrl, alt, shift, command)
+            if(isInside and button == MOUSE_BUTTON_INDEX_LEFT) then
+                local entry = ZO_ScrollList_GetData(rowControl)
+                if entry.cache:RescanEvents() then
+                    rowControl.rescanButton:SetEnabled(false)
+                end
+                PlaySound("Click")
+            end
+        end, "LibHistoire_Click")
+        rescanButton:SetHandler("OnMouseEnter", function()
+            self.statusTooltip:ShowText(rescanButton, "Rescan history for missing events")
+        end, "LibHistoire_Tooltip")
+        rescanButton:SetHandler("OnMouseExit", function()
+            self.statusTooltip:Hide()
+        end, "LibHistoire_Tooltip")
+        rowControl.rescanButton = rescanButton
+    end, function(rowControl, entry)
+        local cache = entry.cache
+        local hasLinked = cache:HasLinked()
+        rowControl.forceLinkButton:SetHidden(hasLinked)
+        rowControl.rescanButton:SetHidden(not hasLinked)
+
+        local isIdle = not cache:IsProcessing()
+        rowControl.rescanButton:SetEnabled(isIdle)
+        rowControl.forceLinkButton:SetEnabled(isIdle)
+    end)
 end
 
 function GuildHistoryStatusWindow:SetGuildId(guildId)
@@ -223,13 +318,6 @@ end
 function GuildHistoryStatusWindow:SetCategory(category)
     self.category = category
     self:Update()
-end
-
-function GuildHistoryStatusWindow:InitializeCategoryList(listControl)
-    self:InitializeBaseList(listControl, function(entry)
-        logger:Debug("selected category", entry.value)
-        self.historyAdapter:SelectCategory(entry.value)
-    end)
 end
 
 function GuildHistoryStatusWindow:CreateDataEntry(label, cache, value, selected)
@@ -265,7 +353,7 @@ function GuildHistoryStatusWindow:Update()
         if numGuilds > 0 then
             for category = 1, GetNumGuildHistoryCategories() do
                 if GUILD_HISTORY_CATEGORIES[category] then
-                    local label =  GetString("SI_GUILDHISTORYCATEGORY", category)
+                    local label = GetString("SI_GUILDHISTORYCATEGORY", category)
                     local cache = internal.historyCache:GetOrCreateCategoryCache(self.guildId, category)
                     categoryScrollData[#categoryScrollData + 1] = self:CreateDataEntry(label, cache, category, self.category == category)
                 end
