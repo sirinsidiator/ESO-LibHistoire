@@ -149,6 +149,7 @@ function GuildHistoryCacheCategory:FindIndexForEventId(eventId)
     if self:GetNumEvents() == 0 then return 0 end
 
     -- lookup if we know the answer already
+    self:RebuildEventLookup()
     if self.eventIndexLookup[eventId] then
         return self.eventIndexLookup[eventId]
     end
@@ -175,15 +176,13 @@ function GuildHistoryCacheCategory:FindIndexForEventId(eventId)
     return 0
 end
 
-function GuildHistoryCacheCategory:SearchEventIdInInterval(eventId, firstIndex, lastIndex, stepsRemaining)
-    if not stepsRemaining then
-        stepsRemaining = 1 + math.log(lastIndex - firstIndex) / math.log(2)
-    end
+function GuildHistoryCacheCategory:SearchEventIdInInterval(eventId, firstIndex, lastIndex)
+    if lastIndex - firstIndex < 2 then return nil, nil end
 
     local firstEventId = self:GetEvent(firstIndex):GetEventId()
     local lastEventId = self:GetEvent(lastIndex):GetEventId()
-    if eventId < firstEventId or eventId > lastEventId or firstEventId == lastEventId or stepsRemaining == 0 then
-        logger:Warn("Abort SearchEventIdInInterval", eventId < firstEventId, eventId > lastEventId, firstEventId == lastEventId, stepsRemaining == 0)
+    if eventId < firstEventId or eventId > lastEventId then
+        logger:Warn("Abort SearchEventIdInInterval", eventId < firstEventId, eventId > lastEventId)
         return nil, nil
     end
 
@@ -198,9 +197,9 @@ function GuildHistoryCacheCategory:SearchEventIdInInterval(eventId, firstIndex, 
     local foundEventId = event:GetEventId()
 
     if eventId > foundEventId then
-        return self:SearchEventIdInInterval(eventId, index, lastIndex, stepsRemaining - 1)
+        return self:SearchEventIdInInterval(eventId, index, lastIndex)
     elseif eventId < foundEventId then
-        return self:SearchEventIdInInterval(eventId, firstIndex, index, stepsRemaining - 1)
+        return self:SearchEventIdInInterval(eventId, firstIndex, index)
     end
 
     return event, index
@@ -210,6 +209,7 @@ function GuildHistoryCacheCategory:FindClosestIndexForEventTime(eventTime)
     if self:GetNumEvents() == 0 then return 0 end
 
     -- lookup if we know the answer already
+    self:RebuildEventLookup()
     if self.eventTimeLookup[eventTime] then
         local eventId = self.eventTimeLookup[eventTime]
         if self.eventIdLookup[eventId] then
@@ -252,15 +252,13 @@ function GuildHistoryCacheCategory:FindClosestIndexForEventTime(eventTime)
     return 0
 end
 
-function GuildHistoryCacheCategory:SearchClosestEventTimeInInterval(eventTime, firstIndex, lastIndex, stepsRemaining)
-    if not stepsRemaining then
-        stepsRemaining = 1 + math.log(lastIndex - firstIndex) / math.log(2)
-    end
-
+function GuildHistoryCacheCategory:SearchClosestEventTimeInInterval(eventTime, firstIndex, lastIndex)
     local firstEvent = self:GetEvent(firstIndex)
+    if lastIndex - firstIndex < 2 then return firstEvent, firstIndex end
+
     local firstEventTime = firstEvent:GetEventTime()
     local lastEventTime = self:GetEvent(lastIndex):GetEventTime()
-    if firstIndex == lastIndex or eventTime < firstEventTime or eventTime > lastEventTime or stepsRemaining == 0 then
+    if eventTime < firstEventTime or eventTime > lastEventTime then
         return firstEvent, firstIndex
     end
 
@@ -271,13 +269,20 @@ function GuildHistoryCacheCategory:SearchClosestEventTimeInInterval(eventTime, f
         index = firstIndex + math.floor(0.5 * (lastIndex - firstIndex))
     end
 
+    -- ensure we don't get stuck on the boundaries
+    if index == firstIndex then
+        index = index + 1
+    elseif index == lastIndex then
+        index = index - 1
+    end
+
     local event = self:GetEvent(index)
     local foundEventTime = event:GetEventTime()
 
     if eventTime > foundEventTime then
-        return self:SearchClosestEventTimeInInterval(eventTime, index, lastIndex, stepsRemaining - 1)
+        return self:SearchClosestEventTimeInInterval(eventTime, index, lastIndex)
     elseif eventTime < foundEventTime then
-        return self:SearchClosestEventTimeInInterval(eventTime, firstIndex, index, stepsRemaining - 1)
+        return self:SearchClosestEventTimeInInterval(eventTime, firstIndex, index)
     end
 
     return event, index
