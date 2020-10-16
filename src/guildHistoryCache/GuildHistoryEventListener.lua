@@ -59,7 +59,13 @@ function GuildHistoryEventListener:Initialize(categoryCache)
 end
 
 function internal:IterateStoredEvents(listener, onCompleted)
-    listener.task:For(listener.categoryCache:GetIterator(listener.afterEventId)):Do(function(i, event)
+    local startIndex
+    if listener.afterEventId then
+        startIndex = listener.categoryCache:FindIndexForEventId(listener.afterEventId)
+    elseif listener.afterEventTime then
+        startIndex = listener.categoryCache:FindClosestIndexForEventTime(listener.afterEventTime)
+    end
+    listener.task:For(listener.categoryCache:GetIterator(startIndex)):Do(function(i, event)
         HandleEvent(listener, event)
     end):Then(function()
         internal:EnsureIterationIsComplete(listener, onCompleted)

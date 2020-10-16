@@ -44,6 +44,7 @@ function GuildHistoryCacheCategory:Initialize(nameCache, saveData, guildId, cate
 
     self.events = {}
     self.eventIdList = {}
+    self.eventTimeLookup = {}
     self.eventIndexLookup = {}
     self.eventIndexLookupDirty = false
     self.progressDirty = true
@@ -127,62 +128,151 @@ local function EventIterator(categoryCache, index)
     end
 end
 
-function GuildHistoryCacheCategory:GetIterator(startEventId)
-    local index = self:FindIndexFor(startEventId)
-    return EventIterator, self, index
+function GuildHistoryCacheCategory:GetIterator(startIndex)
+    return EventIterator, self, startIndex or 0
 end
 
-function GuildHistoryCacheCategory:FindIndexFor(eventId)
+function GuildHistoryCacheCategory:HasStoredEventId(eventId)
+    local index = self:FindIndexForEventId(eventId)
+    return not (index < 1 or index > self:GetNumEvents())
+end
+
+function GuildHistoryCacheCategory:FindIndexForEventId(eventId)
+    if self:GetNumEvents() == 0 then return 0 end
+
     -- lookup if we know the answer already
     if self.eventIndexLookup[eventId] then
         return self.eventIndexLookup[eventId]
     end
 
-    -- otherwise check which is the closest known id (if any)
-    local closestIndex = self:FindClosestIndexFor(eventId)
+    -- check if the event is inside the stored range
+    if eventId < self:GetOldestEvent():GetEventId() then return 0 end
+    if eventId > self:GetNewestEvent():GetEventId() then return self:GetNumEvents() + 1 end
 
-    -- if no closest id was found, return 0
-    if closestIndex <= 0 then return 0 end
+    -- otherwise find the smallest known interval
+    local firstIndex = 1
+    local lastIndex = self:GetNumEvents()
 
-    -- otherwise serialize the eventId and start searching the save data for a matching string
-    local serialized = GuildHistoryCacheEntry.CreateEventIdSearchString(eventId)
+    for id, index in pairs(self.eventIndexLookup) do
+        if id < eventId and index > firstIndex then firstIndex = index end
+        if id > eventId and index < lastIndex then lastIndex = index end
+    end
 
-    local saveData = self.saveData
-    for i = closestIndex, #saveData do
-        -- if a match was found, deserialize the event and check if it is really a match
-        if PlainStringFind(saveData[i], serialized) then
-            local event = self:GetEvent(i)
-            if event:GetEventId() == eventId then
-                return i
-            end
-        end
-        -- otherwise continue until we reach the end
+    -- and do a binary search for the event
+    local event, index = self:SearchEventIdInInterval(eventId, firstIndex, lastIndex)
+    if event then
+        return index
     end
 
     return 0
 end
 
-function GuildHistoryCacheCategory:FindClosestIndexFor(eventId)
-    if not eventId or #self.eventIdList == 0 then return 0 end
+function GuildHistoryCacheCategory:SearchEventIdInInterval(eventId, firstIndex, lastIndex, stepsRemaining)
+    if not stepsRemaining then
+        stepsRemaining = 1 + math.log(lastIndex - firstIndex) / math.log(2)
+    end
 
-    local eventIdList = self.eventIdList
-    table.sort(eventIdList, Ascending)
+    local firstEventId = self:GetEvent(firstIndex):GetEventId()
+    local lastEventId = self:GetEvent(lastIndex):GetEventId()
+    if eventId < firstEventId or eventId > lastEventId or firstEventId == lastEventId or stepsRemaining == 0 then
+        logger:Warn("Abort SearchEventIdInInterval", eventId < firstEventId, eventId > lastEventId, firstEventId == lastEventId, stepsRemaining == 0)
+        return nil, nil
+    end
 
-    local firstEventId = eventIdList[1]
-    if eventId < firstEventId then return 0 end
-    if eventId == firstEventId then return 1 end
+    local distanceFromFirst = (eventId - firstEventId) / (lastEventId - firstEventId)
+    local index = firstIndex + math.floor(distanceFromFirst * (lastIndex - firstIndex))
+    if index == firstIndex or index == lastIndex then
+        -- our approximation is likely incorrect, so we just do a regular binary search
+        index = firstIndex + math.floor(0.5 * (lastIndex - firstIndex))
+    end
 
-    local lastEventId = eventIdList[#eventIdList]
-    if eventId >= lastEventId then return self.eventIndexLookup[lastEventId] end
+    local event = self:GetEvent(index)
+    local foundEventId = event:GetEventId()
 
-    for i = 1, #eventIdList do
-        if eventIdList[i] > eventId then
-            local closestEventId = eventIdList[i - 1] or firstEventId
-            return self.eventIndexLookup[closestEventId] or 0
+    if eventId > foundEventId then
+        return self:SearchEventIdInInterval(eventId, index, lastIndex, stepsRemaining - 1)
+    elseif eventId < foundEventId then
+        return self:SearchEventIdInInterval(eventId, firstIndex, index, stepsRemaining - 1)
+    end
+
+    return event, index
+end
+
+function GuildHistoryCacheCategory:FindClosestIndexForEventTime(eventTime)
+    if self:GetNumEvents() == 0 then return 0 end
+
+    -- lookup if we know the answer already
+    if self.eventTimeLookup[eventTime] then
+        local eventId = self.eventTimeLookup[eventTime]
+        if self.eventIdLookup[eventId] then
+            return self.eventIdLookup[eventId]
         end
     end
 
+    -- check if the event is inside the stored range
+    if eventTime < self:GetOldestEvent():GetEventTime() then return 0 end
+    if eventTime > self:GetNewestEvent():GetEventTime() then return self:GetNumEvents() + 1 end
+
+    -- otherwise find the smallest known interval
+    local firstIndex = 1
+    local lastIndex = self:GetNumEvents()
+
+    for time, id in pairs(self.eventTimeLookup) do
+        local index = self.eventIdLookup[id]
+        if index then
+            if time < eventTime and index > firstIndex then firstIndex = index end
+            if time > eventTime and index < lastIndex then lastIndex = index end
+        end
+    end
+
+    -- and do a binary search for the event
+    local event, index = self:SearchClosestEventTimeInInterval(eventTime, firstIndex, lastIndex)
+    if event then
+        -- make sure we got the first index for a specific time
+        for i = index - 1, 1, -1 do
+            local previous = self:GetEvent(i)
+            if previous:GetEventTime() >= eventTime then
+                index = i
+            else
+                break
+            end
+        end
+        self.eventTimeLookup[eventTime] = event:GetEventId()
+        return index
+    end
+
     return 0
+end
+
+function GuildHistoryCacheCategory:SearchClosestEventTimeInInterval(eventTime, firstIndex, lastIndex, stepsRemaining)
+    if not stepsRemaining then
+        stepsRemaining = 1 + math.log(lastIndex - firstIndex) / math.log(2)
+    end
+
+    local firstEvent = self:GetEvent(firstIndex)
+    local firstEventTime = firstEvent:GetEventTime()
+    local lastEventTime = self:GetEvent(lastIndex):GetEventTime()
+    if firstIndex == lastIndex or eventTime < firstEventTime or eventTime > lastEventTime or stepsRemaining == 0 then
+        return firstEvent, firstIndex
+    end
+
+    local distanceFromFirst = (eventTime - firstEventTime) / (lastEventTime - firstEventTime)
+    local index = firstIndex + math.floor(distanceFromFirst * (lastIndex - firstIndex))
+    if index == firstIndex or index == lastIndex then
+        -- our approximation is likely incorrect, so we just do a regular binary search
+        index = firstIndex + math.floor(0.5 * (lastIndex - firstIndex))
+    end
+
+    local event = self:GetEvent(index)
+    local foundEventTime = event:GetEventTime()
+
+    if eventTime > foundEventTime then
+        return self:SearchClosestEventTimeInInterval(eventTime, index, lastIndex, stepsRemaining - 1)
+    elseif eventTime < foundEventTime then
+        return self:SearchClosestEventTimeInInterval(eventTime, firstIndex, index, stepsRemaining - 1)
+    end
+
+    return event, index
 end
 
 function GuildHistoryCacheCategory:StoreEvent(event, missing)
@@ -244,7 +334,7 @@ function GuildHistoryCacheCategory:GetMissingEvents(task, missingEvents)
     self.lastIndex = 0
     task:For(GetGuildEventIterator(self)):Do(function(index)
         local eventId = select(9, GetGuildEventInfo(guildId, category, index))
-        if self:FindIndexFor(eventId) == 0 then
+        if not self:HasStoredEventId(eventId) then
             local event = GuildHistoryCacheEntry:New(self, guildId, category, index)
             if(event:IsValid()) then
                 missingEvents[#missingEvents + 1] = event
