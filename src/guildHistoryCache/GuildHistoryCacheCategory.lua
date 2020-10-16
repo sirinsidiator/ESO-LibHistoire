@@ -43,7 +43,6 @@ function GuildHistoryCacheCategory:Initialize(nameCache, saveData, guildId, cate
     self.category = category
 
     self.events = {}
-    self.eventIdList = {}
     self.eventTimeLookup = {}
     self.eventIndexLookup = {}
     self.eventIndexLookupDirty = false
@@ -104,12 +103,21 @@ end
 function GuildHistoryCacheCategory:GetEvent(i)
     if self.events[i] == false then -- if there is a placeholder we first need to deserialize it
         local serializedData = ReadFromSavedVariable(self.saveData, i)
-        self.events[i] = GuildHistoryCacheEntry:New(self, serializedData)
-        local eventId = self.events[i]:GetEventId()
-        self.eventIdList[#self.eventIdList + 1] = eventId
-        self.eventIndexLookup[eventId] = i
+        local event = GuildHistoryCacheEntry:New(self, serializedData)
+        self.events[i] = event
+        self:UpdateEventLookup(event, i)
     end
     return self.events[i]
+end
+
+function GuildHistoryCacheCategory:UpdateEventLookup(event, index)
+    local eventId = event:GetEventId()
+    self.eventIndexLookup[eventId] = index
+
+    local eventTime = event:GetEventTime()
+    if self.eventTimeLookup[eventTime] and eventId < self.eventTimeLookup[eventTime] then
+        self.eventTimeLookup[eventTime] = eventId
+    end
 end
 
 function GuildHistoryCacheCategory:GetOldestEvent()
@@ -285,9 +293,7 @@ function GuildHistoryCacheCategory:StoreEvent(event, missing)
     if missing then
         self.eventIndexLookupDirty = true
     else
-        local eventId = event:GetEventId()
-        self.eventIdList[#self.eventIdList + 1] = eventId
-        self.eventIndexLookup[eventId] = index
+        self:UpdateEventLookup(event, index)
     end
     internal:FireCallbacks(internal.callback.EVENT_STORED, self.guildId, self.category, event, index, missing)
 end
@@ -297,8 +303,6 @@ function GuildHistoryCacheCategory:InsertEvent(event, index)
     table.insert(self.saveData, index, "") -- insert a placeholder so all indices are moved up by one
     WriteToSavedVariable(self.saveData, index, event:Serialize())
 
-    local eventId = event:GetEventId()
-    self.eventIdList[#self.eventIdList + 1] = eventId
     self.eventIndexLookupDirty = true
     internal:FireCallbacks(internal.callback.EVENT_STORED, self.guildId, self.category, event, index, true)
 end
@@ -479,14 +483,11 @@ end
 
 function GuildHistoryCacheCategory:RebuildEventLookup()
     if self.eventIndexLookupDirty then
-        ZO_ClearTable(self.eventIdList)
         ZO_ClearTable(self.eventIndexLookup)
         for index = 1, #self.events do
             local event = self.events[index]
             if event then
-                local eventId = event:GetEventId()
-                self.eventIdList[#self.eventIdList + 1] = eventId
-                self.eventIndexLookup[eventId] = index
+                self:UpdateEventLookup(event, index)
             end
         end
         self.eventIndexLookupDirty = false
