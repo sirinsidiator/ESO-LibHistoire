@@ -447,6 +447,7 @@ function GuildHistoryCacheCategory:RescanEvents()
     local guildId, category = self.guildId, self.category
     local guildName, categoryName = GetGuildName(guildId), GetString("SI_GUILDHISTORYCATEGORY", category)
     logger:Info("Start rescanning events in guild %s (%d) category %s (%d)", guildName, guildId, categoryName, category)
+    internal:FireCallbacks(internal.callback.HISTORY_RESCAN_STARTED, guildId, category)
 
     self.rescanEventsTask = internal:CreateAsyncTask()
     local task = self.rescanEventsTask
@@ -466,8 +467,9 @@ function GuildHistoryCacheCategory:RescanEvents()
                     logger:Info("Finished rescanning events in guild %s (%d) category %s (%d)", guildName, guildId, categoryName, category)
                     self.rescanEventsTask = nil
                     if hasEncounteredInvalidEvent then
-                        ZO_Alert(UI_ALERT_CATEGORY_ERROR, SOUNDS.NEGATIVE_CLICK, "Found invalid events while rescanning history") -- TODO rescan
+                        ZO_Alert(UI_ALERT_CATEGORY_ERROR, SOUNDS.NEGATIVE_CLICK, "Found invalid events while rescanning history")
                     end
+                    internal:FireCallbacks(internal.callback.HISTORY_RESCAN_ENDED, guildId, category, #eventsBefore, #eventsInside, #eventsAfter, hasEncounteredInvalidEvent)
 
                     if self.hasPendingEvents then
                         self.hasPendingEvents = false

@@ -42,6 +42,8 @@ lib.internal = {
         HISTORY_BEGIN_LINKING = "HistyHasStartedLinkingEvents",
         HISTORY_LINKED = "HistyHasLinkedEvents",
         HISTORY_RELOADED = "HistyHasDetectedAHistoryReload",
+        HISTORY_RESCAN_STARTED = "HistyHasStartedAHistoryRescan",
+        HISTORY_RESCAN_ENDED = "HistyHasFinishedAHistoryRescan",
         SELECTED_GUILD_CHANGED = "HistyDetectedTheSelectedGuildHasChanged",
         SELECTED_CATEGORY_CHANGED = "HistyDetectedTheSelectedCategoryHasChanged",
     },
@@ -110,8 +112,12 @@ function internal:Initialize()
     end)
 end
 
-function internal:EventIdToId64(eventId)
-    return StringToId64(tostring(eventId))
+function internal:ConvertNumberToId64(value)
+    return StringToId64(tostring(value))
+end
+
+function internal:ConvertId64ToNumber(value)
+    return tonumber(Id64ToString(value))
 end
 
 function internal:CreateAsyncTask()

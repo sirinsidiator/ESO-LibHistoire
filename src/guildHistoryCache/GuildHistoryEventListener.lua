@@ -45,16 +45,10 @@ function GuildHistoryEventListener:Initialize(categoryCache)
     self.afterEventTime = nil
     self.nextEventCallback = nil
     self.missedEventCallback = nil
-    self.historyReloadedCallback = nil
 
     self.nextEventProcessor = function(guildId, category, event)
         if not categoryCache:IsFor(guildId, category) then return end
         HandleEvent(self, event)
-    end
-
-    self.historyReloadedProcessor = function(guildId, category)
-        if not categoryCache:IsFor(guildId, category) then return end
-        self.historyReloadedCallback()
     end
 end
 
@@ -76,65 +70,76 @@ function internal:EnsureIterationIsComplete(listener, onCompleted)
     local categoryCache = listener.categoryCache
     local lastStoredEntry = categoryCache:GetNewestEvent()
     if listener.lastEventId == 0 or (lastStoredEntry and listener.lastEventId == lastStoredEntry:GetEventId()) then
-        logger:Info("iterated all stored events - register for callback")
+        logger:Debug("iterated all stored events - register for callback")
         onCompleted(listener)
     else
-        logger:Info("has not reached the end yet - go for another round")
+        logger:Debug("has not reached the end yet - go for another round")
         internal:IterateStoredEvents(listener, onCompleted)
     end
 end
 
 --- public api
 
+-- the last known eventId (id64). The nextEventCallback will only return events which have a higher eventId
 function GuildHistoryEventListener:SetAfterEventId(eventId)
     if self.running then return false end
-    self.afterEventId = eventId
+    self.afterEventId = internal:ConvertId64ToNumber(eventId)
     return true
 end
 
+-- if no eventId has been specified, the nextEventCallback will only receive events after the specified timestamp
 function GuildHistoryEventListener:SetAfterEventTime(eventTime)
     if self.running then return false end
     self.afterEventTime = eventTime
     return true
 end
 
+-- set a callback which is passed stored and received events in the correct historic order (sorted by eventId)
+-- the callback will be handed the following parameters:
+-- GuildEventType eventType -- the eventType
+-- Id64 eventId -- the unique eventId
+-- integer eventTime -- the timestamp for the event
+-- variant param1 - 6 -- same as returned by GetGuildEventInfo
 function GuildHistoryEventListener:SetNextEventCallback(callback)
     if self.running then return false end
     self.nextEventCallback = callback
     return true
 end
 
+-- set a callback which is passed events that had not previously been stored (sorted by eventId)
+-- see SetNextEventCallback for information about the callback
 function GuildHistoryEventListener:SetMissedEventCallback(callback)
     if self.running then return false end
     self.missedEventCallback = callback
     return true
 end
 
-function GuildHistoryEventListener:SetHistoryReloadedCallback(callback)
+-- convenience method to set both callback types at once
+-- see SetNextEventCallback for information about the callback
+function GuildHistoryEventListener:SetEventCallback(callback)
     if self.running then return false end
-    self.historyReloadedCallback = callback
+    self.nextEventCallback = callback
+    self.missedEventCallback = callback
     return true
 end
 
+-- starts iterating over stored events and afterwards registers a listener for future events internally
 function GuildHistoryEventListener:Start()
     if self.running then return false end
 
     self.lastEventId = self.afterEventId or 0
     if self.nextEventCallback or self.missedEventCallback then
         internal:IterateStoredEvents(self, function()
-            logger:Info("RegisterForFutureEvents")
+            logger:Debug("RegisterForFutureEvents")
             internal:RegisterCallback(internal.callback.EVENT_STORED, self.nextEventProcessor)
         end)
-    end
-
-    if self.historyReloadedCallback then
-        internal:RegisterCallback(internal.callback.HISTORY_RELOADED, self.historyReloadedProcessor)
     end
 
     self.running = true
     return true
 end
 
+-- stops iterating over stored events and unregisters the listener for future events
 function GuildHistoryEventListener:Stop()
     if not self.running then return false end
 
@@ -143,14 +148,11 @@ function GuildHistoryEventListener:Stop()
         internal:UnregisterCallback(internal.callback.EVENT_STORED, self.nextEventProcessor)
     end
 
-    if self.historyReloadedCallback then
-        internal:UnregisterCallback(internal.callback.HISTORY_RELOADED, self.historyReloadedProcessor)
-    end
-
     self.running = false
     return true
 end
 
+-- returns true while iterating over or listening for events
 function GuildHistoryEventListener:IsRunning()
     return self.running
 end

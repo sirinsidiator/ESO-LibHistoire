@@ -242,9 +242,16 @@ function GuildHistoryCacheEntry:GetEventId()
     return self.info[INDEX_EVENT_ID]
 end
 
+function GuildHistoryCacheEntry:GetEventId64()
+    if not self.eventId64 then
+        self.eventId64 = internal:ConvertNumberToId64(self.info[INDEX_EVENT_ID])
+    end
+    return self.eventId64
+end
+
 function GuildHistoryCacheEntry:Unpack()
     return self.info[INDEX_EVENT_TYPE],
-        self.info[INDEX_EVENT_ID],
+        self:GetEventId64(),
         self.info[INDEX_EVENT_TIME],
         self.info[INDEX_PARAM_1],
         self.info[INDEX_PARAM_2],
