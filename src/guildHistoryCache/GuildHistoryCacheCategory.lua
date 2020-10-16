@@ -576,7 +576,7 @@ function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
                 break
             end
             events[#events + 1] = event
-        else
+        elseif eventId == lastStoredEventId then
             hasReachedLastStoredEventId = true
         end
         self.lastIndex = index
