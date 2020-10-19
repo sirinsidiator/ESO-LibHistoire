@@ -91,6 +91,10 @@
                     <Anchor point="BOTTOMLEFT" relativeTo="$(parent)GuildList" relativePoint="BOTTOMRIGHT" constrains="Y" />
                 </Control>
 
+                <Control name="$(parent)SelectionWidget">
+                    <Anchor point="TOPLEFT" relativeTo="$(parent)GuildList" relativePoint="TOPRIGHT" offsetX="-2" offsetY="12" />
+                </Control>
+
                 <Backdrop name="$(parent)Bg" integralWrapping="true">
                     <Anchor point="TOPLEFT" offsetX="-4" offsetY="-4" />
                     <Anchor point="BOTTOMRIGHT" offsetX="4" offsetY="4" />

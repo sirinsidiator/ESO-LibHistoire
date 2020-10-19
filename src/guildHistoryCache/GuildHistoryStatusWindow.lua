@@ -10,6 +10,8 @@ local BUTTON_NORMAL_TEXTURE = "LibHistoire/image/histy_up.dds"
 local BUTTON_PRESSED_TEXTURE = "LibHistoire/image/histy_down.dds"
 local LINKED_ICON = "LibHistoire/image/linked_down.dds"
 local UNLINKED_ICON = "LibHistoire/image/unlinked_down.dds"
+local DEFAULT_COLOR = ZO_NORMAL_TEXT
+local SELECTED_COLOR = ZO_SELECTED_TEXT
 
 local DATA_ENTRY = 1
 local ROW_HEIGHT = 52
@@ -40,6 +42,7 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
     self.labelControl:SetText("LibHistoire - Guild History Status")
     self.guildListControl = control:GetNamedChild("GuildList")
     self.categoryListControl = control:GetNamedChild("CategoryList")
+    self.selectionWidget = internal.class.GuildHistoryStatusSelectionWidget:New(control, ROW_HEIGHT)
     self.statusIcon = control:GetNamedChild("StatusIcon")
     self.statusIcon:SetHandler("OnMouseEnter", function(icon)
         InitializeTooltip(InformationTooltip, icon, RIGHT, 0, 0)
@@ -165,6 +168,8 @@ end
 local function SetLabel(rowControl, entry)
     local labelControl = rowControl:GetNamedChild("Label")
     labelControl:SetText(entry.label)
+    local color = entry.selected and SELECTED_COLOR or DEFAULT_COLOR
+    labelControl:SetColor(color:UnpackRGBA())
 end
 
 local function SetProgress(rowControl, entry)
@@ -346,7 +351,9 @@ function GuildHistoryStatusWindow:Update()
             local guildId = GetGuildId(i)
             local label = GetGuildName(guildId)
             local cache = internal.historyCache:GetOrCreateGuildCache(guildId)
-            guildScrollData[#guildScrollData + 1] = self:CreateDataEntry(label, cache, i, self.guildId == guildId)
+            local selected = (self.guildId == guildId)
+            guildScrollData[#guildScrollData + 1] = self:CreateDataEntry(label, cache, i, selected)
+            if selected then self.selectionWidget:SelectGuild(i) end
             if not cache:HasLinked() then hasLinkedEverything = false end
         end
         self.emptyGuildListRow:SetHidden(numGuilds > 0)
@@ -360,11 +367,17 @@ function GuildHistoryStatusWindow:Update()
                 if GUILD_HISTORY_CATEGORIES[category] then
                     local label = GetString("SI_GUILDHISTORYCATEGORY", category)
                     local cache = internal.historyCache:GetOrCreateCategoryCache(self.guildId, category)
-                    categoryScrollData[#categoryScrollData + 1] = self:CreateDataEntry(label, cache, category, self.category == category)
+                    local selected = (self.category == category)
+                    categoryScrollData[#categoryScrollData + 1] = self:CreateDataEntry(label, cache, category, selected)
+                    if selected then self.selectionWidget:SelectCategory(#categoryScrollData) end
                 end
             end
         end
         ZO_ScrollList_Commit(categoryListControl)
+
+        self.selectionWidget:SetGuildCount(numGuilds)
+        self.selectionWidget:SetCategoryCount(#categoryScrollData)
+        self.selectionWidget:Update()
 
         self.statusIcon:SetTexture(hasLinkedEverything and LINKED_ICON or UNLINKED_ICON)
         self.hasLinkedEverything = hasLinkedEverything

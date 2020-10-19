@@ -20,6 +20,7 @@ DisplayNameCache.lua
 guildHistoryCache/controls.xml
 guildHistoryCache/GuildHistoryAdapter.lua
 guildHistoryCache/GuildHistoryStatusTooltip.lua
+guildHistoryCache/GuildHistoryStatusSelectionWidget.lua
 guildHistoryCache/GuildHistoryStatusWindow.lua
 guildHistoryCache/GuildHistoryCacheEntry.lua
 guildHistoryCache/GuildHistoryCacheCategory.lua
