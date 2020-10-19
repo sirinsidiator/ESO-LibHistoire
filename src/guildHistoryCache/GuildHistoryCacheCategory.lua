@@ -55,7 +55,7 @@ function GuildHistoryCacheCategory:Initialize(nameCache, saveData, guildId, cate
 
     -- make sure the first and last event are deserialized
     self:GetOldestEvent()
-    self:GetNewestEvent()
+    self.newestEventAtStart = self:GetNewestEvent()
 
     self:ResetUnlinkedEvents()
 end
@@ -361,14 +361,24 @@ function GuildHistoryCacheCategory:SeparateMissingEvents(missingEvents)
     local eventsInside = {}
     local eventsAfter = {}
 
+    local sessionStartId = self.newestEventAtStart and self.newestEventAtStart:GetEventId() or 0
+    local lastRescanId = self.lastRescanEvent and self.lastRescanEvent:GetEventId() or 0
     local firstStoredEntry = self:GetOldestEvent()
     local firstStoredEventId = firstStoredEntry and firstStoredEntry:GetEventId() or 0
     local lastStoredEntry = self:GetNewestEvent()
     local lastStoredEventId = lastStoredEntry and lastStoredEntry:GetEventId() or 0
 
+    local afterSessionStartCount = 0
+    local lastRescanCount = 0
     for i = 1, #missingEvents do
         local event = missingEvents[i]
         local eventId = event:GetEventId()
+        if eventId > sessionStartId then
+            afterSessionStartCount = afterSessionStartCount + 1
+        end
+        if eventId > lastRescanId then
+            lastRescanCount = lastRescanCount + 1
+        end
         if firstStoredEntry and eventId < firstStoredEventId then
             eventsBefore[#eventsBefore + 1] = event
         elseif not lastStoredEntry or eventId > lastStoredEventId then
@@ -377,6 +387,7 @@ function GuildHistoryCacheCategory:SeparateMissingEvents(missingEvents)
             eventsInside[#eventsInside + 1] = event
         end
     end
+    logger:Debug("#missing: %d - after start: %d - since last rescan: %d", #missingEvents, afterSessionStartCount, lastRescanCount)
 
     return eventsBefore, eventsInside, eventsAfter
 end
@@ -471,6 +482,7 @@ function GuildHistoryCacheCategory:RescanEvents()
                     self:RebuildEventLookup()
                     logger:Info("Finished rescanning events in guild %s (%d) category %s (%d)", guildName, guildId, categoryName, category)
                     self.rescanEventsTask = nil
+                    self.lastRescanEvent = self:GetNewestEvent()
                     if hasEncounteredInvalidEvent then
                         ZO_Alert(UI_ALERT_CATEGORY_ERROR, SOUNDS.NEGATIVE_CLICK, "Found invalid events while rescanning history")
                     end
@@ -564,6 +576,7 @@ function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
     local numEvents = GetNumGuildEvents(guildId, category)
     local nextIndex = self.lastIndex + 1
 
+    local skipped = 0
     local events = {}
     local hasReachedLastStoredEventId = false
     local hasEncounteredInvalidEvent = false
@@ -576,12 +589,16 @@ function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
                 break
             end
             events[#events + 1] = event
-        elseif eventId == lastStoredEventId then
-            hasReachedLastStoredEventId = true
+        else
+            skipped = skipped + 1
+            if eventId == lastStoredEventId then
+                hasReachedLastStoredEventId = true
+            end
         end
         self.lastIndex = index
     end
 
+    logger:Debug("#events: %d - skipped: %d", #events, skipped)
     return events, hasReachedLastStoredEventId, hasEncounteredInvalidEvent
 end
 
