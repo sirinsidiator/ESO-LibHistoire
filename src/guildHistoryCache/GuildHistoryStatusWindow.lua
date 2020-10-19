@@ -199,6 +199,11 @@ function GuildHistoryStatusWindow:InitializeBaseList(listControl, template, OnIn
         SetLabel(rowControl, entry)
         SetProgress(rowControl, entry)
         SetSelected(rowControl, entry)
+
+        if self.statusTooltip:GetTarget() == rowControl then
+            self.statusTooltip:Show(rowControl, entry.cache)
+        end
+
         if OnUpdate then
             OnUpdate(rowControl, entry)
         end
