@@ -62,6 +62,7 @@ end
 
 function GuildHistoryCacheCategory:ResetUnlinkedEvents()
     self.lastIndex = 0
+    self.waitForMore = 0
     -- we store everything in a temporary table until we find the last stored event
     self.unlinkedEvents = {}
 end
@@ -569,10 +570,12 @@ function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
     local guildId, category = self.guildId, self.category
     local numEvents = GetNumGuildEvents(guildId, category)
     local lastIndex = self.lastIndex
-    if (numEvents - lastIndex) % 100 == 0 then
+    if self.waitForMore ~= numEvents and (numEvents - lastIndex) % 100 == 0 then
+        self.waitForMore = numEvents
         logger:Debug("Detected maximum amount of entries for one event. Wait for more")
         return false
     end
+    self.waitForMore = numEvents
 
     local nextIndex = lastIndex + 1
     local lastStoredEntry = self:GetNewestEvent()
