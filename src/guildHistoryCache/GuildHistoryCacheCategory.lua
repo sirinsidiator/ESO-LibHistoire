@@ -11,7 +11,7 @@ local WriteToSavedVariable = internal.WriteToSavedVariable
 local ReadFromSavedVariable = internal.ReadFromSavedVariable
 
 local SERVER_NAME = GetWorldName()
-local RETRY_ON_INVALID_DELAY = 5000
+local RETRY_RECEIVE_DELAY = 5000
 
 local function Ascending(a, b)
     return b > a
@@ -521,12 +521,7 @@ function GuildHistoryCacheCategory:ReceiveEvents()
 
     local events, hasReachedLastStoredEventId = self:GetFilteredReceivedEvents()
     if events == false then
-        if self.storedEventsTask then
-            self.hasPendingEvents = true
-        else
-            zo_callLater(function() self:ReceiveEvents() end, RETRY_ON_INVALID_DELAY)
-        end
-        logger:Debug("Has found invalid events")
+        zo_callLater(function() self:ReceiveEvents() end, RETRY_RECEIVE_DELAY)
         return
     end
 
@@ -572,12 +567,19 @@ end
 
 function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
     local guildId, category = self.guildId, self.category
-    local lastStoredEntry = self:GetNewestEvent()
-    local lastStoredEventId = lastStoredEntry and lastStoredEntry:GetEventId() or 0
     local numEvents = GetNumGuildEvents(guildId, category)
     local lastIndex = self.lastIndex
-    local nextIndex = lastIndex + 1
+    if (numEvents - lastIndex) % 100 == 0 then
+        logger:Debug("Detected maximum amount of entries for one event. Wait for more")
+        return false
+    end
 
+    local nextIndex = lastIndex + 1
+    local lastStoredEntry = self:GetNewestEvent()
+    local lastStoredEventId = lastStoredEntry and lastStoredEntry:GetEventId() or 0
+    local sessionStartId = self.newestEventAtStart and self.newestEventAtStart:GetEventId() or 0
+
+    logger:Debug("GetFilteredReceivedEvents from %d to %d (%d/%d)", nextIndex, numEvents, guildId, category)
     local skipped = 0
     local events = {}
     local hasReachedLastStoredEventId = false
@@ -586,6 +588,7 @@ function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
         if eventId > lastStoredEventId then
             local event = GuildHistoryCacheEntry:New(self, guildId, category, index)
             if not event:IsValid() then
+                logger:Debug("Has found invalid events")
                 return false
             end
             events[#events + 1] = event
@@ -594,12 +597,15 @@ function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
             if eventId == lastStoredEventId then
                 hasReachedLastStoredEventId = true
             end
+            if eventId > sessionStartId then
+                logger:Warn("skip event %d", eventId)
+            end
         end
         lastIndex = index
     end
 
     self.lastIndex = lastIndex
-    logger:Debug("#events: %d - skipped: %d", #events, skipped)
+    logger:Debug("#events: %d - skipped: %d (%d/%d)", #events, skipped, guildId, category)
     return events, hasReachedLastStoredEventId
 end
 
