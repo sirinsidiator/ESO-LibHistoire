@@ -122,7 +122,6 @@ end
 
 local function InitializeProgress(rowControl)
     local statusBarControl = rowControl:GetNamedChild("StatusBar")
-    ZO_StatusBar_SetGradientColor(statusBarControl, ZO_XP_BAR_GRADIENT_COLORS)
     statusBarControl:GetNamedChild("BGLeft"):SetDrawLevel(2)
     statusBarControl:GetNamedChild("BGRight"):SetDrawLevel(2)
     statusBarControl:GetNamedChild("BGMiddle"):SetDrawLevel(2)
@@ -176,6 +175,8 @@ local function SetProgress(rowControl, entry)
     local statusBarControl = rowControl:GetNamedChild("StatusBar")
     local progress = entry.cache:GetProgress()
     statusBarControl:SetValue(progress)
+    local gradient = entry.cache:HasLinked() and ZO_XP_BAR_GRADIENT_COLORS or ZO_SKILL_XP_BAR_GRADIENT_COLORS
+    ZO_StatusBar_SetGradientColor(statusBarControl, gradient)
 end
 
 local function SetSelected(rowControl, entry)
