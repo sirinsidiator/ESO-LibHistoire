@@ -11,7 +11,8 @@ local WriteToSavedVariable = internal.WriteToSavedVariable
 local ReadFromSavedVariable = internal.ReadFromSavedVariable
 
 local SERVER_NAME = GetWorldName()
-local RETRY_RECEIVE_DELAY = 5000
+local RETRY_ON_INVALID_DELAY = 5000
+local RETRY_WAIT_FOR_MORE_DELAY = 250
 
 local function Ascending(a, b)
     return b > a
@@ -520,11 +521,15 @@ function GuildHistoryCacheCategory:ReceiveEvents()
         return
     end
 
-    local events, hasReachedLastStoredEventId = self:GetFilteredReceivedEvents()
+    local events, hasReachedLastStoredEventId, retryDelay = self:GetFilteredReceivedEvents()
     if events == false then
-        zo_callLater(function() self:ReceiveEvents() end, RETRY_RECEIVE_DELAY)
+        if self.retryHandle then
+            zo_removeCallLater(self.retryHandle)
+        end
+        self.retryHandle = zo_callLater(function() self:ReceiveEvents() end, retryDelay)
         return
     end
+    self.retryHandle = nil
 
     local eventsBefore, eventsAfter, hasEventsBetween = self:SeparateReceivedEvents(events)
     if #events > 0 then
@@ -570,14 +575,10 @@ function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
     local guildId, category = self.guildId, self.category
     local numEvents = GetNumGuildEvents(guildId, category)
     local lastIndex = self.lastIndex
-    if self.waitForMore ~= numEvents and (numEvents - lastIndex) % 100 == 0 then
-        self.waitForMore = numEvents
-        logger:Debug("Detected maximum amount of entries for one event. Wait for more")
-        return false
-    end
+    local nextIndex = lastIndex + 1
+    local waitForMore = self.waitForMore
     self.waitForMore = numEvents
 
-    local nextIndex = lastIndex + 1
     local lastStoredEntry = self:GetNewestEvent()
     local lastStoredEventId = lastStoredEntry and lastStoredEntry:GetEventId() or 0
     local sessionStartId = self.newestEventAtStart and self.newestEventAtStart:GetEventId() or 0
@@ -589,10 +590,15 @@ function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
     for index = nextIndex, numEvents do
         local eventId = select(9, GetGuildEventInfo(guildId, category, index))
         if eventId > lastStoredEventId then
+            if waitForMore ~= numEvents and self:HasLinked() then
+                logger:Debug("Detected push events. Wait for more")
+                return false, false, RETRY_WAIT_FOR_MORE_DELAY
+            end
+
             local event = GuildHistoryCacheEntry:New(self, guildId, category, index)
             if not event:IsValid() then
                 logger:Debug("Has found invalid events")
-                return false
+                return false, false, RETRY_ON_INVALID_DELAY
             end
             events[#events + 1] = event
         else
