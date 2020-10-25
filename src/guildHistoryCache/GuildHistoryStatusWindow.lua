@@ -48,8 +48,10 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
         InitializeTooltip(InformationTooltip, icon, RIGHT, 0, 0)
         if self.hasLinkedEverything then
             SetTooltipText(InformationTooltip, "History has been linked for all guilds and categories")
+            SetTooltipText(InformationTooltip, "New events will be sent on the server's sole discretion and may arrive at any time, or sometimes even never")
+            SetTooltipText(InformationTooltip, "If they do not show up after several hours, you may want to restart your game")
         else
-            SetTooltipText(InformationTooltip, "The history has not been linked to stored events yet.")
+            SetTooltipText(InformationTooltip, "The history has not been linked to the stored events yet.")
             SetTooltipText(InformationTooltip, "Automatic requests are on cooldown and may take a while")
             SetTooltipText(InformationTooltip, "You can manually send requests to receive missing history faster")
             SetTooltipText(InformationTooltip, "You can also force history to link, but it will create a hole in the stored records")
