@@ -214,8 +214,8 @@ function GuildHistoryCacheCategory:FindClosestIndexForEventTime(eventTime)
     self:RebuildEventLookup()
     if self.eventTimeLookup[eventTime] then
         local eventId = self.eventTimeLookup[eventTime]
-        if self.eventIdLookup[eventId] then
-            return self.eventIdLookup[eventId]
+        if self.eventIndexLookup[eventId] then
+            return self.eventIndexLookup[eventId]
         end
     end
 
@@ -228,7 +228,7 @@ function GuildHistoryCacheCategory:FindClosestIndexForEventTime(eventTime)
     local lastIndex = self:GetNumEvents()
 
     for time, id in pairs(self.eventTimeLookup) do
-        local index = self.eventIdLookup[id]
+        local index = self.eventIndexLookup[id]
         if index then
             if time < eventTime and index > firstIndex then firstIndex = index end
             if time > eventTime and index < lastIndex then lastIndex = index end
