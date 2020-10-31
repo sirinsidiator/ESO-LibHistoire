@@ -37,6 +37,7 @@ local callbackObject = ZO_CallbackObject:New()
 lib.internal = {
     callbackObject = callbackObject,
     callback = {
+        INITIALIZED = "HistyIsReadyForAction",
         UNLINKED_EVENTS_ADDED = "HistyHasAddedUnlinkedEvents",
         EVENT_STORED = "HistyStoredAnEvent",
         HISTORY_BEGIN_LINKING = "HistyHasStartedLinkingEvents",
@@ -88,7 +89,7 @@ end
 
 function internal:Initialize()
     local logger = self.logger
-    logger:Debug("Initializing LibHistoire...")
+    logger:Info("Initializing LibHistoire...")
 
     local namespace
     namespace = RegisterForEvent(EVENT_ADD_ON_LOADED, function(event, name)
@@ -108,7 +109,8 @@ function internal:Initialize()
         for _, events in pairs(LibHistoire_GuildHistory) do
             count = count + #events
         end
-        logger:Debug("Initialization complete - holding %d guild history events", count)
+        logger:Info("Initialization complete - holding %d guild history events", count)
+        self:FireCallbacks(self.callback.INITIALIZED)
     end)
 end
 

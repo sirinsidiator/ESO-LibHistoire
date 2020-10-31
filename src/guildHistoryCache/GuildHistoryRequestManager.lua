@@ -110,8 +110,8 @@ end
 
 function GuildHistoryRequestManager:UpdateAllCategories()
     ForEachGuildAndCategory(function(guildId, category)
+        local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
         if HasGuildHistoryCategoryEverBeenRequested(guildId, category) then
-            local categoryCache = self.cache:GetOrCreateCategoryCache(guildId, category)
             categoryCache:ReceiveEvents()
         end
     end)
