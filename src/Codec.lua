@@ -2,101 +2,134 @@
 -- Distributed under The Artistic License 2.0 (see LICENSE)     --
 ------------------------------------------------------------------
 
+local assert = assert
+local select = select
+local type = type
+local tonumber = tonumber
+local tostring = tostring
+
+local mfloor = math.floor
+local mpow = math.pow
+
+local tinsert = table.insert
+local tconcat = table.concat
+
+local sformat = string.format
+local sfind = string.find
+local slen = string.len
+local sbyte = string.byte
+local schar = string.char
+local ssub = string.sub
+local sgsub = string.gsub
+local sgmatch = string.gmatch
+local srep = string.rep
+
+local Id64ToString = Id64ToString
+local StringToId64 = StringToId64
+local zo_strsplit = zo_strsplit
+
 local dict = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 local dictLen = #dict
 local fDict = {}
 local rDict = {}
-dict:gsub(".", function(c) rDict[c] = #fDict table.insert(fDict, c) end)
+local fastLookup = {}
+sgsub(dict, ".", function(c)
+    rDict[sbyte(c)] = #fDict
+    fastLookup[c] = #fDict
+    tinsert(fDict, c)
+end)
 
 local DEFAULT_SEPARATOR = ":"
+local MINUS_SIGN = sbyte("-")
+
 
 local EncodeBase64, DecodeBase64
 do
     -- based on http://lua-users.org/wiki/BaseSixtyFour
     local BASE64_SUFFIX = { "", "==", "=" }
     local BASE64_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-    local BASE64_INVALID_CHARACTER_PATTERN = string.format("[^%s=]", BASE64_CHARACTERS)
+    local BASE64_INVALID_CHARACTER_PATTERN = sformat("[^%s=]", BASE64_CHARACTERS)
 
     local encodeTemp = {}
     local function CharacterToBinary(input)
         local output = ""
-        local byte = input:byte()
+        local byte = sbyte(input)
         for i = 8, 1, -1 do
             encodeTemp[9 - i] = byte % 2 ^ i - byte % 2 ^ (i - 1) > 0 and "1" or "0"
         end
-        return table.concat(encodeTemp, "")
+        return tconcat(encodeTemp, "")
     end
 
     local function BinaryToBase64(input)
         if(#input < 6) then return "" end
         local c = 0
         for i = 1, 6 do
-            c = c + (input:sub(i, i) == "1" and 2 ^ (6 - i) or 0)
+            c = c + (ssub(input, i, i) == "1" and 2 ^ (6 - i) or 0)
         end
-        return BASE64_CHARACTERS:sub(c + 1, c + 1)
+        return ssub(BASE64_CHARACTERS, c + 1, c + 1)
     end
 
     function EncodeBase64(value)
         value = tostring(value)
-        return (value:gsub(".", CharacterToBinary) .. "0000"):gsub("%d%d%d?%d?%d?%d?", BinaryToBase64) .. BASE64_SUFFIX[#value % 3 + 1]
+        return sgsub(sgsub(value, ".", CharacterToBinary) .. "0000", "%d%d%d?%d?%d?%d?", BinaryToBase64) .. BASE64_SUFFIX[#value % 3 + 1]
     end
 
     local decodeTemp = {}
     local function Base64ToBinary(input)
         if(input == "=") then return "" end
-        local byte = BASE64_CHARACTERS:find(input) - 1
+        local byte = sfind(BASE64_CHARACTERS, input) - 1
         for i = 6, 1, -1 do
             decodeTemp[7 - i] = byte % 2 ^ i - byte % 2 ^ (i - 1) > 0 and "1" or "0"
         end
-        return table.concat(decodeTemp, "")
+        return tconcat(decodeTemp, "")
     end
 
     local function BinaryToCharacter(input)
         if (#input ~= 8) then return "" end
         local c = 0
         for i = 1, 8 do
-            c = c + (input:sub(i, i) == "1" and 2 ^ (8 - i) or 0)
+            c = c + (ssub(input, i, i) == "1" and 2 ^ (8 - i) or 0)
         end
-        return string.char(c)
+        return schar(c)
     end
 
     function DecodeBase64(value)
-        value = value:gsub(BASE64_INVALID_CHARACTER_PATTERN, "")
-        return (value:gsub(".", Base64ToBinary):gsub("%d%d%d?%d?%d?%d?%d?%d?", BinaryToCharacter))
+        value = sgsub(value, BASE64_INVALID_CHARACTER_PATTERN, "")
+        return sgsub(sgsub(value, ".", Base64ToBinary), "%d%d%d?%d?%d?%d?%d?%d?", BinaryToCharacter)
     end
 end
 
-local function IntegerToString(value)
-    if(value == 0) then return "" end
+local function IntegerToString(value, keepZero)
+    if(value == 0) then return keepZero and "0" or "" end
     local result, sign = "", ""
     if(value < 0) then
         sign = "-"
         value = -value
     end
-    value = math.floor(value)
+    value = mfloor(value)
     repeat
         result = fDict[(value % dictLen) + 1] .. result
-        value = math.floor(value / dictLen)
+        value = mfloor(value / dictLen)
     until value == 0
     return sign .. result
 end
 
 local ITEM_LINK_PREFIX = "|H0:item"
 local ITEM_LINK_SUFFIX = "|h|h"
-local ITEM_LINK_PREFIX_LENGTH = ITEM_LINK_PREFIX:len()
-local ITEM_LINK_SUFFIX_LENGTH = ITEM_LINK_SUFFIX:len()
+local ITEM_LINK_PREFIX_LENGTH = slen(ITEM_LINK_PREFIX)
+local ITEM_LINK_SUFFIX_LENGTH = slen(ITEM_LINK_SUFFIX)
 
 local function ItemLinkToString(value)
-    value = value:sub(ITEM_LINK_PREFIX_LENGTH + 2, value:len() - ITEM_LINK_SUFFIX_LENGTH)
+    value = ssub(value, ITEM_LINK_PREFIX_LENGTH + 2, slen(value) - ITEM_LINK_SUFFIX_LENGTH)
     local fields = {zo_strsplit(":", value)}
     for i = 1, #fields do
-        fields[i] = IntegerToString(tonumber(fields[i]))
+        fields[i] = IntegerToString(tonumber(fields[i]), true)
     end
-    local temp = table.concat(fields, "#")
-    return temp:gsub("#+", function(value)
-        local count = value:len()
+    local temp = tconcat(fields, "#")
+    return sgsub(temp, "#+", function(value)
+        local count = slen(value)
         if count > 3 then
-            return string.format("<%d>", count)
+            return sformat("<%d>", count)
         end
     end)
 end
@@ -121,29 +154,41 @@ local encoders = {
 
 local function StringToInteger(value)
     if(not value or value == "") then return 0 end
-    local result, sign, j = 0, 1, 0
-    if(value:sub(1, 1) == "-") then
-        value = value:sub(2)
+    local result, start, sign, j = 0, 1, 1, 0
+    if(sbyte(value, 1, 1) == MINUS_SIGN) then
+        start = 2
         sign = -1
     end
-    for i = #value, 1, -1 do
-        local c = value:sub(i, i)
+    for i = #value, start, -1 do
+        local c = sbyte(value, i, i)
         if(not rDict[c]) then return 0 end
-        result = result + rDict[c] * math.pow(dictLen, j)
+        result = result + rDict[c] * mpow(dictLen, j)
         j = j + 1
     end
     return result * sign
 end
 
-local function StringToItemLink(value)
-    local fields = { ITEM_LINK_PREFIX }
-    value = value:gsub("<(%d+)>", function(count)
-        return string.rep("#", tonumber(count))
-    end)
-    for field in (value .. "#"):gmatch("(.-)#") do
-        fields[#fields + 1] = StringToInteger(field)
+local StringToItemLink
+do
+    local LINK_COMPACT_DATA_SEPARATOR = "#"
+    local LINK_COMPACT_DATA_REPLACEMENT = LINK_COMPACT_DATA_SEPARATOR .. "0"
+    local LINK_ORIGINAL_DATA_SEPARATOR = ":"
+    local LINK_PLACEHOLDER_PATTERN = "<(%d+)>"
+
+    local cache = {}
+    local function ExpandPlaceholder(count)
+        cache[count] = cache[count] or srep(LINK_COMPACT_DATA_REPLACEMENT, tonumber(count))
+        return cache[count]
     end
-    return table.concat(fields, ":") .. ITEM_LINK_SUFFIX
+
+    function StringToItemLink(value)
+        value = sgsub(value, LINK_PLACEHOLDER_PATTERN, ExpandPlaceholder)
+        local fields = { ITEM_LINK_PREFIX, zo_strsplit(LINK_COMPACT_DATA_SEPARATOR, value) }
+        for i = 2, #fields do
+            fields[i] = fastLookup[fields[i]] or StringToInteger(fields[i])
+        end
+        return tconcat(fields, LINK_ORIGINAL_DATA_SEPARATOR) .. ITEM_LINK_SUFFIX
+    end
 end
 
 local decoders = {
@@ -180,11 +225,11 @@ local function EncodeValue(inputType, value, dictionary)
     local expectedType = VARTYPES[inputType]
     if inputType == "dictionary" then
         assert(dictionary and dictionary.GetIdFromString, "no valid dictionary provided")
-        assert(actualType == "string" or actualType == "nil", string.format("expected type 'string' or 'nil', got '%s'", actualType))
+        assert(actualType == "string" or actualType == "nil", sformat("expected type 'string' or 'nil', got '%s'", actualType))
         local id = dictionary:GetIdFromString(value)
         return encoders["integer"](id)
     else
-        assert(actualType == expectedType, string.format("expected type '%s', got '%s'", expectedType, actualType))
+        assert(actualType == expectedType, sformat("expected type '%s', got '%s'", expectedType, actualType))
         return encoders[inputType](value)
     end
 end
@@ -203,16 +248,16 @@ local function EncodeData(data, type, separator, dictionary)
     for i = 1, #type do
         data[i] = EncodeValue(type[i], data[i], dictionary)
     end
-    return table.concat(data, separator or DEFAULT_SEPARATOR, 1, #type)
+    return tconcat(data, separator or DEFAULT_SEPARATOR, 1, #type)
 end
 
 local function DecodeData(encodedString, format, separator, dictionary)
     local type, version
     local data = {}
     separator = separator or DEFAULT_SEPARATOR
-    for value in (encodedString .. separator):gmatch("(.-)" .. separator) do
+    for value in sgmatch(encodedString .. separator, "(.-)" .. separator) do
         if(not type) then
-            version = DecodeValue("integer", value)
+            version = fastLookup[value] or StringToInteger(value)
             type = format[version] or format.default
             if(not type) then return end
             data[#data + 1] = version
@@ -232,7 +277,7 @@ local function WriteToSavedVariable(t, key, value)
         local startPos = 1
         local endPos = startPos + MAX_SAVE_DATA_LENGTH - 1
         while startPos <= byteLength do
-            output[#output + 1] = value:sub(startPos, endPos)
+            output[#output + 1] = ssub(value, startPos, endPos)
             startPos = endPos + 1
             endPos = startPos + MAX_SAVE_DATA_LENGTH - 1
         end
@@ -243,7 +288,7 @@ end
 local function ReadFromSavedVariable(t, key, defaultValue)
     local value = t[key] or defaultValue
     if(type(value) == "table") then
-        return table.concat(value, "")
+        return tconcat(value, "")
     end
     return value
 end
