@@ -80,6 +80,21 @@ end
 
 --- public api
 
+-- returns a key consisting of server, guild id and history category, which can be used to store the last received eventId
+function GuildHistoryEventListener:GetKey()
+    return self.categoryCache:GetKey()
+end
+
+-- returns the guild id
+function GuildHistoryEventListener:GetGuildId()
+    return self.categoryCache:GetGuildId()
+end
+
+-- returns the category
+function GuildHistoryEventListener:GetCategory()
+    return self.categoryCache:GetCategory()
+end
+
 -- the last known eventId (id64). The nextEventCallback will only return events which have a higher eventId
 function GuildHistoryEventListener:SetAfterEventId(eventId)
     if self.running then return false end

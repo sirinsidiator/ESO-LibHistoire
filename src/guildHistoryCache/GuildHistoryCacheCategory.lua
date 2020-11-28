@@ -68,6 +68,18 @@ function GuildHistoryCacheCategory:ResetUnlinkedEvents()
     self.unlinkedEvents = {}
 end
 
+function GuildHistoryCacheCategory:GetKey()
+    return self.key
+end
+
+function GuildHistoryCacheCategory:GetGuildId()
+    return self.guildId
+end
+
+function GuildHistoryCacheCategory:GetCategory()
+    return self.category
+end
+
 function GuildHistoryCacheCategory:GetNameDictionary()
     return self.nameCache
 end
