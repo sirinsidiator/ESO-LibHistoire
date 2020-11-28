@@ -9,6 +9,10 @@ local logger = internal.logger
 local GuildHistoryEventListener = ZO_Object:Subclass()
 internal.class.GuildHistoryEventListener = GuildHistoryEventListener
 
+local ROLLING_AVERAGE_INTERVAL = 10 -- seconds
+local MIN_DATA_COUNT = 2
+local CURRENT_SPEED_WEIGHT = 0.1
+
 local function ShouldHandleEvent(listener, event)
     if listener.afterEventId and event:GetEventId() <= listener.afterEventId then
         return false
@@ -63,20 +67,82 @@ function GuildHistoryEventListener:Initialize(categoryCache)
     self.missedEventCallback = nil
     self.iterationCompletedCallback = nil
 
+    self:InternalResetEventCount()
+
     self.nextEventProcessor = function(guildId, category, event)
         if not categoryCache:IsFor(guildId, category) then return end
         HandleEvent(self, event)
     end
 end
 
+function GuildHistoryEventListener:InternalCountEvent(index)
+    self.currentIndex = index
+    local slot = GetTimeStamp() % ROLLING_AVERAGE_INTERVAL
+    local now = GetGameTimeMilliseconds()
+    self.slotEndTime[slot] = now
+    if slot ~= self.lastEventCountSlot then
+        self.processedEventCount[slot] = 0
+        self.slotStartTime[slot] = now
+        self.lastEventCountSlot = slot
+
+        local currentSpeed = 0
+        local count = 0
+        for i = 0, ROLLING_AVERAGE_INTERVAL - 1 do
+            if self.processedEventCount[i] then
+                local deltaMs = self.slotEndTime[i] - self.slotStartTime[i]
+                if deltaMs > 0 then
+                    currentSpeed = currentSpeed + self.processedEventCount[i] / deltaMs
+                    count = count + 1
+                end
+            end
+        end
+        if count > MIN_DATA_COUNT then -- wait until we collected some data before showing a speed
+            currentSpeed = currentSpeed * 1000 / count
+
+            -- keep it stable by applying the new current speed only partially
+            if self.processingSpeed < 0 then
+                self.processingSpeed = currentSpeed
+            else
+                self.processingSpeed = self.processingSpeed * (1 - CURRENT_SPEED_WEIGHT) + currentSpeed * CURRENT_SPEED_WEIGHT
+            end
+        else
+            self.processingSpeed = -1
+        end
+
+        local count, speed, time = self:GetPendingEventMetrics()
+        logger:Verbose("guildId: %d, count: %d, speed: %.2f, time: %.2f", self.categoryCache.guildId, count, speed, time)
+    end
+    self.processedEventCount[slot] = self.processedEventCount[slot] + 1
+end
+
+function GuildHistoryEventListener:InternalResetEventCount()
+    self.currentIndex = 0
+    self.lastEventCountSlot = -1
+    self.processedEventCount = {}
+    self.slotStartTime = {}
+    self.slotEndTime = {}
+end
+
 function internal:IterateStoredEvents(listener, onCompleted)
-    local startIndex
+    local startIndex, endIndex
     if listener.afterEventId then
         startIndex = listener.categoryCache:FindIndexForEventId(listener.afterEventId)
     elseif listener.afterEventTime then
         startIndex = listener.categoryCache:FindClosestIndexForEventTime(listener.afterEventTime)
     end
+
+    if listener.beforeEventId then
+        endIndex = listener.categoryCache:FindIndexForEventId(listener.beforeEventId) + 1
+    elseif listener.beforeEventTime then
+        endIndex = listener.categoryCache:FindClosestIndexForEventTime(listener.beforeEventTime + 1)
+    end
+    if endIndex ~= listener.categoryCache:GetNumEvents() then
+        listener.endIndex = endIndex
+    end
+
+    listener.currentIndex = startIndex - 1
     listener.task:For(listener.categoryCache:GetIterator(startIndex)):Do(function(i, event)
+        listener:InternalCountEvent(i)
         HandleEvent(listener, event)
     end):Then(function()
         internal:EnsureIterationIsComplete(listener, onCompleted)
@@ -88,6 +154,7 @@ function internal:EnsureIterationIsComplete(listener, onCompleted)
     local lastStoredEntry = categoryCache:GetNewestEvent()
     if listener.lastEventId == 0 or (lastStoredEntry and listener.lastEventId == lastStoredEntry:GetEventId()) then
         logger:Debug("iterated all stored events - register for callback")
+        listener:InternalResetEventCount()
         onCompleted(listener)
     else
         logger:Debug("has not reached the end yet - go for another round")
@@ -110,6 +177,27 @@ end
 -- returns the category
 function GuildHistoryEventListener:GetCategory()
     return self.categoryCache:GetCategory()
+end
+
+-- returns information about history events that need to be sent to the listener
+-- number - the amount of queued history events that are currently waiting to be processed by the listener
+-- number - the processing speed in events per second (rolling average over 5 seconds)
+-- number - the estimated time in seconds it takes to process the remaining events or -1 if it cannot be estimated
+function GuildHistoryEventListener:GetPendingEventMetrics()
+    if not self.running then return 0, 0, -1 end
+
+    local endIndex = self.endIndex or self.categoryCache:GetNumEvents()
+    local count = endIndex - self.currentIndex
+    local speed = self.processingSpeed
+
+    local time = 0
+    if speed > 0 then
+        time = count / speed
+    elseif count > 0 then
+        time = -1
+    end
+
+    return count, speed, time
 end
 
 -- the last known eventId (id64). The nextEventCallback will only return events which have a higher eventId
@@ -209,6 +297,8 @@ function GuildHistoryEventListener:Stop()
         self.task:Cancel()
         internal:UnregisterCallback(internal.callback.EVENT_STORED, self.nextEventProcessor)
     end
+
+    self:InternalResetEventCount()
 
     self.running = false
     return true
