@@ -250,10 +250,10 @@ function GuildHistoryCacheCategory:FindClosestIndexForEventTime(eventTime)
     -- and do a binary search for the event
     local event, index = self:SearchClosestEventTimeInInterval(eventTime, firstIndex, lastIndex)
     if event then
-        -- make sure we got the first index for a specific time
-        for i = index - 1, 1, -1 do
-            local previous = self:GetEvent(i)
-            if previous:GetEventTime() >= eventTime then
+        -- make sure we got the last index for a specific time
+        for i = index + 1, self:GetNumEvents() do
+            local next = self:GetEvent(i)
+            if next:GetEventTime() == eventTime then
                 index = i
             else
                 break
