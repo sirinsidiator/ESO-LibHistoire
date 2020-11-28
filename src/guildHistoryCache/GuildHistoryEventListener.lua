@@ -18,8 +18,22 @@ local function ShouldHandleEvent(listener, event)
     return true
 end
 
+local function HasIterationCompleted(listener, event)
+    if listener.beforeEventId and event:GetEventId() > listener.beforeEventId then
+        return true
+    elseif listener.beforeEventTime and event:GetEventTime() > listener.beforeEventTime then
+        return true
+    end
+    return false
+end
+
 local function HandleEvent(listener, event)
     if not ShouldHandleEvent(listener, event) then return end
+    if HasIterationCompleted(listener, event) then
+        listener:Stop()
+        if listener.iterationCompletedCallback then listener.iterationCompletedCallback() end
+        return
+    end
 
     local eventId = event:GetEventId()
     if listener.missedEventCallback and eventId < listener.lastEventId then
@@ -43,8 +57,11 @@ function GuildHistoryEventListener:Initialize(categoryCache)
     self.lastEventId = 0
     self.afterEventId = nil
     self.afterEventTime = nil
+    self.beforeEventId = nil
+    self.beforeEventTime = nil
     self.nextEventCallback = nil
     self.missedEventCallback = nil
+    self.iterationCompletedCallback = nil
 
     self.nextEventProcessor = function(guildId, category, event)
         if not categoryCache:IsFor(guildId, category) then return end
@@ -109,6 +126,29 @@ function GuildHistoryEventListener:SetAfterEventTime(eventTime)
     return true
 end
 
+-- the highest desired eventId (id64). The nextEventCallback will only return events which have a lower eventId
+function GuildHistoryEventListener:SetBeforeEventId(eventId)
+    if self.running then return false end
+    self.beforeEventId = internal:ConvertId64ToNumber(eventId)
+    return true
+end
+
+-- if no eventId has been specified, the nextEventCallback will only receive events up to (including) the specified timestamp
+function GuildHistoryEventListener:SetBeforeEventTime(eventTime)
+    if self.running then return false end
+    self.beforeEventTime = eventTime
+    return true
+end
+
+-- convenience method to specify a range which includes the startTime and excludes the endTime
+-- which is usually more desirable than the behaviour of SetAfterEventTime and SetBeforeEventTime which excludes the start time and includes the end time
+function GuildHistoryEventListener:SetTimeFrame(startTime, endTime)
+    if self.running then return false end
+    self.afterEventTime = startTime - 1
+    self.beforeEventTime = endTime - 1
+    return true
+end
+
 -- set a callback which is passed stored and received events in the correct historic order (sorted by eventId)
 -- the callback will be handed the following parameters:
 -- GuildEventType eventType -- the eventType
@@ -135,6 +175,13 @@ function GuildHistoryEventListener:SetEventCallback(callback)
     if self.running then return false end
     self.nextEventCallback = callback
     self.missedEventCallback = callback
+    return true
+end
+
+-- set a callback which is called when beforeEventId or beforeEventTime is reached and the listener is stopped
+function GuildHistoryEventListener:SetIterationCompletedCallback(callback)
+    if self.running then return false end
+    self.iterationCompletedCallback = callback
     return true
 end
 
