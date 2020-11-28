@@ -277,12 +277,15 @@ end
 function GuildHistoryEventListener:Start()
     if self.running then return false end
 
-    self.lastEventId = self.afterEventId or 0
     if self.nextEventCallback or self.missedEventCallback then
+        self.lastEventId = self.afterEventId or 0
         internal:IterateStoredEvents(self, function()
             logger:Debug("RegisterForFutureEvents")
             internal:RegisterCallback(internal.callback.EVENT_STORED, self.nextEventProcessor)
         end)
+    else
+        logger:Warn("Tried to start a listener without setting an event callback first")
+        return false
     end
 
     self.running = true
