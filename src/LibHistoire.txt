@@ -17,6 +17,7 @@
 StartUp.lua
 Codec.lua
 DisplayNameCache.lua
+PerformanceTracker.lua
 guildHistoryCache/controls.xml
 guildHistoryCache/GuildHistoryAdapter.lua
 guildHistoryCache/GuildHistoryStatusTooltip.lua
