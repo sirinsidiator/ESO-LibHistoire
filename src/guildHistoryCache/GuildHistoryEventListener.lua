@@ -186,7 +186,7 @@ end
 function GuildHistoryEventListener:GetPendingEventMetrics()
     if not self.running then return 0, 0, -1 end
 
-    local endIndex = self.endIndex or self.categoryCache:GetNumEvents()
+    local endIndex = self.endIndex or (self.categoryCache:GetNumEvents() + self.categoryCache:GetNumPendingEvents())
     local count = endIndex - self.currentIndex
     local speed = self.processingSpeed
 

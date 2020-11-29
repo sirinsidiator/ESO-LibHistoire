@@ -100,6 +100,10 @@ function GuildHistoryCacheCategory:IsProcessing()
     return self.storeEventsTask ~= nil or self.rescanEventsTask ~= nil
 end
 
+function GuildHistoryCacheCategory:GetNumPendingEvents()
+    return self.numPendingEvents or 0
+end
+
 function GuildHistoryCacheCategory:GetNumUnlinkedEvents()
     if not self.unlinkedEvents then return 0 end
     return #self.unlinkedEvents
@@ -677,10 +681,13 @@ end
 
 function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
     local task = internal:CreateAsyncTask()
+    self.numPendingEvents = #events
     task:For(1, #events):Do(function(i)
+        self.numPendingEvents = self.numPendingEvents - 1
         self:StoreEvent(events[i], false)
     end):Then(function()
         self.storeEventsTask = nil
+        self.numPendingEvents = nil
         if hasLinked then
             self.progressDirty = true
             logger:Info("Finished linking %d events in guild %s (%d) category %s (%d)", #events, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
