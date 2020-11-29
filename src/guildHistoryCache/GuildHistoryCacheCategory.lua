@@ -580,6 +580,8 @@ function GuildHistoryCacheCategory:LinkHistory()
     local unlinkedEvents = self.unlinkedEvents
     self.unlinkedEvents = nil
     self.storeEventsTask = self:StoreReceivedEvents(unlinkedEvents, true)
+    logger:Info("Begin linking %d events in guild %s (%d) category %s (%d)", #unlinkedEvents, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
+    internal:FireCallbacks(internal.callback.HISTORY_BEGIN_LINKING, self.guildId, self.category, #unlinkedEvents)
     return true
 end
 
@@ -674,11 +676,6 @@ function GuildHistoryCacheCategory:SeparateReceivedEvents(events)
 end
 
 function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
-    if hasLinked then
-        logger:Info("Begin linking %d events in guild %s (%d) category %s (%d)", #events, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
-        internal:FireCallbacks(internal.callback.HISTORY_BEGIN_LINKING, self.guildId, self.category, #events)
-    end
-
     local task = internal:CreateAsyncTask()
     task:For(1, #events):Do(function(i)
         self:StoreEvent(events[i], false)

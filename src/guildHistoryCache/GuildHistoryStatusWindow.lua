@@ -71,6 +71,7 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
         self:Update()
     end
     internal:RegisterCallback(internal.callback.UNLINKED_EVENTS_ADDED, DoUpdate)
+    internal:RegisterCallback(internal.callback.HISTORY_BEGIN_LINKING, DoUpdate)
     internal:RegisterCallback(internal.callback.HISTORY_LINKED, DoUpdate)
     internal:RegisterCallback(internal.callback.SELECTED_GUILD_CHANGED, function(guildId) self:SetGuildId(guildId) end)
     internal:RegisterCallback(internal.callback.SELECTED_CATEGORY_CHANGED, function(category) self:SetCategory(category) end)
