@@ -42,6 +42,7 @@ function GuildHistoryCacheCategory:Initialize(nameCache, saveData, guildId, cate
     saveData[self.key] = self.saveData
     self.guildId = guildId
     self.category = category
+    self.performanceTracker = internal.class.PerformanceTracker:New()
 
     self.events = {}
     self.eventTimeLookup = {}
@@ -682,8 +683,10 @@ end
 function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
     local task = internal:CreateAsyncTask()
     self.numPendingEvents = #events
+    self.performanceTracker:Reset()
     task:For(1, #events):Do(function(i)
         self.numPendingEvents = self.numPendingEvents - 1
+        self.performanceTracker:Increment()
         self:StoreEvent(events[i], false)
     end):Then(function()
         self.storeEventsTask = nil
@@ -699,6 +702,14 @@ function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
         end
     end)
     return task
+end
+
+function GuildHistoryCacheCategory:GetPendingEventMetrics()
+    if not self:IsProcessing() then return 0, -1, -1 end
+
+    local count = self.numPendingEvents
+    local speed, timeLeft = self.performanceTracker:GetProcessingSpeedAndEstimatedTimeLeft(count)
+    return count, speed, timeLeft
 end
 
 function GuildHistoryCacheCategory:AddUnsortedUnlinkedEvents(unsortedEvents)
