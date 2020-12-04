@@ -585,7 +585,9 @@ function GuildHistoryCacheCategory:LinkHistory()
     local unlinkedEvents = self.unlinkedEvents
     self.unlinkedEvents = nil
     self.storeEventsTask = self:StoreReceivedEvents(unlinkedEvents, true)
-    logger:Info("Begin linking %d events in guild %s (%d) category %s (%d)", #unlinkedEvents, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
+    if #unlinkedEvents > 0 then
+        logger:Info("Begin linking %d events in guild %s (%d) category %s (%d)", #unlinkedEvents, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
+    end
     internal:FireCallbacks(internal.callback.HISTORY_BEGIN_LINKING, self.guildId, self.category, #unlinkedEvents)
     return true
 end
@@ -602,7 +604,7 @@ function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
     local lastStoredEventId = lastStoredEntry and lastStoredEntry:GetEventId() or 0
     local sessionStartId = self.newestEventAtStart and self.newestEventAtStart:GetEventId() or 0
 
-    logger:Debug("GetFilteredReceivedEvents from %d to %d (%d/%d)", nextIndex, numEvents, guildId, category)
+    logger:Verbose("GetFilteredReceivedEvents from %d to %d (%d/%d)", nextIndex, numEvents, guildId, category)
     local skipped = 0
     local events = {}
     local hasReachedLastStoredEventId = false
@@ -610,13 +612,13 @@ function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
         local eventId = select(9, GetGuildEventInfo(guildId, category, index))
         if eventId > lastStoredEventId then
             if waitForMore ~= numEvents and self:HasLinked() then
-                logger:Debug("Detected push events. Wait for more")
+                logger:Verbose("Detected push events. Wait for more")
                 return false, false, RETRY_WAIT_FOR_MORE_DELAY
             end
 
             local event = GuildHistoryCacheEntry:New(self, guildId, category, index)
             if not event:IsValid() then
-                logger:Debug("Has found invalid events")
+                logger:Verbose("Has found invalid events")
                 return false, false, RETRY_ON_INVALID_DELAY
             end
             events[#events + 1] = event
@@ -633,7 +635,7 @@ function GuildHistoryCacheCategory:GetFilteredReceivedEvents()
     end
 
     self.lastIndex = lastIndex
-    logger:Debug("#events: %d - skipped: %d (%d/%d)", #events, skipped, guildId, category)
+    logger:Verbose("#events: %d - skipped: %d (%d/%d)", #events, skipped, guildId, category)
     return events, hasReachedLastStoredEventId
 end
 
@@ -693,7 +695,9 @@ function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
         self.numPendingEvents = nil
         if hasLinked then
             self.progressDirty = true
-            logger:Info("Finished linking %d events in guild %s (%d) category %s (%d)", #events, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
+            if #events > 0 then
+                logger:Info("Finished linking %d events in guild %s (%d) category %s (%d)", #events, GetGuildName(self.guildId), self.guildId, GetString("SI_GUILDHISTORYCATEGORY", self.category), self.category)
+            end
             internal:FireCallbacks(internal.callback.HISTORY_LINKED, self.guildId, self.category)
         end
         if self.hasPendingEvents then

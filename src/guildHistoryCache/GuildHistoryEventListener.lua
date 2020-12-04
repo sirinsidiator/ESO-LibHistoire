@@ -112,11 +112,11 @@ function internal:EnsureIterationIsComplete(listener, onCompleted)
     local categoryCache = listener.categoryCache
     local lastStoredEntry = categoryCache:GetNewestEvent()
     if listener.lastEventId == 0 or (lastStoredEntry and listener.lastEventId == lastStoredEntry:GetEventId()) then
-        logger:Debug("iterated all stored events - register for callback")
+        logger:Verbose("iterated all stored events - register for callback")
         listener:InternalResetEventCount()
         onCompleted(listener)
     else
-        logger:Debug("has not reached the end yet - go for another round")
+        logger:Verbose("has not reached the end yet - go for another round")
         internal:IterateStoredEvents(listener, onCompleted)
     end
 end
@@ -231,7 +231,7 @@ function GuildHistoryEventListener:Start()
     if self.nextEventCallback or self.missedEventCallback then
         self.lastEventId = self.afterEventId or 0
         internal:IterateStoredEvents(self, function()
-            logger:Debug("RegisterForFutureEvents")
+            logger:Verbose("RegisterForFutureEvents")
             internal:RegisterCallback(internal.callback.EVENT_STORED, self.nextEventProcessor)
         end)
     else

@@ -52,7 +52,6 @@ function GuildHistoryCache:Initialize(nameCache, statusTooltip, saveData)
 
     local function OnSelectionChanged(control, data, selected, reselectingDuringRebuild)
         if selected then
-            logger:Debug("Selected a node", data)
             self:UpdateLinkedIcon()
         end
     end

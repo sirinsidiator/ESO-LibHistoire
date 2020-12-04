@@ -84,7 +84,7 @@ function GuildHistoryRequestManager:Initialize(cache)
             self:RefillQueue()
         end
         if #self.queue == 0 then
-            logger:Info("No more requests needed")
+            logger:Verbose("No more requests needed")
             self:Stop()
             return
         end
