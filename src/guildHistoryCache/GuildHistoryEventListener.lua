@@ -147,7 +147,7 @@ function GuildHistoryEventListener:GetPendingEventMetrics()
 
     local endIndex = self.endIndex or (self.categoryCache:GetNumEvents() + self.categoryCache:GetNumPendingEvents())
     local count = endIndex - self.currentIndex
-    local speed, timeLeft = self.performanceTracer:GetProcessingSpeedAndEstimatedTimeLeft(count)
+    local speed, timeLeft = self.performanceTracker:GetProcessingSpeedAndEstimatedTimeLeft(count)
     return count, speed, timeLeft
 end
 
