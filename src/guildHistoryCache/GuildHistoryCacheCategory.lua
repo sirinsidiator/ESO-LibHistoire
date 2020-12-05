@@ -424,6 +424,7 @@ function GuildHistoryCacheCategory:StoreMissingEventsBefore(eventsBefore, callba
         ZO_ClearTable(self.saveData)
         local taskC = internal:CreateAsyncTask()
         taskC:For(ipairs(eventsBefore)):Do(function(i, event)
+            self:IncrementPendingEventMetrics()
             self:StoreEvent(event, true)
         end):Then(function()
             local taskD = internal:CreateAsyncTask()
@@ -457,6 +458,7 @@ function GuildHistoryCacheCategory:StoreMissingEventsInside(eventsInside, callba
 
     local task = internal:CreateAsyncTask()
     task:For(ipairs(eventsInside)):Do(function(i, event)
+        self:IncrementPendingEventMetrics()
         local eventId = event:GetEventId()
         local index = GetProperIndexFor(eventId)
         if index then
@@ -472,6 +474,7 @@ function GuildHistoryCacheCategory:StoreMissingEventsAfter(eventsAfter, callback
 
     local task = internal:CreateAsyncTask()
     task:For(ipairs(eventsAfter)):Do(function(i, event)
+        self:IncrementPendingEventMetrics()
         self:StoreEvent(event, false)
     end):Then(callback)
 end
@@ -487,10 +490,18 @@ function GuildHistoryCacheCategory:RescanEvents()
     self.rescanEventsTask = internal:CreateAsyncTask()
     local task = self.rescanEventsTask
     local missingEvents, hasEncounteredInvalidEvent = self:GetMissingEvents(task)
-    local eventsBefore, eventsInside, eventsAfter
 
+
+    local eventsBefore, eventsInside, eventsAfter
     task:Then(function()
-        table.sort(missingEvents, ByEventIdAsc)
+        if #missingEvents > 0 then
+            self:InitializePendingEventMetrics(#missingEvents)
+            table.sort(missingEvents, ByEventIdAsc)
+        else
+            task:Cancel()
+            self.rescanEventsTask = nil
+            logger:Info("Detected no missing events in guild %s (%d) category %s (%d)", guildName, guildId, categoryName, category)
+        end
     end):Then(function()
         eventsBefore, eventsInside, eventsAfter = self:SeparateMissingEvents(missingEvents)
         logger:Info("Detected %d + %d + %d missing events in guild %s (%d) category %s (%d)", #eventsBefore, #eventsInside, #eventsAfter, guildName, guildId, categoryName, category)
@@ -501,6 +512,7 @@ function GuildHistoryCacheCategory:RescanEvents()
                     self:RebuildEventLookup()
                     logger:Info("Finished rescanning events in guild %s (%d) category %s (%d)", guildName, guildId, categoryName, category)
                     self.rescanEventsTask = nil
+                    self:ResetPendingEventMetrics()
                     self.lastRescanEvent = self:GetNewestEvent()
                     if hasEncounteredInvalidEvent then
                         ZO_Alert(UI_ALERT_CATEGORY_ERROR, SOUNDS.NEGATIVE_CLICK, "Found invalid events while rescanning history")
@@ -684,15 +696,13 @@ end
 
 function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
     local task = internal:CreateAsyncTask()
-    self.numPendingEvents = #events
-    self.performanceTracker:Reset()
+    self:InitializePendingEventMetrics(#events)
     task:For(1, #events):Do(function(i)
-        self.numPendingEvents = self.numPendingEvents - 1
-        self.performanceTracker:Increment()
+        self:IncrementPendingEventMetrics()
         self:StoreEvent(events[i], false)
     end):Then(function()
         self.storeEventsTask = nil
-        self.numPendingEvents = nil
+        self:ResetPendingEventMetrics()
         if hasLinked then
             self.progressDirty = true
             if #events > 0 then
@@ -708,8 +718,23 @@ function GuildHistoryCacheCategory:StoreReceivedEvents(events, hasLinked)
     return task
 end
 
+function GuildHistoryCacheCategory:InitializePendingEventMetrics(numPendingEvents)
+    self.numPendingEvents = numPendingEvents
+    self.performanceTracker:Reset()
+end
+
+function GuildHistoryCacheCategory:ResetPendingEventMetrics()
+    self.numPendingEvents = nil
+    self.performanceTracker:Reset()
+end
+
+function GuildHistoryCacheCategory:IncrementPendingEventMetrics()
+    self.numPendingEvents = self.numPendingEvents - 1
+    self.performanceTracker:Increment()
+end
+
 function GuildHistoryCacheCategory:GetPendingEventMetrics()
-    if not self:IsProcessing() then return 0, -1, -1 end
+    if not self.numPendingEvents or not self:IsProcessing() then return 0, -1, -1 end
 
     local count = self.numPendingEvents
     local speed, timeLeft = self.performanceTracker:GetProcessingSpeedAndEstimatedTimeLeft(count)
