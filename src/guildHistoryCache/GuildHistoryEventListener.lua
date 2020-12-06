@@ -100,7 +100,7 @@ function internal:IterateStoredEvents(listener, onCompleted)
         listener.endIndex = endIndex
     end
 
-    listener.currentIndex = startIndex - 1
+    listener.currentIndex = (startIndex or 1) - 1
     listener.task:For(listener.categoryCache:GetIterator(startIndex)):Do(function(i, event)
         HandleEvent(listener, event, i)
     end):Then(function()
