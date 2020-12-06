@@ -27,7 +27,8 @@ local function HasIterationCompleted(listener, event)
     return false
 end
 
-local function HandleEvent(listener, event)
+local function HandleEvent(listener, event, index)
+    listener:InternalCountEvent(index)
     if not ShouldHandleEvent(listener, event) then return end
     if HasIterationCompleted(listener, event) then
         listener:Stop()
@@ -66,9 +67,9 @@ function GuildHistoryEventListener:Initialize(categoryCache)
     self.currentIndex = 0
     self.performanceTracker = internal.class.PerformanceTracker:New()
 
-    self.nextEventProcessor = function(guildId, category, event)
+    self.nextEventProcessor = function(guildId, category, event, index)
         if not categoryCache:IsFor(guildId, category) then return end
-        HandleEvent(self, event)
+        HandleEvent(self, event, index)
     end
 end
 
@@ -101,8 +102,7 @@ function internal:IterateStoredEvents(listener, onCompleted)
 
     listener.currentIndex = startIndex - 1
     listener.task:For(listener.categoryCache:GetIterator(startIndex)):Do(function(i, event)
-        listener:InternalCountEvent(i)
-        HandleEvent(listener, event)
+        HandleEvent(listener, event, i)
     end):Then(function()
         internal:EnsureIterationIsComplete(listener, onCompleted)
     end)
@@ -113,7 +113,6 @@ function internal:EnsureIterationIsComplete(listener, onCompleted)
     local lastStoredEntry = categoryCache:GetNewestEvent()
     if listener.lastEventId == 0 or (lastStoredEntry and listener.lastEventId == lastStoredEntry:GetEventId()) then
         logger:Verbose("iterated all stored events - register for callback")
-        listener:InternalResetEventCount()
         onCompleted(listener)
     else
         logger:Verbose("has not reached the end yet - go for another round")
