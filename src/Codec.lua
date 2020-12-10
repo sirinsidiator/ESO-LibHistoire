@@ -172,7 +172,9 @@ end
 local StringToItemLink
 do
     local LINK_COMPACT_DATA_SEPARATOR = "#"
-    local LINK_COMPACT_DATA_REPLACEMENT = LINK_COMPACT_DATA_SEPARATOR .. "0"
+    -- this isn't 100% clean, but we want the last repetition to end on the separator 
+    -- and zo_strsplit will collapse multiple separators anyway
+    local LINK_COMPACT_DATA_REPLACEMENT = LINK_COMPACT_DATA_SEPARATOR .. "0" .. LINK_COMPACT_DATA_SEPARATOR
     local LINK_ORIGINAL_DATA_SEPARATOR = ":"
     local LINK_PLACEHOLDER_PATTERN = "<(%d+)>"
 
