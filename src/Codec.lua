@@ -126,9 +126,10 @@ local function ItemLinkToString(value)
         fields[i] = IntegerToString(tonumber(fields[i]), true)
     end
     local temp = tconcat(fields, "#")
-    return sgsub(temp, "#+", function(value)
-        local count = slen(value)
-        if count > 3 then
+    -- this should only find repetitions of #0 and nothing else
+    return sgsub(temp, "([#0]+)#", function(value)
+        local count = slen(value) / 2
+        if count >= 3 then
             return sformat("<%d>", count)
         end
     end)
