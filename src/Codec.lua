@@ -127,7 +127,7 @@ local function ItemLinkToString(value)
     end
     local temp = tconcat(fields, "#")
     -- this should only find repetitions of #0 and nothing else
-    return sgsub(temp, "([#0]+)#", function(value)
+    return sgsub(temp, "([#0]+)", function(value)
         local count = slen(value) / 2
         if count >= 3 then
             return sformat("<%d>", count)
@@ -172,7 +172,7 @@ end
 local StringToItemLink
 do
     local LINK_COMPACT_DATA_SEPARATOR = "#"
-    -- this isn't 100% clean, but we want the last repetition to end on the separator 
+    -- this isn't 100% clean, but we want the last repetition to end on the separator
     -- and zo_strsplit will collapse multiple separators anyway
     local LINK_COMPACT_DATA_REPLACEMENT = LINK_COMPACT_DATA_SEPARATOR .. "0" .. LINK_COMPACT_DATA_SEPARATOR
     local LINK_ORIGINAL_DATA_SEPARATOR = ":"
@@ -184,9 +184,20 @@ do
         return cache[count]
     end
 
+    local function ExpandPlaceholderFix(count)
+        return srep(LINK_COMPACT_DATA_REPLACEMENT, tonumber(count) - 1)
+    end
+
     function StringToItemLink(value)
-        value = sgsub(value, LINK_PLACEHOLDER_PATTERN, ExpandPlaceholder)
-        local fields = { ITEM_LINK_PREFIX, zo_strsplit(LINK_COMPACT_DATA_SEPARATOR, value) }
+        local expanded = sgsub(value, LINK_PLACEHOLDER_PATTERN, ExpandPlaceholder)
+        local fields = { ITEM_LINK_PREFIX, zo_strsplit(LINK_COMPACT_DATA_SEPARATOR, expanded) }
+
+        if #fields > 22 then
+            -- some links have been encoded incorrectly in the past
+            expanded = sgsub(value, LINK_PLACEHOLDER_PATTERN, ExpandPlaceholderFix)
+            fields = { ITEM_LINK_PREFIX, zo_strsplit(LINK_COMPACT_DATA_SEPARATOR, expanded) }
+        end
+
         for i = 2, #fields do
             fields[i] = fastLookup[fields[i]] or StringToInteger(fields[i])
         end
