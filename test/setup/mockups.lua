@@ -62,7 +62,11 @@ function resolveTimeouts()
 end
 
 LibHistoire = {
-    internal = {}
+    internal = {
+        logger = {
+            Warn = function(self, ...) df(...) end
+        }
+    }
 }
 
 function Id64ToString()

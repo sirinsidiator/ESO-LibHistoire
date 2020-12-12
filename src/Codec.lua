@@ -27,6 +27,7 @@ local srep = string.rep
 local Id64ToString = Id64ToString
 local StringToId64 = StringToId64
 local zo_strsplit = zo_strsplit
+local logger = LibHistoire.internal.logger
 
 local dict = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 local dictLen = #dict
@@ -172,6 +173,8 @@ end
 local StringToItemLink
 do
     local LINK_COMPACT_DATA_SEPARATOR = "#"
+    local LINK_COMPACT_DATA_OLD_ZERO_FIELD = "##"
+    local LINK_COMPACT_DATA_NEW_ZERO_FIELD = "#0#"
     -- this isn't 100% clean, but we want the last repetition to end on the separator
     -- and zo_strsplit will collapse multiple separators anyway
     local LINK_COMPACT_DATA_REPLACEMENT = LINK_COMPACT_DATA_SEPARATOR .. "0" .. LINK_COMPACT_DATA_SEPARATOR
@@ -188,14 +191,41 @@ do
         return srep(LINK_COMPACT_DATA_REPLACEMENT, tonumber(count) - 1)
     end
 
+    local function ExpandPlaceholderFix2(count)
+        return srep(LINK_COMPACT_DATA_REPLACEMENT, tonumber(count) / 2)
+    end
+
+    local function FixOldEncoding(value, fields)
+        local v2 = value
+        for i = 1, 2 do -- need to replace it twice to get all fields
+            v2 = sgsub(v2, LINK_COMPACT_DATA_OLD_ZERO_FIELD, LINK_COMPACT_DATA_NEW_ZERO_FIELD)
+        end
+
+        if #fields > 22 then
+            local expanded = sgsub(v2, LINK_PLACEHOLDER_PATTERN, ExpandPlaceholderFix)
+            fields = { ITEM_LINK_PREFIX, zo_strsplit(LINK_COMPACT_DATA_SEPARATOR, expanded) }
+        end
+
+        if #fields > 22 then
+            local expanded = sgsub(v2, LINK_PLACEHOLDER_PATTERN, ExpandPlaceholderFix2)
+            fields = { ITEM_LINK_PREFIX, zo_strsplit(LINK_COMPACT_DATA_SEPARATOR, expanded) }
+        end
+
+        while #fields < 22 do
+            fields[#fields + 1] = "0"
+        end
+
+        assert(#fields == 22, ("Incorrect field count for item link decoded from '%s'"):format(value))
+        return fields
+    end
+
     function StringToItemLink(value)
         local expanded = sgsub(value, LINK_PLACEHOLDER_PATTERN, ExpandPlaceholder)
         local fields = { ITEM_LINK_PREFIX, zo_strsplit(LINK_COMPACT_DATA_SEPARATOR, expanded) }
 
-        if #fields > 22 then
-            -- some links have been encoded incorrectly in the past
-            expanded = sgsub(value, LINK_PLACEHOLDER_PATTERN, ExpandPlaceholderFix)
-            fields = { ITEM_LINK_PREFIX, zo_strsplit(LINK_COMPACT_DATA_SEPARATOR, expanded) }
+        if #fields ~= 22 then
+            -- some links have been encoded differently or plain incorrect in the past
+            fields = FixOldEncoding(value, fields)
         end
 
         for i = 2, #fields do
