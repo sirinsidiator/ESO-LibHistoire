@@ -139,9 +139,8 @@ end
 
 function GuildHistoryRequestManager:SendNextRequest()
     local categoryCache = self.queue[1]
-    if not categoryCache then return end
+    if not categoryCache or categoryCache:IsOnRequestCooldown() then return end
     table.remove(self.queue, 1)
 
-    local guildId, category = categoryCache.guildId, categoryCache.category
-    local success = RequestMoreGuildHistoryCategoryEvents(categoryCache.guildId, categoryCache.category, true)
+    local success = categoryCache:SendRequest()
 end

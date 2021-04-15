@@ -11,8 +11,9 @@ local WriteToSavedVariable = internal.WriteToSavedVariable
 local ReadFromSavedVariable = internal.ReadFromSavedVariable
 
 local SERVER_NAME = GetWorldName()
-local RETRY_ON_INVALID_DELAY = 5000
-local RETRY_WAIT_FOR_MORE_DELAY = 250
+local RETRY_ON_INVALID_DELAY = 5000 -- ms
+local RETRY_WAIT_FOR_MORE_DELAY = 250 -- ms
+local REQUEST_COOLDOWN = 1 -- s
 
 local function Ascending(a, b)
     return b > a
@@ -49,6 +50,7 @@ function GuildHistoryCacheCategory:Initialize(nameCache, saveData, guildId, cate
     self.eventIndexLookup = {}
     self.eventIndexLookupDirty = false
     self.progressDirty = true
+    self.lastRequestTime = 0
 
     -- add placeholders - deserialization will happen lazily
     for i = 1, #self.saveData do
@@ -99,6 +101,16 @@ end
 
 function GuildHistoryCacheCategory:IsProcessing()
     return self.storeEventsTask ~= nil or self.rescanEventsTask ~= nil
+end
+
+function GuildHistoryCacheCategory:IsOnRequestCooldown()
+    return GetTimeStamp() < self.lastRequestTime + REQUEST_COOLDOWN
+end
+
+function GuildHistoryCacheCategory:SendRequest()
+    local success = RequestMoreGuildHistoryCategoryEvents(self.guildId, self.category, true)
+    self.lastRequestTime = GetTimeStamp()
+    return success
 end
 
 function GuildHistoryCacheCategory:GetNumPendingEvents()
