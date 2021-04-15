@@ -86,6 +86,17 @@ function GuildHistoryCache:GetSelectedCache()
     end
 end
 
+function GuildHistoryCache:HasLinkedAllCaches()
+    for i = 1, GetNumGuilds() do
+        local guildId = GetGuildId(i)
+        local cache = self:GetOrCreateGuildCache(guildId)
+        if not cache:HasLinked() then 
+            return false
+        end
+    end
+    return true
+end
+
 function GuildHistoryCache:UpdateLinkedIcon()
     local cache = self:GetSelectedCache()
     if cache then

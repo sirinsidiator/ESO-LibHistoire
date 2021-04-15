@@ -236,37 +236,6 @@ function GuildHistoryStatusWindow:InitializeGuildList(listControl)
     GetControl(self.emptyGuildListRow, "Message"):SetText("No Guilds")
 end
 
-local CONFIRM_DIALOG_ID = "LibHistoire_Confirm"
-local function GetConfirmDialog()
-    if(not ESO_Dialogs[CONFIRM_DIALOG_ID]) then
-        ESO_Dialogs[CONFIRM_DIALOG_ID] = {
-            canQueue = true,
-            title = {
-                text = "Are you sure?",
-            },
-            mainText = {
-                text = "Forcing the history to link will produce a hole in your data.",
-            },
-            buttons = {
-                [1] = {
-                    text = SI_DIALOG_CONFIRM,
-                    callback = function(dialog) end,
-                },
-                [2] = {
-                    text = SI_DIALOG_CANCEL,
-                }
-            }
-        }
-    end
-    return ESO_Dialogs[CONFIRM_DIALOG_ID]
-end
-
-function GuildHistoryStatusWindow:ShowConfirmForceLinkDialog(callback)
-    local dialog = GetConfirmDialog()
-    dialog.buttons[1].callback = callback
-    ZO_Dialogs_ShowDialog(CONFIRM_DIALOG_ID)
-end
-
 function GuildHistoryStatusWindow:InitializeCategoryList(listControl)
     local function OnSelectRow(entry)
         self.historyAdapter:SelectCategory(entry.value)
@@ -278,7 +247,7 @@ function GuildHistoryStatusWindow:InitializeCategoryList(listControl)
         local forceLinkButton = rowControl:GetNamedChild("ForceLinkButton")
         forceLinkButton:SetHandler("OnMouseUp", function(control, button, isInside, ctrl, alt, shift, command)
             if(isInside and button == MOUSE_BUTTON_INDEX_LEFT) then
-                self:ShowConfirmForceLinkDialog(function()
+                internal:ShowForceLinkWarningDialog(function()
                     local entry = ZO_ScrollList_GetData(rowControl)
                     if entry.cache:LinkHistory() then
                         rowControl.forceLinkButton:SetEnabled(false)
