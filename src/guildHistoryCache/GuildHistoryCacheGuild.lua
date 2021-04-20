@@ -87,6 +87,14 @@ function GuildHistoryCacheGuild:HasLinked()
     return true
 end
 
+function GuildHistoryCacheGuild:IsProcessing()
+    if not next(self.cache) then return false end
+    for _, cache in pairs(self.cache) do
+        if cache:IsProcessing() then return true end
+    end
+    return false
+end
+
 function GuildHistoryCacheGuild:IsAggregated()
     return true
 end
