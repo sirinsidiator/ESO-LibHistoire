@@ -60,7 +60,6 @@ function internal:ShowForceLinkWarningDialog(callback)
 end
 
 function internal:SetupDialogHook(name)
-    self.logger:Debug("Setup dialog hook for", name)
     local primaryButton = ESO_Dialogs[name].buttons[1]
     local originalCallback = primaryButton.callback
     primaryButton.callback = function(dialog)
