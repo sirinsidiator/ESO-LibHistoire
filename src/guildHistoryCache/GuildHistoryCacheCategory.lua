@@ -54,6 +54,7 @@ function GuildHistoryCacheCategory:Initialize(nameCache, saveData, guildId, cate
 
     -- add placeholders - deserialization will happen lazily
     for i = 1, #self.saveData do
+        if self.saveData[i] == nil then logger:Warn("Entry %d in %s is nil", i, self.key) end
         self.events[i] = false
     end
 
@@ -321,10 +322,15 @@ end
 
 function GuildHistoryCacheCategory:StoreEvent(event, missing)
     local index = #self.events + 1
+    local eventData = event:Serialize()
+    assert(eventData, "Failed to serialize history event")
+
     self.events[index] = event
     if not self.saveData.idOffset then self.saveData.idOffset = event:GetEventId() end
     if not self.saveData.timeOffset then self.saveData.timeOffset = event:GetEventTime() end
-    WriteToSavedVariable(self.saveData, index, event:Serialize())
+
+    WriteToSavedVariable(self.saveData, index, eventData)
+    assert(self.saveData[index] ~= nil, "Failed to write history event to save data")
 
     if missing then
         self.eventIndexLookupDirty = true
@@ -335,9 +341,14 @@ function GuildHistoryCacheCategory:StoreEvent(event, missing)
 end
 
 function GuildHistoryCacheCategory:InsertEvent(event, index)
+    local eventData = event:Serialize()
+    assert(eventData, "Failed to serialize history event")
+
     table.insert(self.events, index, event)
     table.insert(self.saveData, index, "") -- insert a placeholder so all indices are moved up by one
-    WriteToSavedVariable(self.saveData, index, event:Serialize())
+
+    WriteToSavedVariable(self.saveData, index, eventData)
+    assert(self.saveData[index] ~= nil, "Failed to write history event to save data")
 
     self.eventIndexLookupDirty = true
     internal:FireCallbacks(internal.callback.EVENT_STORED, self.guildId, self.category, event, index, true)
@@ -442,8 +453,13 @@ function GuildHistoryCacheCategory:StoreMissingEventsBefore(eventsBefore, callba
             local taskD = internal:CreateAsyncTask()
             taskD:For(ipairs(storedEvents)):Do(function(i, event)
                 local index = #self.events + 1
+                local eventData = event:Serialize()
+                assert(eventData, "Failed to serialize history event")
+
                 self.events[index] = event
-                WriteToSavedVariable(self.saveData, index, event:Serialize())
+
+                WriteToSavedVariable(self.saveData, index, eventData)
+                assert(self.saveData[index] ~= nil, "Failed to write history event to save data")
             end):Then(callback)
         end)
     end)
