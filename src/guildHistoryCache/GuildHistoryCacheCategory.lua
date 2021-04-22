@@ -52,9 +52,17 @@ function GuildHistoryCacheCategory:Initialize(nameCache, saveData, guildId, cate
     self.progressDirty = true
     self.lastRequestTime = 0
 
+    -- remove holes in the saved vars
+    for i = #self.saveData, 1, -1 do
+        if self.saveData[i] == nil then
+            logger:Warn("Entry %d in %s is nil - closing hole", i, self.key)
+            self.saveData[i] = ""
+            table.remove(self.saveData, i)
+        end
+    end
+
     -- add placeholders - deserialization will happen lazily
-    for i = 1, #self.saveData do
-        if self.saveData[i] == nil then logger:Warn("Entry %d in %s is nil", i, self.key) end
+    for i in ipairs(self.saveData) do
         self.events[i] = false
     end
 
