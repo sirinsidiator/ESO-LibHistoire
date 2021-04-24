@@ -83,7 +83,7 @@ function GuildHistoryEventListener:InternalResetEventCount()
     self.performanceTracker:Reset()
 end
 
-function internal:IterateStoredEvents(listener, onCompleted)
+function internal:IterateStoredEvents(listener, onCompleted, initializeLastEventId)
     local startIndex, endIndex
     if listener.afterEventId then
         startIndex = listener.categoryCache:FindIndexForEventId(listener.afterEventId)
@@ -101,6 +101,12 @@ function internal:IterateStoredEvents(listener, onCompleted)
     end
 
     listener.currentIndex = (startIndex or 1) - 1
+
+    if initializeLastEventId then
+        local startEvent = listener.categoryCache:GetEvent(startIndex or 0)
+        listener.lastEventId = startEvent and startEvent:GetEventId() or 0
+    end
+
     listener.task:For(listener.categoryCache:GetIterator(startIndex)):Do(function(i, event)
         HandleEvent(listener, event, i)
     end):Then(function()
@@ -111,7 +117,7 @@ end
 function internal:EnsureIterationIsComplete(listener, onCompleted)
     local categoryCache = listener.categoryCache
     local lastStoredEntry = categoryCache:GetNewestEvent()
-    if listener.lastEventId == 0 or categoryCache:GetNumEvents() == 0 or (lastStoredEntry and listener.lastEventId == lastStoredEntry:GetEventId()) then
+    if listener.lastEventId == 0 or not lastStoredEntry or listener.lastEventId == lastStoredEntry:GetEventId() then
         logger:Verbose("iterated all stored events - register for callback")
         onCompleted(listener)
     else
@@ -228,11 +234,10 @@ function GuildHistoryEventListener:Start()
     if self.running then return false end
 
     if self.nextEventCallback or self.missedEventCallback then
-        self.lastEventId = self.afterEventId or 0
         internal:IterateStoredEvents(self, function()
             logger:Verbose("RegisterForFutureEvents")
             internal:RegisterCallback(internal.callback.EVENT_STORED, self.nextEventProcessor)
-        end)
+        end, true)
     else
         logger:Warn("Tried to start a listener without setting an event callback first")
         return false
