@@ -29,7 +29,7 @@ end
 function internal:ShowQuitWarningDialog(buttonText, callback)
     local dialog = self:GetWarningDialog()
     dialog.title.text = "Warning"
-    dialog.mainText.text = "LibHistoire has not linked your history yet! If you close the game now, you will loose any progress and have to start over the next time."
+    dialog.mainText.text = "LibHistoire has not linked your history yet! If you close the game now, you will lose any progress and have to start over the next time."
 
     local primaryButton = dialog.buttons[1]
     primaryButton.text = "Open History"
