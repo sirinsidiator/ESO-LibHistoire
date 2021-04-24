@@ -213,7 +213,7 @@ function GuildHistoryCacheCategory:FindIndexForEventId(eventId)
         return index
     end
 
-    return 0
+    return 0, firstIndex, lastIndex
 end
 
 function GuildHistoryCacheCategory:SearchEventIdInInterval(eventId, firstIndex, lastIndex)
@@ -477,16 +477,12 @@ end
 function GuildHistoryCacheCategory:StoreMissingEventsInside(eventsInside, callback)
     if #eventsInside == 0 then callback() return end
 
-    local startIndex = 2
-    local events = self.events
-    local lastEventId = self:GetOldestEvent():GetEventId()
-
-    local function GetProperIndexFor(eventId)
-        for j = startIndex, #events do
+    local function GetProperIndexFor(eventId, startIndex, endIndex)
+        local lastEventId = 0
+        for j = startIndex, endIndex do
             local nextEventId = self:GetEvent(j):GetEventId()
             if eventId > lastEventId and eventId < nextEventId then
                 lastEventId = eventId
-                startIndex = j + 1
                 return j
             end
             lastEventId = nextEventId
@@ -497,7 +493,18 @@ function GuildHistoryCacheCategory:StoreMissingEventsInside(eventsInside, callba
     task:For(ipairs(eventsInside)):Do(function(i, event)
         self:IncrementPendingEventMetrics()
         local eventId = event:GetEventId()
-        local index = GetProperIndexFor(eventId)
+
+        local index, startIndex, endIndex = self:FindIndexForEventId(eventId)
+        if index ~= 0 then
+            logger:Warn("event with id %d is already stored", eventId)
+            return
+        elseif not startIndex or not endIndex then
+            logger:Warn("Could not find interval for event with id %d", eventId)
+            return
+        else
+            index = GetProperIndexFor(eventId, startIndex, endIndex)
+        end
+
         if index then
             self:InsertEvent(event, index)
         else
