@@ -329,13 +329,14 @@ function GuildHistoryCacheCategory:SearchClosestEventTimeInInterval(eventTime, f
 end
 
 function GuildHistoryCacheCategory:StoreEvent(event, missing)
+    if not self.saveData.idOffset then self.saveData.idOffset = event:GetEventId() end
+    if not self.saveData.timeOffset then self.saveData.timeOffset = event:GetEventTime() end
+
     local index = #self.events + 1
     local eventData = event:Serialize()
     assert(eventData, "Failed to serialize history event")
 
     self.events[index] = event
-    if not self.saveData.idOffset then self.saveData.idOffset = event:GetEventId() end
-    if not self.saveData.timeOffset then self.saveData.timeOffset = event:GetEventTime() end
 
     WriteToSavedVariable(self.saveData, index, eventData)
     assert(self.saveData[index] ~= nil, "Failed to write history event to save data")
