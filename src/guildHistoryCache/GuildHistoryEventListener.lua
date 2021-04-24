@@ -111,7 +111,7 @@ end
 function internal:EnsureIterationIsComplete(listener, onCompleted)
     local categoryCache = listener.categoryCache
     local lastStoredEntry = categoryCache:GetNewestEvent()
-    if listener.lastEventId == 0 or (lastStoredEntry and listener.lastEventId == lastStoredEntry:GetEventId()) then
+    if listener.lastEventId == 0 or categoryCache:GetNumEvents() == 0 or (lastStoredEntry and listener.lastEventId == lastStoredEntry:GetEventId()) then
         logger:Verbose("iterated all stored events - register for callback")
         onCompleted(listener)
     else
