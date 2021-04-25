@@ -126,6 +126,7 @@ local PARAMS_FORMAT = {
         [GUILD_EVENT_GUILD_APPLICATION_ACCEPTED] = PARAMS_FORMAT_TWO_NAMES,         -- (eventType, displayName1, displayName2)
         [GUILD_EVENT_REMOVED_FROM_BLACKLIST] = PARAMS_FORMAT_TWO_NAMES,             -- (eventType, displayName1, displayName2)
         [GUILD_EVENT_ADDED_TO_BLACKLIST] = PARAMS_FORMAT_TWO_NAMES,                 -- (eventType, displayName1, displayName2)
+        [GUILD_EVENT_EDIT_BLACKLIST_NOTE] = PARAMS_FORMAT_TWO_NAMES,                -- (eventType, displayName1, displayName2)
         [GUILD_EVENT_GUILD_RECRUITMENT_GUILD_LISTED] = PARAMS_FORMAT_ONE_NAME,      -- (eventType, displayName)
         [GUILD_EVENT_GUILD_RECRUITMENT_GUILD_UNLISTED] = PARAMS_FORMAT_ONE_NAME,    -- (eventType, displayName)
         [GUILD_EVENT_ITEM_SOLD] = {
