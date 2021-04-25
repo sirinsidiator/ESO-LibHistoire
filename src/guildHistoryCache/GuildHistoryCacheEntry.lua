@@ -184,6 +184,9 @@ function GuildHistoryCacheEntry:Serialize()
     temp[1] = eventType
     for i = 2, #paramsFormat do
         temp[i] = info[INDEX_PARAM_1 + i - 2]
+        if paramsFormat == CURRENT_PARAMS_FORMAT.default and temp[i] == nil then
+            temp[i] = ""
+        end
     end
     local params = EncodeData(temp, paramsFormat, PARAM_SEPARATOR, self.cacheCategory:GetNameDictionary())
 
