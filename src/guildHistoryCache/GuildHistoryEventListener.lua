@@ -63,6 +63,7 @@ function GuildHistoryEventListener:Initialize(categoryCache)
     self.nextEventCallback = nil
     self.missedEventCallback = nil
     self.iterationCompletedCallback = nil
+    self.stopOnLastEvent = false
 
     self.currentIndex = 0
     self.performanceTracker = internal.class.PerformanceTracker:New()
@@ -229,14 +230,27 @@ function GuildHistoryEventListener:SetIterationCompletedCallback(callback)
     return true
 end
 
+-- sets if the listener should stop instead of listening for future events when it runs out of events before encountering the end criteria
+function GuildHistoryEventListener:SetStopOnLastEvent(shouldStop)
+    if self.running then return false end
+    self.stopOnLastEvent = shouldStop
+    return true
+end
+
 -- starts iterating over stored events and afterwards registers a listener for future events internally
 function GuildHistoryEventListener:Start()
     if self.running then return false end
 
     if self.nextEventCallback or self.missedEventCallback then
         internal:IterateStoredEvents(self, function()
-            logger:Verbose("RegisterForFutureEvents")
-            internal:RegisterCallback(internal.callback.EVENT_STORED, self.nextEventProcessor)
+            if self.stopOnLastEvent then
+                logger:Verbose("stopOnLastEvent")
+                self:Stop()
+                if self.iterationCompletedCallback then self.iterationCompletedCallback() end
+            else
+                logger:Verbose("RegisterForFutureEvents")
+                internal:RegisterCallback(internal.callback.EVENT_STORED, self.nextEventProcessor)
+            end
         end, true)
     else
         logger:Warn("Tried to start a listener without setting an event callback first")
