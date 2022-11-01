@@ -545,6 +545,7 @@ function GuildHistoryCacheCategory:RescanEvents()
             task:Cancel()
             self.rescanEventsTask = nil
             logger:Info("Detected no missing events in guild %s (%d) category %s (%d)", guildName, guildId, categoryName, category)
+            internal:FireCallbacks(internal.callback.HISTORY_RESCAN_ENDED, guildId, category, 0, 0, 0, hasEncounteredInvalidEvent)
         end
     end):Then(function()
         eventsBefore, eventsInside, eventsAfter = self:SeparateMissingEvents(missingEvents)
