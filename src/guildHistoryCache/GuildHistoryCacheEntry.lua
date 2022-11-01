@@ -116,8 +116,6 @@ local PARAMS_FORMAT = {
         [GUILD_EVENT_GUILD_STORE_LOCKED] = PARAMS_FORMAT_NO_DATA,                   -- (eventType)
         [GUILD_EVENT_GUILD_BANK_UNLOCKED] = PARAMS_FORMAT_NO_DATA,                  -- (eventType)
         [GUILD_EVENT_GUILD_BANK_LOCKED] = PARAMS_FORMAT_NO_DATA,                    -- (eventType)
-        [GUILD_EVENT_GUILD_STANDARD_UNLOCKED] = PARAMS_FORMAT_NO_DATA,              -- (eventType)
-        [GUILD_EVENT_GUILD_STANDARD_LOCKED] = PARAMS_FORMAT_NO_DATA,                -- (eventType)
         [GUILD_EVENT_GUILD_KIOSK_UNLOCKED] = PARAMS_FORMAT_NO_DATA,                 -- (eventType)
         [GUILD_EVENT_GUILD_KIOSK_LOCKED] = PARAMS_FORMAT_NO_DATA,                   -- (eventType)
         [GUILD_EVENT_GUILD_TABARD_UNLOCKED] = PARAMS_FORMAT_NO_DATA,                -- (eventType)
@@ -138,7 +136,6 @@ local PARAMS_FORMAT = {
             "integer", -- price
             "integer", -- tax
         },
-
     }
 }
 local CURRENT_PARAMS_FORMAT = PARAMS_FORMAT[VERSION]
