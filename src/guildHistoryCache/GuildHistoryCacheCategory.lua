@@ -392,7 +392,9 @@ function GuildHistoryCacheCategory:GetMissingEvents(task, missingEvents)
     local hasEncounteredInvalidEvent = false
     local guildId, category = self.guildId, self.category
     self.lastIndex = 0
+    self:InitializePendingEventMetrics(GetNumGuildEvents(guildId, category))
     task:For(GetGuildEventIterator(self)):Do(function(index)
+        self:IncrementPendingEventMetrics()
         local eventId = select(9, GetGuildEventInfo(guildId, category, index))
         if not self:HasStoredEventId(eventId) then
             local event = GuildHistoryCacheEntry:New(self, guildId, category, index)
@@ -535,7 +537,6 @@ function GuildHistoryCacheCategory:RescanEvents()
     local task = self.rescanEventsTask
     local missingEvents, hasEncounteredInvalidEvent = self:GetMissingEvents(task)
 
-
     local eventsBefore, eventsInside, eventsAfter
     task:Then(function()
         if #missingEvents > 0 then
@@ -543,6 +544,7 @@ function GuildHistoryCacheCategory:RescanEvents()
             table.sort(missingEvents, ByEventIdAsc)
         else
             task:Cancel()
+            self:ResetPendingEventMetrics()
             self.rescanEventsTask = nil
             logger:Info("Detected no missing events in guild %s (%d) category %s (%d)", guildName, guildId, categoryName, category)
             internal:FireCallbacks(internal.callback.HISTORY_RESCAN_ENDED, guildId, category, 0, 0, 0, hasEncounteredInvalidEvent)
