@@ -97,6 +97,17 @@ function GuildHistoryCache:HasLinkedAllCaches()
     return true
 end
 
+function GuildHistoryCache:IsProcessing()
+    for i = 1, GetNumGuilds() do
+        local guildId = GetGuildId(i)
+        local cache = self:GetOrCreateGuildCache(guildId)
+        if cache:IsProcessing() then 
+            return true
+        end
+    end
+    return false
+end
+
 function GuildHistoryCache:UpdateLinkedIcon()
     local cache = self:GetSelectedCache()
     if cache then

@@ -26,10 +26,14 @@ function internal:GetWarningDialog()
     return ESO_Dialogs[DIALOG_ID]
 end
 
-function internal:ShowQuitWarningDialog(buttonText, callback)
+function internal:ShowQuitWarningDialog(buttonText, callback, processing)
     local dialog = self:GetWarningDialog()
     dialog.title.text = "Warning"
-    dialog.mainText.text = "LibHistoire has not linked your history yet! If you close the game now, you will lose any progress and have to start over the next time."
+    if processing then
+        dialog.mainText.text = "LibHistoire is currently processing history! If you close the game now, you may corrupt your save data."
+    else
+        dialog.mainText.text = "LibHistoire has not linked your history yet! If you close the game now, you will lose any progress and have to start over the next time."
+    end
 
     local primaryButton = dialog.buttons[1]
     primaryButton.text = "Open History"
@@ -63,7 +67,9 @@ function internal:SetupDialogHook(name)
     local primaryButton = ESO_Dialogs[name].buttons[1]
     local originalCallback = primaryButton.callback
     primaryButton.callback = function(dialog)
-        if not self.historyCache:HasLinkedAllCaches() then
+        if self.historyCache:IsProcessing() then
+            self:ShowQuitWarningDialog(primaryButton.text, originalCallback, true)
+        elseif not self.historyCache:HasLinkedAllCaches() then
             self:ShowQuitWarningDialog(primaryButton.text, originalCallback)
         else
             originalCallback(dialog)
