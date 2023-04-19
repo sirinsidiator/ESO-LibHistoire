@@ -198,14 +198,9 @@ function GuildHistoryCacheCategory:FindIndexForEventId(eventId)
     if eventId < self:GetOldestEvent():GetEventId() then return 0 end
     if eventId > self:GetNewestEvent():GetEventId() then return self:GetNumEvents() + 1 end
 
-    -- otherwise find the smallest known interval
+    -- just use the full interval. iterating over the eventIndexLookup is slow and becomes increasingly slower the more entries it has
     local firstIndex = 1
     local lastIndex = self:GetNumEvents()
-
-    for id, index in pairs(self.eventIndexLookup) do
-        if id < eventId and index > firstIndex then firstIndex = index end
-        if id > eventId and index < lastIndex then lastIndex = index end
-    end
 
     -- and do a binary search for the event
     local event, index = self:SearchEventIdInInterval(eventId, firstIndex, lastIndex)
