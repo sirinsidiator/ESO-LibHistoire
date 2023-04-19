@@ -528,10 +528,10 @@ function GuildHistoryCacheCategory:RescanEvents()
 
     local guildId, category = self.guildId, self.category
     local guildName, categoryName = GetGuildName(guildId), GetString("SI_GUILDHISTORYCATEGORY", category)
+    self.rescanEventsTask = internal:CreateAsyncTask()
     logger:Info("Start rescanning events in guild %s (%d) category %s (%d)", guildName, guildId, categoryName, category)
     internal:FireCallbacks(internal.callback.HISTORY_RESCAN_STARTED, guildId, category)
 
-    self.rescanEventsTask = internal:CreateAsyncTask()
     local task = self.rescanEventsTask
     local missingEvents, hasEncounteredInvalidEvent = self:GetMissingEvents(task)
 
