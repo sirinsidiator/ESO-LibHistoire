@@ -101,7 +101,7 @@ function GuildHistoryCacheCategory:GetOffsets()
 end
 
 function GuildHistoryCacheCategory:HasLinked()
-    return not self.unlinkedEvents
+    return not self.unlinkedEvents and not self.storeEventsTask
 end
 
 function GuildHistoryCacheCategory:IsFor(guildId, category)
