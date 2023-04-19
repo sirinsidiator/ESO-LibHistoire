@@ -105,8 +105,7 @@ function internal:Initialize()
 
         self.statusWindow = self.class.GuildHistoryStatusWindow:New(self.historyAdapter, self.statusTooltip, LibHistoire_Settings.statusWindow)
 
-        self:SetupDialogHook("LOG_OUT")
-        self:SetupDialogHook("QUIT")
+        self:InitializeExitHooks()
 
         local count = 0
         for _, events in pairs(LibHistoire_GuildHistory) do

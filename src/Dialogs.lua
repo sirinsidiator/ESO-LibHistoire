@@ -26,14 +26,10 @@ function internal:GetWarningDialog()
     return ESO_Dialogs[DIALOG_ID]
 end
 
-function internal:ShowQuitWarningDialog(buttonText, callback, processing)
+function internal:ShowQuitWarningDialog(message, buttonText, callback)
     local dialog = self:GetWarningDialog()
     dialog.title.text = "Warning"
-    if processing then
-        dialog.mainText.text = "LibHistoire is currently processing history! If you close the game now, you may corrupt your save data."
-    else
-        dialog.mainText.text = "LibHistoire has not linked your history yet! If you close the game now, you will lose any progress and have to start over the next time."
-    end
+    dialog.mainText.text = message
 
     local primaryButton = dialog.buttons[1]
     primaryButton.text = "Open History"
@@ -68,11 +64,25 @@ function internal:SetupDialogHook(name)
     local originalCallback = primaryButton.callback
     primaryButton.callback = function(dialog)
         if self.historyCache:IsProcessing() then
-            self:ShowQuitWarningDialog(primaryButton.text, originalCallback, true)
+            self:ShowQuitWarningDialog("LibHistoire is currently processing history! If you close the game now, you may corrupt your save data.", primaryButton.text, originalCallback)
         elseif not self.historyCache:HasLinkedAllCaches() then
-            self:ShowQuitWarningDialog(primaryButton.text, originalCallback)
+            self:ShowQuitWarningDialog("LibHistoire has not linked your history yet! If you close the game now, you will lose any progress and have to start over the next time.", primaryButton.text, originalCallback)
         else
             originalCallback(dialog)
+        end
+    end
+end
+
+function internal:InitializeExitHooks()
+    self:SetupDialogHook("LOG_OUT")
+    self:SetupDialogHook("QUIT")
+    local originalReloadUI = ReloadUI
+    function ReloadUI(...)
+        internal.logger:Debug("ReloadUI called")
+        if self.historyCache:IsProcessing() then
+            self:ShowQuitWarningDialog("LibHistoire is currently processing history! If you reload the UI now, you may corrupt your save data.", "Reload UI", originalReloadUI)
+        else
+            return originalReloadUI(...)
         end
     end
 end
