@@ -105,7 +105,6 @@ local PARAMS_FORMAT = {
         [GUILD_EVENT_BANKGOLD_KIOSK_BID_REFUND] = PARAMS_FORMAT_NAME_INTEGER,       -- (eventType, kioskName, goldQuantity)
         [GUILD_EVENT_BANKGOLD_KIOSK_BID] = PARAMS_FORMAT_NAME_INTEGER_NAME,         -- (eventType, displayName, goldQuantity, kioskName)
         [GUILD_EVENT_GUILD_KIOSK_PURCHASED] = PARAMS_FORMAT_NAME_INTEGER_NAME,      -- (eventType, displayName, goldQuantity, kioskName)
-        [GUILD_EVENT_BANKGOLD_GUILD_STORE_TAX] = PARAMS_FORMAT_NO_DATA,             -- (eventType)
         [GUILD_EVENT_MOTD_EDITED] = PARAMS_FORMAT_ONE_NAME,                         -- (eventType, displayName)
         [GUILD_EVENT_ABOUT_US_EDITED] = PARAMS_FORMAT_ONE_NAME,                     -- (eventType, displayName)
         [GUILD_EVENT_KEEP_CLAIMED] = PARAMS_FORMAT_THREE_NAMES,                     -- (eventType, displayName, keepName, campaignName)
