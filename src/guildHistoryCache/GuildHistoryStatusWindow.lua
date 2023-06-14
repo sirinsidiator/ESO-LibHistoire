@@ -181,16 +181,21 @@ local function SetProgress(rowControl, entry)
     local cache = entry.cache
     local statusBarControl = rowControl:GetNamedChild("StatusBar")
 
-    local hasLinked = cache:HasLinked()
-    if hasLinked and cache:IsProcessing() then
+    local isProcessing = cache:IsProcessing()
+    if isProcessing then
         statusBarControl:SetValue(1)
-        gradient = ZO_SKILL_XP_BAR_GRADIENT_COLORS
     else
         local progress = cache:GetProgress()
         statusBarControl:SetValue(progress)
-        gradient = hasLinked and ZO_XP_BAR_GRADIENT_COLORS or ZO_CP_BAR_GRADIENT_COLORS[CHAMPION_DISCIPLINE_TYPE_CONDITIONING]
     end
 
+    if isProcessing then
+        gradient = ZO_SKILL_XP_BAR_GRADIENT_COLORS
+    elseif cache:HasLinked() then
+        gradient = ZO_XP_BAR_GRADIENT_COLORS
+    else
+        gradient = ZO_CP_BAR_GRADIENT_COLORS[CHAMPION_DISCIPLINE_TYPE_CONDITIONING]
+    end
     ZO_StatusBar_SetGradientColor(statusBarControl, gradient)
 end
 
