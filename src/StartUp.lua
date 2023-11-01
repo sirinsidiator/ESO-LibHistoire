@@ -114,6 +114,40 @@ function internal:Initialize()
         logger:Info("Initialization complete - holding %d guild history events", count)
         self:FireCallbacks(self.callback.INITIALIZED)
     end)
+
+    local URL_LINK_TYPE = "histy_url"
+    local DISABLE_LINK_TYPE = "histy_disable"
+    local function HandleLinkClick(link, button, text, linkStyle, linkType)
+        if button ~= MOUSE_BUTTON_INDEX_LEFT then return end
+        if linkType == URL_LINK_TYPE then
+            RequestOpenUnsafeURL(text)
+            return true
+        elseif linkType == DISABLE_LINK_TYPE then
+            if not LibHistoire_Settings.disableU41Warning then
+                LibHistoire_Settings.disableU41Warning = true
+                CHAT_ROUTER:AddSystemMessage("[LibHistoire] Warning disabled.")
+            end
+            return true
+        end
+    end
+    LINK_HANDLER:RegisterCallback(LINK_HANDLER.LINK_CLICKED_EVENT, HandleLinkClick)
+    LINK_HANDLER:RegisterCallback(LINK_HANDLER.LINK_MOUSE_UP_EVENT, HandleLinkClick)
+
+    local eventHandle
+    eventHandle = RegisterForEvent(EVENT_PLAYER_ACTIVATED, function()
+        UnregisterForEvent(eventHandle, EVENT_PLAYER_ACTIVATED)
+        zo_callLater(function()
+            local urlLink = ZO_LinkHandler_CreateLinkWithoutBrackets("https://sir.insidi.at/or/2023/11/01/new-guild-history-and-libhistoire/", nil, URL_LINK_TYPE)
+            if GetAPIVersion() < 101041 then
+                if not LibHistoire_Settings.disableU41Warning then
+                    local disableLink = ZO_LinkHandler_CreateLink("Click here to disable this warning", nil, DISABLE_LINK_TYPE)
+                    CHAT_ROUTER:AddSystemMessage("|cff6a00[Warning] Your LibHistoire data will be deleted when Update 41 is released! Read more about it here: |c0094ff" .. urlLink .. "|r " .. disableLink)
+                end
+            else
+                CHAT_ROUTER:AddSystemMessage("|cff6a00[Warning] This version of LibHistoire is not compatible with the current game version. Make sure to update to the latest version, but be aware that all cached data will be deleted! Read more about it here: |c0094ff" .. urlLink)
+            end
+        end, 1000)
+    end)
 end
 
 function internal:ConvertNumberToId64(value)
