@@ -32,6 +32,10 @@ end
 
 -- Creates a listener object which can be configured before it starts listening to history events. See guildHistory/GuildHistoryEventListener.lua for details
 function lib:CreateGuildHistoryListener(guildId, category)
+    if GetAPIVersion() >= 101041 then
+        return internal.class.GuildHistoryNoopListener:New(guildId, category)
+    end
+
     local listener = nil
     if internal.historyCache:HasCategoryCache(guildId, category) then
         local categoryCache = internal.historyCache:GetOrCreateCategoryCache(guildId, category)

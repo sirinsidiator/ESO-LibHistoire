@@ -98,6 +98,10 @@ function internal:Initialize()
         self:InitializeSaveData()
         logger:Debug("Saved Variables loaded")
 
+        if GetAPIVersion() >= 101041 then
+            logger:Warn("Stop initialization due to incompatible game version")
+            return
+        end
         self.nameCache = self.class.DisplayNameCache:New(LibHistoire_NameDictionary)
         self.historyAdapter = self.class.GuildHistoryAdapter:New()
         self.statusTooltip = self.class.GuildHistoryStatusTooltip:New()

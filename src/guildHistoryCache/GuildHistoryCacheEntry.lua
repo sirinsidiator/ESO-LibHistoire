@@ -2,6 +2,8 @@
 -- Distributed under The Artistic License 2.0 (see LICENSE)     --
 ------------------------------------------------------------------
 
+if GetAPIVersion() >= 101041 then return end
+
 local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger

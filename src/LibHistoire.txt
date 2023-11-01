@@ -30,4 +30,5 @@ guildHistoryCache/GuildHistoryCacheGuild.lua
 guildHistoryCache/GuildHistoryRequestManager.lua
 guildHistoryCache/GuildHistoryCache.lua
 guildHistoryCache/GuildHistoryEventListener.lua
+guildHistoryCache/GuildHistoryNoopListener.lua
 api.lua
