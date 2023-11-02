@@ -30,14 +30,6 @@ function GuildHistoryNoopListener:InternalResetEventCount()
     -- noop
 end
 
-function internal:IterateStoredEvents(listener, onCompleted, initializeLastEventId)
-    -- noop
-end
-
-function internal:EnsureIterationIsComplete(listener, onCompleted)
-    -- noop
-end
-
 function GuildHistoryNoopListener:GetKey()
     return self.key
 end
