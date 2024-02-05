@@ -1,0 +1,109 @@
+<GuiXml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sir.insidi.at/or/schema/esoui.xsd">
+    <Controls>
+        <Texture name="LibHistoireLinkedIconTemplate" textureFile="LibHistoire/image/unlinked_down.dds" hidden="true" mouseEnabled="true" virtual="true">
+            <Anchor point="BOTTOMRIGHT" offsetX="-40" offsetY="10" />
+            <Dimensions x="32" y="32" />
+        </Texture>
+
+        <Button name="LibHistoireGuildHistoryStatusWindowToggleButtonTemplate" mouseOverBlendMode="ADD" inherits="ZO_ButtonBehaviorClickSound" virtual="true">
+            <Dimensions x="32" y="32" />
+            <Anchor point="BOTTOMLEFT" relativeTo="ZO_GuildHistory" relativePoint="BOTTOMLEFT" offsetX="5" offsetY="10" />
+            <Textures normal="LibHistoire/image/histy_up.dds" pressed="LibHistoire/image/histy_down.dds" mouseOver="LibHistoire/image/histy_over.dds" />
+        </Button>
+
+        <Control name="LibHistoireGuildHistoryStatusGuildRowTemplate" mouseEnabled="true" tier="MEDIUM" layer="CONTROLS" virtual="true">
+            <Dimensions y="52" />
+
+            <Controls>
+                <Texture name="$(parent)Bg" textureFile="EsoUI/Art/Miscellaneous/listItem_backdrop.dds">
+                    <AnchorFill />
+                    <TextureCoords left="0" right="1" top="0" bottom=".8125" />
+                </Texture>
+
+                <Texture name="$(parent)Highlight" textureFile="EsoUI/Art/Miscellaneous/listItem_highlight.dds" alpha="0">
+                    <AnchorFill />
+                    <TextureCoords left="0" right="1" top="0" bottom=".625" />
+                </Texture>
+
+                <Label name="$(parent)Label" font="ZoFontGameShadow" wrapMode="ELLIPSIS" color="INTERFACE_COLOR_TYPE_TEXT_COLORS:INTERFACE_TEXT_COLOR_SELECTED">
+                    <Dimensions y="24" />
+                    <Anchor point="LEFT" offsetX="12" offsetY="-12" />
+                    <Anchor point="RIGHT" offsetY="-12" />
+                </Label>
+
+                <StatusBar name="$(parent)StatusBar" inherits="ZO_ArrowStatusBarWithBG">
+                    <Anchor point="TOPLEFT" relativeTo="$(parent)Label" relativePoint="BOTTOMLEFT" />
+                    <Anchor point="TOPRIGHT" relativeTo="$(parent)Label" relativePoint="BOTTOMRIGHT" />
+                </StatusBar>
+            </Controls>
+        </Control>
+
+        <Control name="LibHistoireGuildHistoryStatusCategoryRowTemplate" inherits="LibHistoireGuildHistoryStatusGuildRowTemplate" virtual="true">
+            <Controls>
+                <Button name="$(parent)RescanButton" mouseOverBlendMode="ADD" inherits="ZO_ButtonBehaviorClickSound">
+                    <Dimensions x="32" y="32" />
+                    <Anchor point="TOPRIGHT" offsetY="-5" />
+                    <Textures normal="/esoui/art/help/help_tabicon_feedback_up.dds" pressed="/esoui/art/help/help_tabicon_feedback_down.dds" mouseOver="/esoui/art/help/help_tabicon_feedback_over.dds" />
+                </Button>
+
+                <Button name="$(parent)ForceLinkButton" mouseOverBlendMode="ADD" inherits="ZO_ButtonBehaviorClickSound">
+                    <Dimensions x="32" y="32" />
+                    <Anchor point="TOPRIGHT" offsetY="-5" />
+                    <Textures normal="LibHistoire/image/linked_up.dds" pressed="LibHistoire/image/linked_down.dds" mouseOver="LibHistoire/image/linked_over.dds" />
+                </Button>
+            </Controls>
+        </Control>
+
+        <TopLevelControl name="LibHistoireGuildHistoryStatusWindow" hidden="true" mouseEnabled="true" clampedToScreen="true">
+            <Dimensions x="540" y="415" />
+            <Controls>
+                <Label name="$(parent)Label" font="ZoFontWinH3" wrapMode="ELLIPSIS">
+                    <Anchor point="TOPLEFT" offsetX="25" offsetY="10" />
+                </Label>
+
+                <Button name="$(parent)Options" mouseOverBlendMode="ADD" inherits="ZO_ButtonBehaviorClickSound">
+                    <Dimensions x="32" y="32" />
+                    <Anchor point="TOPRIGHT" offsetX="-12" offsetY="7" />
+                    <Textures normal="EsoUI/Art/ChatWindow/chat_options_up.dds" pressed="EsoUI/Art/ChatWindow/chat_options_down.dds" mouseOver="EsoUI/Art/ChatWindow/chat_options_over.dds" />
+                </Button>
+
+                <Control name="$(parent)Status">
+                    <Dimensions y="100" />
+                    <Anchor point="BOTTOMLEFT" />
+                    <Anchor point="BOTTOMRIGHT" />
+                    <Controls>
+                        <Texture name="$(parent)Icon" textureFile="LibHistoire/image/unlinked_down.dds" mouseEnabled="true">
+                            <Anchor point="CENTER" offsetY="-10" />
+                            <Dimensions x="64" y="64" />
+                        </Texture>
+                    </Controls>
+                </Control>
+
+                <Control name="$(parent)GuildList" inherits="ZO_ScrollList">
+                    <Dimensions x="250" />
+                    <Anchor point="TOPLEFT" relativeTo="$(parent)Label" relativePoint="BOTTOMLEFT" offsetY="5" />
+                    <Anchor point="BOTTOMLEFT" relativeTo="$(parent)Status" relativePoint="TOPLEFT" offsetY="-10" constrains="Y" />
+                </Control>
+
+                <Control name="$(parent)CategoryList" inherits="ZO_ScrollList">
+                    <Dimensions x="250" />
+                    <Anchor point="TOPLEFT" relativeTo="$(parent)GuildList" relativePoint="TOPRIGHT" offsetX="5" />
+                    <Anchor point="BOTTOMLEFT" relativeTo="$(parent)GuildList" relativePoint="BOTTOMRIGHT" constrains="Y" />
+                </Control>
+
+                <Control name="$(parent)SelectionWidget">
+                    <Anchor point="TOPLEFT" relativeTo="$(parent)GuildList" relativePoint="TOPRIGHT" offsetX="-2" offsetY="12" />
+                </Control>
+
+                <Backdrop name="$(parent)Bg" integralWrapping="true">
+                    <Anchor point="TOPLEFT" offsetX="-4" offsetY="-4" />
+                    <Anchor point="BOTTOMRIGHT" offsetX="4" offsetY="4" />
+
+                    <Edge file="EsoUI/Art/ChatWindow/chat_BG_edge.dds" edgeFileWidth="256" edgeFileHeight="256" edgeSize="32" />
+                    <Center file="EsoUI/Art/ChatWindow/chat_BG_center.dds" />
+                    <Insets left="32" top="32" right="-32" bottom="-32" />
+                </Backdrop>
+            </Controls>
+        </TopLevelControl>
+    </Controls>
+</GuiXml>
