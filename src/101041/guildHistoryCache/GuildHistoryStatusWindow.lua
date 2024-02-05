@@ -48,13 +48,16 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
         InitializeTooltip(InformationTooltip, icon, RIGHT, 0, 0)
         if self.hasLinkedEverything then
             SetTooltipText(InformationTooltip, "History has been linked for all guilds and categories")
-            SetTooltipText(InformationTooltip, "New events will be sent on the server's sole discretion and may arrive at any time, or sometimes even never")
-            SetTooltipText(InformationTooltip, "If they do not show up after several hours, you may want to restart your game")
+            SetTooltipText(InformationTooltip,
+                "New events will be sent on the server's sole discretion and may arrive at any time, or sometimes even never")
+            SetTooltipText(InformationTooltip,
+                "If they do not show up after several hours, you may want to restart your game")
         else
             SetTooltipText(InformationTooltip, "The history has not been linked to the stored events yet.")
             SetTooltipText(InformationTooltip, "Automatic requests are on cooldown and may take a while")
             SetTooltipText(InformationTooltip, "You can manually send requests to receive missing history faster")
-            SetTooltipText(InformationTooltip, "You can also force history to link, but it will create a hole in the stored records")
+            SetTooltipText(InformationTooltip,
+                "You can also force history to link, but it will create a hole in the stored records")
         end
     end)
     self.statusIcon:SetHandler("OnMouseExit", function()
@@ -76,7 +79,8 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
     internal:RegisterCallback(internal.callback.HISTORY_RESCAN_STARTED, DoUpdate)
     internal:RegisterCallback(internal.callback.HISTORY_RESCAN_ENDED, DoUpdate)
     internal:RegisterCallback(internal.callback.SELECTED_GUILD_CHANGED, function(guildId) self:SetGuildId(guildId) end)
-    internal:RegisterCallback(internal.callback.SELECTED_CATEGORY_CHANGED, function(category) self:SetCategory(category) end)
+    internal:RegisterCallback(internal.callback.SELECTED_CATEGORY_CHANGED,
+        function(category) self:SetCategory(category) end)
     guildHistoryScene:RegisterCallback("StateChange", DoUpdate)
 
     self:LoadPosition()
@@ -87,7 +91,7 @@ function GuildHistoryStatusWindow:InitializeButtons()
     optionsButton:SetHandler("OnClicked", function(control)
         ClearMenu()
 
-        if(self:IsLocked()) then
+        if (self:IsLocked()) then
             AddCustomMenuItem("Unlock Window", function() self:Unlock() end)
         else
             AddCustomMenuItem("Lock Window", function() self:Lock() end)
@@ -100,9 +104,10 @@ function GuildHistoryStatusWindow:InitializeButtons()
     end)
     self.optionsButton = optionsButton
 
-    local toggleWindowButton = WINDOW_MANAGER:CreateControlFromVirtual("LibHistoireGuildHistoryStatusWindowToggleButton", ZO_GuildHistory, "LibHistoireGuildHistoryStatusWindowToggleButtonTemplate")
+    local toggleWindowButton = WINDOW_MANAGER:CreateControlFromVirtual("LibHistoireGuildHistoryStatusWindowToggleButton",
+        ZO_GuildHistory, "LibHistoireGuildHistoryStatusWindowToggleButtonTemplate")
     toggleWindowButton:SetHandler("OnClicked", function(control)
-        if(self:IsEnabled()) then
+        if (self:IsEnabled()) then
             self:Disable()
         else
             self:Enable()
@@ -118,7 +123,7 @@ function GuildHistoryStatusWindow:InitializeButtons()
     self.toggleWindowButton = toggleWindowButton
 
     -- properly initialize the button state
-    if(self:IsEnabled()) then
+    if (self:IsEnabled()) then
         self:Enable()
     else
         self:Disable()
@@ -161,7 +166,7 @@ end
 
 local function InitializeClickHandler(rowControl, OnSelect)
     rowControl:SetHandler("OnMouseUp", function(control, button, isInside, ctrl, alt, shift, command)
-        if(isInside and button == MOUSE_BUTTON_INDEX_LEFT) then
+        if (isInside and button == MOUSE_BUTTON_INDEX_LEFT) then
             local entry = ZO_ScrollList_GetData(rowControl)
             OnSelect(entry)
             PlaySound("Click")
@@ -249,7 +254,8 @@ function GuildHistoryStatusWindow:InitializeGuildList(listControl)
         InitializeClickHandler(rowControl, OnSelectRow)
     end)
 
-    self.emptyGuildListRow = CreateControlFromVirtual("$(parent)EmptyRow", listControl, "ZO_SortFilterListEmptyRow_Keyboard")
+    self.emptyGuildListRow = CreateControlFromVirtual("$(parent)EmptyRow", listControl,
+        "ZO_SortFilterListEmptyRow_Keyboard")
     GetControl(self.emptyGuildListRow, "Message"):SetText("No Guilds")
 end
 
@@ -263,7 +269,7 @@ function GuildHistoryStatusWindow:InitializeCategoryList(listControl)
 
         local forceLinkButton = rowControl:GetNamedChild("ForceLinkButton")
         forceLinkButton:SetHandler("OnMouseUp", function(control, button, isInside, ctrl, alt, shift, command)
-            if(isInside and button == MOUSE_BUTTON_INDEX_LEFT) then
+            if (isInside and button == MOUSE_BUTTON_INDEX_LEFT) then
                 internal:ShowForceLinkWarningDialog(function()
                     local entry = ZO_ScrollList_GetData(rowControl)
                     if entry.cache:LinkHistory() then
@@ -283,7 +289,7 @@ function GuildHistoryStatusWindow:InitializeCategoryList(listControl)
 
         local rescanButton = rowControl:GetNamedChild("RescanButton")
         rescanButton:SetHandler("OnMouseUp", function(control, button, isInside, ctrl, alt, shift, command)
-            if(isInside and button == MOUSE_BUTTON_INDEX_LEFT) then
+            if (isInside and button == MOUSE_BUTTON_INDEX_LEFT) then
                 local entry = ZO_ScrollList_GetData(rowControl)
                 if entry.cache:RescanEvents() then
                     rowControl.rescanButton:SetEnabled(false)
@@ -330,7 +336,7 @@ function GuildHistoryStatusWindow:CreateDataEntry(label, cache, value, selected)
 end
 
 function GuildHistoryStatusWindow:Update()
-    if(self:IsShowing()) then
+    if (self:IsShowing()) then
         local hasLinkedEverything = true
 
         local guildListControl = self.guildListControl

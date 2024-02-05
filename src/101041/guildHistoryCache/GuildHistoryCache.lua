@@ -29,7 +29,8 @@ function GuildHistoryCache:Initialize(nameCache, statusTooltip, saveData)
     self.saveData = saveData
     self.cache = {}
 
-    self.linkedIcon = WINDOW_MANAGER:CreateControlFromVirtual("LibHistoireLinkedIcon", ZO_GuildHistory, "LibHistoireLinkedIconTemplate")
+    self.linkedIcon = WINDOW_MANAGER:CreateControlFromVirtual("LibHistoireLinkedIcon", ZO_GuildHistory,
+        "LibHistoireLinkedIconTemplate")
     local icon = self.linkedIcon
 
     icon:SetHandler("OnMouseEnter", function()
@@ -42,7 +43,7 @@ function GuildHistoryCache:Initialize(nameCache, statusTooltip, saveData)
         statusTooltip:Hide()
     end)
 
-    SecurePostHook(GUILD_HISTORY, "SetGuildId",function(manager, guildId)
+    SecurePostHook(GUILD_HISTORY, "SetGuildId", function(manager, guildId)
         self:UpdateLinkedIcon()
         if statusTooltip:GetTarget() == icon then
             local cache = self:GetSelectedCache()
@@ -90,7 +91,7 @@ function GuildHistoryCache:HasLinkedAllCaches()
     for i = 1, GetNumGuilds() do
         local guildId = GetGuildId(i)
         local cache = self:GetOrCreateGuildCache(guildId)
-        if not cache:HasLinked() then 
+        if not cache:HasLinked() then
             return false
         end
     end
@@ -101,7 +102,7 @@ function GuildHistoryCache:IsProcessing()
     for i = 1, GetNumGuilds() do
         local guildId = GetGuildId(i)
         local cache = self:GetOrCreateGuildCache(guildId)
-        if cache:IsProcessing() then 
+        if cache:IsProcessing() then
             return true
         end
     end
