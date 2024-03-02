@@ -6,29 +6,32 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
-local GuildHistoryEventListener = ZO_Object:Subclass()
+local GuildHistoryEventListener = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryEventListener = GuildHistoryEventListener
 
 local function ShouldHandleEvent(listener, event)
     if listener.afterEventId and event:GetEventId() <= listener.afterEventId then
+        logger:Verbose("event before afterEventId", event:GetEventId(), listener.afterEventId)
         return false
-    elseif listener.afterEventTime and event:GetEventTime() <= listener.afterEventTime then
+    elseif listener.afterEventTime and event:GetEventTimestampS() <= listener.afterEventTime then
+        logger:Verbose("event before afterEventTime", event:GetEventTimestampS(), listener.afterEventTime)
         return false
     end
     return true
 end
 
 local function HasIterationCompleted(listener, event)
-    if listener.beforeEventId and event:GetEventId() > listener.beforeEventId then
+    if listener.beforeEventId and event:GetEventId() >= listener.beforeEventId then
+        logger:Verbose("beforeEventId reached", event:GetEventId(), listener.beforeEventId)
         return true
-    elseif listener.beforeEventTime and event:GetEventTime() > listener.beforeEventTime then
+    elseif listener.beforeEventTime and event:GetEventTimestampS() >= listener.beforeEventTime then
+        logger:Verbose("beforeEventTime reached", event:GetEventTimestampS(), listener.beforeEventTime)
         return true
     end
     return false
 end
 
-local function HandleEvent(listener, event, index)
-    listener:InternalCountEvent(index)
+local function HandleEvent(listener, event)
     if not ShouldHandleEvent(listener, event) then return end
     if HasIterationCompleted(listener, event) then
         listener:Stop()
@@ -37,25 +40,18 @@ local function HandleEvent(listener, event, index)
     end
 
     local eventId = event:GetEventId()
-    if listener.missedEventCallback and eventId < listener.lastEventId then
-        listener.missedEventCallback(event:Unpack())
-    elseif listener.nextEventCallback and eventId > listener.lastEventId then
-        listener.nextEventCallback(event:Unpack())
-        listener.lastEventId = eventId
+    if listener.missedEventCallback and eventId < listener.currentEventId then
+        listener.missedEventCallback(event)
+    elseif listener.nextEventCallback and eventId > listener.currentEventId then
+        listener.nextEventCallback(event)
+        listener.currentEventId = eventId
     end
 end
 
-function GuildHistoryEventListener:New(...)
-    local object = ZO_Object.New(self)
-    object:Initialize(...)
-    return object
-end
-
-function GuildHistoryEventListener:Initialize(categoryCache)
+function GuildHistoryEventListener:Initialize(categoryCache, addonName)
     self.categoryCache = categoryCache
-    self.task = internal:CreateAsyncTask()
+    self.addonName = addonName
     self.running = false
-    self.lastEventId = 0
     self.afterEventId = nil
     self.afterEventTime = nil
     self.beforeEventId = nil
@@ -65,65 +61,9 @@ function GuildHistoryEventListener:Initialize(categoryCache)
     self.iterationCompletedCallback = nil
     self.stopOnLastEvent = false
 
-    self.currentIndex = 0
-    self.performanceTracker = internal.class.PerformanceTracker:New()
-
-    self.nextEventProcessor = function(guildId, category, event, index)
+    self.nextEventProcessor = function(guildId, category, event)
         if not categoryCache:IsFor(guildId, category) then return end
-        HandleEvent(self, event, index)
-    end
-end
-
-function GuildHistoryEventListener:InternalCountEvent(index)
-    self.currentIndex = index
-    self.performanceTracker:Increment()
-end
-
-function GuildHistoryEventListener:InternalResetEventCount()
-    self.currentIndex = 0
-    self.performanceTracker:Reset()
-end
-
-function internal:IterateStoredEvents(listener, onCompleted, initializeLastEventId)
-    local startIndex, endIndex
-    if listener.afterEventId then
-        startIndex = listener.categoryCache:FindIndexForEventId(listener.afterEventId)
-    elseif listener.afterEventTime then
-        startIndex = listener.categoryCache:FindClosestIndexForEventTime(listener.afterEventTime)
-    end
-
-    if listener.beforeEventId then
-        endIndex = listener.categoryCache:FindIndexForEventId(listener.beforeEventId) + 1
-    elseif listener.beforeEventTime then
-        endIndex = listener.categoryCache:FindClosestIndexForEventTime(listener.beforeEventTime + 1)
-    end
-    if endIndex ~= listener.categoryCache:GetNumEvents() then
-        listener.endIndex = endIndex
-    end
-
-    listener.currentIndex = (startIndex or 1) - 1
-
-    if initializeLastEventId then
-        local startEvent = listener.categoryCache:GetEvent(startIndex or 0)
-        listener.lastEventId = startEvent and startEvent:GetEventId() or 0
-    end
-
-    listener.task:For(listener.categoryCache:GetIterator(startIndex)):Do(function(i, event)
-        HandleEvent(listener, event, i)
-    end):Then(function()
-        internal:EnsureIterationIsComplete(listener, onCompleted)
-    end)
-end
-
-function internal:EnsureIterationIsComplete(listener, onCompleted)
-    local categoryCache = listener.categoryCache
-    local lastStoredEntry = categoryCache:GetNewestEvent()
-    if listener.lastEventId == 0 or not lastStoredEntry or listener.lastEventId == lastStoredEntry:GetEventId() then
-        logger:Verbose("iterated all stored events - register for callback")
-        onCompleted(listener)
-    else
-        logger:Verbose("has not reached the end yet - go for another round")
-        internal:IterateStoredEvents(listener, onCompleted)
+        HandleEvent(self, event)
     end
 end
 
@@ -149,18 +89,14 @@ end
 -- number - the processing speed in events per second (rolling average over 5 seconds)
 -- number - the estimated time in seconds it takes to process the remaining events or -1 if it cannot be estimated
 function GuildHistoryEventListener:GetPendingEventMetrics()
-    if not self.running then return 0, -1, -1 end
-
-    local endIndex = self.endIndex or (self.categoryCache:GetNumEvents() + self.categoryCache:GetNumPendingEvents())
-    local count = endIndex - self.currentIndex
-    local speed, timeLeft = self.performanceTracker:GetProcessingSpeedAndEstimatedTimeLeft(count)
-    return count, speed, timeLeft
+    if not self.running or not self.request then return 0, -1, -1 end
+    return self.request:GetPendingEventMetrics()
 end
 
--- the last known eventId (id64). The nextEventCallback will only return events which have a higher eventId
+-- the last known eventId (id53). The nextEventCallback will only return events which have a higher eventId
 function GuildHistoryEventListener:SetAfterEventId(eventId)
     if self.running then return false end
-    self.afterEventId = internal:ConvertId64ToNumber(eventId)
+    self.afterEventId = eventId
     return true
 end
 
@@ -171,10 +107,10 @@ function GuildHistoryEventListener:SetAfterEventTime(eventTime)
     return true
 end
 
--- the highest desired eventId (id64). The nextEventCallback will only return events which have a lower eventId
+-- the highest desired eventId (id53). The nextEventCallback will only return events which have a lower eventId
 function GuildHistoryEventListener:SetBeforeEventId(eventId)
     if self.running then return false end
-    self.beforeEventId = internal:ConvertId64ToNumber(eventId)
+    self.beforeEventId = eventId
     return true
 end
 
@@ -195,11 +131,7 @@ function GuildHistoryEventListener:SetTimeFrame(startTime, endTime)
 end
 
 -- set a callback which is passed stored and received events in the correct historic order (sorted by eventId)
--- the callback will be handed the following parameters:
--- GuildEventType eventType -- the eventType
--- Id64 eventId -- the unique eventId
--- integer eventTime -- the timestamp for the event
--- variant param1 - 6 -- same as returned by GetGuildEventInfo
+-- the callback will be handed an event object (see guildhistory_data.lua) which must not be stored or modified
 function GuildHistoryEventListener:SetNextEventCallback(callback)
     if self.running then return false end
     self.nextEventCallback = callback
@@ -242,21 +174,26 @@ function GuildHistoryEventListener:Start()
     if self.running then return false end
 
     if self.nextEventCallback or self.missedEventCallback then
-        internal:IterateStoredEvents(self, function()
+        self.request = internal.class.GuildHistoryProcessingRequest:New(self, HandleEvent, function()
+            self.categoryCache:RemoveProcessingRequest(self.request)
+            self.request = nil
             if self.stopOnLastEvent then
                 logger:Verbose("stopOnLastEvent")
                 self:Stop()
                 if self.iterationCompletedCallback then self.iterationCompletedCallback() end
             else
                 logger:Verbose("RegisterForFutureEvents")
-                internal:RegisterCallback(internal.callback.EVENT_STORED, self.nextEventProcessor)
+                internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.nextEventProcessor)
+                internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.nextEventProcessor)
             end
-        end, true)
+        end)
+        self.categoryCache:QueueProcessingRequest(self.request)
     else
         logger:Warn("Tried to start a listener without setting an event callback first")
         return false
     end
 
+    self.categoryCache:RegisterListener(self)
     self.running = true
     return true
 end
@@ -265,13 +202,18 @@ end
 function GuildHistoryEventListener:Stop()
     if not self.running then return false end
 
-    if self.nextEventCallback or self.missedEventCallback then
-        self.task:Cancel()
-        internal:UnregisterCallback(internal.callback.EVENT_STORED, self.nextEventProcessor)
+    if self.request then
+        self.categoryCache:RemoveProcessingRequest(self.request)
+        self.request = nil
     end
 
-    self:InternalResetEventCount()
+    if self.nextEventCallback or self.missedEventCallback then
+        internal:UnregisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.nextEventProcessor)
+        internal:UnregisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.nextEventProcessor)
+    end
 
+    self.categoryCache:UnregisterListener(self)
+    self.currentEventId = nil
     self.running = false
     return true
 end

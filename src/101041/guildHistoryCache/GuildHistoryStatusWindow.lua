@@ -18,14 +18,8 @@ local ROW_HEIGHT = 52
 
 local guildHistoryScene = SCENE_MANAGER:GetScene("guildHistory")
 
-local GuildHistoryStatusWindow = ZO_Object:Subclass()
+local GuildHistoryStatusWindow = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryStatusWindow = GuildHistoryStatusWindow
-
-function GuildHistoryStatusWindow:New(...)
-    local obj = ZO_Object.New(self)
-    obj:Initialize(...)
-    return obj
-end
 
 function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, saveData)
     self.historyAdapter = historyAdapter
@@ -33,7 +27,7 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
     self.saveData = saveData
 
     self.guildId = GetGuildId(1)
-    self.category = GUILD_HISTORY_GENERAL
+    self.category = GUILD_HISTORY_EVENT_CATEGORY_ROSTER
 
     local control = LibHistoireGuildHistoryStatusWindow
     self.fragment = ZO_SimpleSceneFragment:New(control)
@@ -66,24 +60,34 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
     control:SetHandler("OnMoveStop", function() self:SavePosition() end)
     self.control = control
 
-    self:InitializeButtons()
     self:InitializeGuildList(self.guildListControl)
     self:InitializeCategoryList(self.categoryListControl)
+    self:InitializeButtons()
 
-    local function DoUpdate()
+    local function DoUpdate() -- TODO defer update and check which controls have to be updated
         self:Update()
     end
-    internal:RegisterCallback(internal.callback.UNLINKED_EVENTS_ADDED, DoUpdate)
-    internal:RegisterCallback(internal.callback.HISTORY_BEGIN_LINKING, DoUpdate)
-    internal:RegisterCallback(internal.callback.HISTORY_LINKED, DoUpdate)
-    internal:RegisterCallback(internal.callback.HISTORY_RESCAN_STARTED, DoUpdate)
-    internal:RegisterCallback(internal.callback.HISTORY_RESCAN_ENDED, DoUpdate)
-    internal:RegisterCallback(internal.callback.SELECTED_GUILD_CHANGED, function(guildId) self:SetGuildId(guildId) end)
-    internal:RegisterCallback(internal.callback.SELECTED_CATEGORY_CHANGED,
-        function(category) self:SetCategory(category) end)
+    internal:RegisterCallback(internal.callback.CATEGORY_DATA_UPDATED, DoUpdate)
+    internal:RegisterCallback(internal.callback.PROCESSING_STARTED, DoUpdate)
+    internal:RegisterCallback(internal.callback.PROCESSING_LINKED_EVENTS_FINISHED, DoUpdate)
+    internal:RegisterCallback(internal.callback.PROCESSING_FINISHED, DoUpdate)
+    internal:RegisterCallback(internal.callback.PROCESSING_STOPPED, DoUpdate)
+    internal:RegisterCallback(internal.callback.SELECTED_CATEGORY_CACHE_CHANGED, function(cache)
+        self:SetGuildId(cache:GetGuildId())
+        self:SetCategory(cache:GetCategory())
+    end)
     guildHistoryScene:RegisterCallback("StateChange", DoUpdate)
 
     self:LoadPosition()
+
+    SLASH_COMMANDS["/testrequest"] = function(daysAgo) -- TODO remove
+        daysAgo = tonumber(daysAgo) or 1
+        local newestTime = GetTimeStamp() - (daysAgo * 24 * 3600)
+        local oldestTime = newestTime - 24 * 3600
+        logger:Info("Send requests for", daysAgo, "days ago")
+        internal.historyCache:GetGuildCache(self.guildId):SendRequests(newestTime, oldestTime)
+        internal.FireCallbacks(internal.callback.CATEGORY_DATA_UPDATED)
+    end
 end
 
 function GuildHistoryStatusWindow:InitializeButtons()
@@ -105,7 +109,7 @@ function GuildHistoryStatusWindow:InitializeButtons()
     self.optionsButton = optionsButton
 
     local toggleWindowButton = WINDOW_MANAGER:CreateControlFromVirtual("LibHistoireGuildHistoryStatusWindowToggleButton",
-        ZO_GuildHistory, "LibHistoireGuildHistoryStatusWindowToggleButtonTemplate")
+        ZO_GuildHistory_Keyboard_TL, "LibHistoireGuildHistoryStatusWindowToggleButtonTemplate")
     toggleWindowButton:SetHandler("OnClicked", function(control)
         if (self:IsEnabled()) then
             self:Disable()
@@ -131,11 +135,8 @@ function GuildHistoryStatusWindow:InitializeButtons()
 end
 
 local function InitializeProgress(rowControl)
-    local statusBarControl = rowControl:GetNamedChild("StatusBar")
-    statusBarControl:GetNamedChild("BGLeft"):SetDrawLevel(2)
-    statusBarControl:GetNamedChild("BGRight"):SetDrawLevel(2)
-    statusBarControl:GetNamedChild("BGMiddle"):SetDrawLevel(2)
-    statusBarControl:SetMinMax(0, 1)
+    local control = rowControl:GetNamedChild("StatusBar")
+    rowControl.statusBar = internal.class.CacheStatusBar:New(control)
 end
 
 local function InitializeHighlight(rowControl)
@@ -182,26 +183,7 @@ local function SetLabel(rowControl, entry)
 end
 
 local function SetProgress(rowControl, entry)
-    local gradient
-    local cache = entry.cache
-    local statusBarControl = rowControl:GetNamedChild("StatusBar")
-
-    local isProcessing = cache:IsProcessing()
-    if isProcessing then
-        statusBarControl:SetValue(1)
-    else
-        local progress = cache:GetProgress()
-        statusBarControl:SetValue(progress)
-    end
-
-    if isProcessing then
-        gradient = ZO_SKILL_XP_BAR_GRADIENT_COLORS
-    elseif cache:HasLinked() then
-        gradient = ZO_XP_BAR_GRADIENT_COLORS
-    else
-        gradient = ZO_CP_BAR_GRADIENT_COLORS[CHAMPION_DISCIPLINE_TYPE_CONDITIONING]
-    end
-    ZO_StatusBar_SetGradientColor(statusBarControl, gradient)
+    entry.cache:UpdateProgressBar(rowControl.statusBar)
 end
 
 local function SetSelected(rowControl, entry)
@@ -259,6 +241,11 @@ function GuildHistoryStatusWindow:InitializeGuildList(listControl)
     GetControl(self.emptyGuildListRow, "Message"):SetText("No Guilds")
 end
 
+local function GetCacheFromRow(rowControl)
+    local entry = ZO_ScrollList_GetData(rowControl)
+    return entry.cache
+end
+
 function GuildHistoryStatusWindow:InitializeCategoryList(listControl)
     local function OnSelectRow(entry)
         self.historyAdapter:SelectCategory(entry.value)
@@ -267,61 +254,71 @@ function GuildHistoryStatusWindow:InitializeCategoryList(listControl)
     self:InitializeBaseList(listControl, "LibHistoireGuildHistoryStatusCategoryRowTemplate", function(rowControl)
         InitializeClickHandler(rowControl, OnSelectRow)
 
-        local forceLinkButton = rowControl:GetNamedChild("ForceLinkButton")
-        forceLinkButton:SetHandler("OnMouseUp", function(control, button, isInside, ctrl, alt, shift, command)
+        local menuButton = rowControl:GetNamedChild("MenuButton")
+        menuButton:SetHandler("OnMouseUp", function(control, button, isInside, ctrl, alt, shift, command)
             if (isInside and button == MOUSE_BUTTON_INDEX_LEFT) then
-                internal:ShowForceLinkWarningDialog(function()
-                    local entry = ZO_ScrollList_GetData(rowControl)
-                    if entry.cache:LinkHistory() then
-                        rowControl.forceLinkButton:SetEnabled(false)
-                    end
+                local cache = GetCacheFromRow(rowControl)
+                ClearMenu()
+                AddCustomMenuItem("Force Link", function()
+                    -- TODO show confirmation dialog and then set the newest event id to first one without a gap
                 end)
-                PlaySound("Click")
+                AddCustomMenuItem("Clear Cache", function()
+                    -- TODO show confirmation dialog and then clear cache
+                    local entry = ZO_ScrollList_GetData(rowControl)
+                    entry.cache:Clear()
+                end)
+                AddCustomSubMenuItem("Watch Mode", {
+                    {
+                        label = "Automatic",
+                        itemType = MENU_ADD_OPTION_CHECKBOX,
+                        callback = function()
+                            cache:SetWatchMode(internal.WATCH_MODE_AUTO)
+                        end,
+                        checked = function()
+                            return cache:GetWatchMode() == internal.WATCH_MODE_AUTO
+                        end
+                    },
+                    {
+                        label = "Force off",
+                        itemType = MENU_ADD_OPTION_CHECKBOX,
+                        callback = function()
+                            cache:SetWatchMode(internal.WATCH_MODE_OFF)
+                        end,
+                        checked = function()
+                            return cache:GetWatchMode() == internal.WATCH_MODE_OFF
+                        end
+                    },
+                    {
+                        label = "Force on",
+                        itemType = MENU_ADD_OPTION_CHECKBOX,
+                        callback = function()
+                            cache:SetWatchMode(internal.WATCH_MODE_ON)
+                        end,
+                        checked = function()
+                            return cache:GetWatchMode() == internal.WATCH_MODE_ON
+                        end
+                    }
+                })
+                ShowMenu(menuButton)
             end
         end, "LibHistoire_Click")
-        forceLinkButton:SetHandler("OnMouseEnter", function()
-            self.statusTooltip:ShowText(forceLinkButton, "Force history to link now")
-        end, "LibHistoire_Tooltip")
-        forceLinkButton:SetHandler("OnMouseExit", function()
-            self.statusTooltip:Hide()
-        end, "LibHistoire_Tooltip")
-        rowControl.forceLinkButton = forceLinkButton
-
-        local rescanButton = rowControl:GetNamedChild("RescanButton")
-        rescanButton:SetHandler("OnMouseUp", function(control, button, isInside, ctrl, alt, shift, command)
-            if (isInside and button == MOUSE_BUTTON_INDEX_LEFT) then
-                local entry = ZO_ScrollList_GetData(rowControl)
-                if entry.cache:RescanEvents() then
-                    rowControl.rescanButton:SetEnabled(false)
-                end
-                PlaySound("Click")
-            end
-        end, "LibHistoire_Click")
-        rescanButton:SetHandler("OnMouseEnter", function()
-            self.statusTooltip:ShowText(rescanButton, "Rescan history for missing events")
-        end, "LibHistoire_Tooltip")
-        rescanButton:SetHandler("OnMouseExit", function()
-            self.statusTooltip:Hide()
-        end, "LibHistoire_Tooltip")
-        rowControl.rescanButton = rescanButton
+        rowControl.menuButton = menuButton
     end, function(rowControl, entry)
         local cache = entry.cache
         local hasLinked = cache:HasLinked()
-        rowControl.forceLinkButton:SetHidden(hasLinked)
-        rowControl.rescanButton:SetHidden(not hasLinked)
-
         local isIdle = not cache:IsProcessing()
-        rowControl.rescanButton:SetEnabled(isIdle)
-        rowControl.forceLinkButton:SetEnabled(isIdle)
+        -- TODO refresh menu state if it is open
     end)
 end
 
 function GuildHistoryStatusWindow:SetGuildId(guildId)
+    if self.guildId == guildId then return end
     self.guildId = guildId
     self:Update()
 end
 
 function GuildHistoryStatusWindow:SetCategory(category)
+    if self.category == category then return end
     self.category = category
     self:Update()
 end
@@ -342,16 +339,16 @@ function GuildHistoryStatusWindow:Update()
         local guildListControl = self.guildListControl
         local guildScrollData = ZO_ScrollList_GetDataList(guildListControl)
         ZO_ScrollList_Clear(guildListControl)
-        local numGuilds = GetNumGuilds()
-        for i = 1, numGuilds do
-            local guildId = GetGuildId(i)
+        local numGuilds = 0
+        internal.historyCache:ForEachActiveGuild(function(guildCache)
+            numGuilds = numGuilds + 1
+            local guildId = guildCache:GetGuildId()
             local label = GetGuildName(guildId)
-            local cache = internal.historyCache:GetOrCreateGuildCache(guildId)
             local selected = (self.guildId == guildId)
-            guildScrollData[#guildScrollData + 1] = self:CreateDataEntry(label, cache, i, selected)
-            if selected then self.selectionWidget:SelectGuild(i) end
-            if not cache:HasLinked() then hasLinkedEverything = false end
-        end
+            guildScrollData[#guildScrollData + 1] = self:CreateDataEntry(label, guildCache, numGuilds, selected)
+            if selected then self.selectionWidget:SelectGuild(numGuilds) end
+            if not guildCache:HasLinked() then hasLinkedEverything = false end
+        end)
         self.emptyGuildListRow:SetHidden(numGuilds > 0)
         ZO_ScrollList_Commit(guildListControl)
 
@@ -359,14 +356,12 @@ function GuildHistoryStatusWindow:Update()
         local categoryScrollData = ZO_ScrollList_GetDataList(categoryListControl)
         ZO_ScrollList_Clear(categoryListControl)
         if numGuilds > 0 then
-            for category = 1, GetNumGuildHistoryCategories() do
-                if GUILD_HISTORY_CATEGORIES[category] then
-                    local label = GetString("SI_GUILDHISTORYCATEGORY", category)
-                    local cache = internal.historyCache:GetOrCreateCategoryCache(self.guildId, category)
-                    local selected = (self.category == category)
-                    categoryScrollData[#categoryScrollData + 1] = self:CreateDataEntry(label, cache, category, selected)
-                    if selected then self.selectionWidget:SelectCategory(#categoryScrollData) end
-                end
+            for eventCategory = GUILD_HISTORY_EVENT_CATEGORY_ITERATION_BEGIN, GUILD_HISTORY_EVENT_CATEGORY_ITERATION_END do
+                local label = GetString("SI_GUILDHISTORYEVENTCATEGORY", eventCategory)
+                local cache = internal.historyCache:GetCategoryCache(self.guildId, eventCategory)
+                local selected = (self.category == eventCategory)
+                categoryScrollData[#categoryScrollData + 1] = self:CreateDataEntry(label, cache, eventCategory, selected)
+                if selected then self.selectionWidget:SelectCategory(#categoryScrollData) end
             end
         end
         ZO_ScrollList_Commit(categoryListControl)

@@ -6,34 +6,43 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
-local GuildHistoryCacheGuild = ZO_Object:Subclass()
+local GuildHistoryCacheGuild = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryCacheGuild = GuildHistoryCacheGuild
 
 local GuildHistoryCacheCategory = internal.class.GuildHistoryCacheCategory
 
-function GuildHistoryCacheGuild:New(...)
-    local object = ZO_Object.New(self)
-    object:Initialize(...)
-    return object
-end
-
-function GuildHistoryCacheGuild:Initialize(nameCache, saveData, guildId)
-    self.nameCache = nameCache
+function GuildHistoryCacheGuild:Initialize(saveData, guildData)
     self.saveData = saveData
-    self.guildId = guildId
+    self.guildData = guildData
+    self.guildId = guildData:GetId()
     self.cache = {}
-end
 
-function GuildHistoryCacheGuild:HasCategoryCache(category)
-    if not self.cache[category] then return false end
-    return true
-end
-
-function GuildHistoryCacheGuild:GetOrCreateCategoryCache(category)
-    if not self.cache[category] then
-        self.cache[category] = GuildHistoryCacheCategory:New(self.nameCache, self.saveData, self.guildId, category)
+    for eventCategory = GUILD_HISTORY_EVENT_CATEGORY_ITERATION_BEGIN, GUILD_HISTORY_EVENT_CATEGORY_ITERATION_END do
+        local categoryData = guildData:GetEventCategoryData(eventCategory)
+        if categoryData then
+            self.cache[eventCategory] = GuildHistoryCacheCategory:New(saveData, categoryData)
+        end
     end
-    return self.cache[category]
+end
+
+function GuildHistoryCacheGuild:GetGuildId()
+    return self.guildId
+end
+
+function GuildHistoryCacheGuild:StartRequests()
+    for _, cache in pairs(self.cache) do
+        cache:RequestMissingData()
+    end
+end
+
+function GuildHistoryCacheGuild:SendRequests(newestTime, oldestTime)
+    for _, cache in pairs(self.cache) do
+        cache:SendRequest(newestTime, oldestTime)
+    end
+end
+
+function GuildHistoryCacheGuild:GetCategoryCache(eventCategory)
+    return self.cache[eventCategory]
 end
 
 function GuildHistoryCacheGuild:GetProgress()
@@ -49,18 +58,38 @@ function GuildHistoryCacheGuild:GetProgress()
     return progress / count
 end
 
-function GuildHistoryCacheGuild:GetNumEvents()
+function GuildHistoryCacheGuild:UpdateProgressBar(bar)
+    local isProcessing = self:IsProcessing()
+    if isProcessing then
+        bar:SetValue(1)
+    else
+        local progress = self:GetProgress()
+        bar:SetValue(progress)
+    end
+
+    local gradient
+    if isProcessing then
+        gradient = ZO_SKILL_XP_BAR_GRADIENT_COLORS
+    elseif self:HasLinked() then
+        gradient = ZO_XP_BAR_GRADIENT_COLORS
+    else
+        gradient = ZO_CP_BAR_GRADIENT_COLORS[CHAMPION_DISCIPLINE_TYPE_CONDITIONING]
+    end
+    bar:SetGradient(gradient)
+end
+
+function GuildHistoryCacheGuild:GetNumLinkedEvents()
     local count = 0
     for _, cache in pairs(self.cache) do
-        count = count + cache:GetNumEvents()
+        count = count + cache:GetNumLinkedEvents()
     end
     return count
 end
 
-function GuildHistoryCacheGuild:GetOldestEvent()
+function GuildHistoryCacheGuild:GetOldestLinkedEvent()
     local oldest
     for _, cache in pairs(self.cache) do
-        local event = cache:GetOldestEvent()
+        local event = cache:GetOldestLinkedEvent()
         if event and (not oldest or event:GetEventId() < oldest:GetEventId()) then
             oldest = event
         end
@@ -68,10 +97,10 @@ function GuildHistoryCacheGuild:GetOldestEvent()
     return oldest
 end
 
-function GuildHistoryCacheGuild:GetNewestEvent()
+function GuildHistoryCacheGuild:GetNewestLinkedEvent()
     local newest
     for _, cache in pairs(self.cache) do
-        local event = cache:GetNewestEvent()
+        local event = cache:GetNewestLinkedEvent()
         if event and (not newest or event:GetEventId() > newest:GetEventId()) then
             newest = event
         end

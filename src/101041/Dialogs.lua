@@ -3,7 +3,7 @@ local internal = LibHistoire.internal
 local DIALOG_ID = "LibHistoire"
 
 function internal:GetWarningDialog()
-    if(not ESO_Dialogs[DIALOG_ID]) then
+    if not ESO_Dialogs[DIALOG_ID] then
         ESO_Dialogs[DIALOG_ID] = {
             canQueue = true,
             title = {
@@ -64,9 +64,13 @@ function internal:SetupDialogHook(name)
     local originalCallback = primaryButton.callback
     primaryButton.callback = function(dialog)
         if self.historyCache:IsProcessing() then
-            self:ShowQuitWarningDialog("LibHistoire is currently processing history! If you close the game now, you may corrupt your save data.", primaryButton.text, originalCallback)
+            self:ShowQuitWarningDialog(
+                "LibHistoire is currently processing history! If you close the game now, you may corrupt your save data.",
+                primaryButton.text, originalCallback)
         elseif not self.historyCache:HasLinkedAllCaches() then
-            self:ShowQuitWarningDialog("LibHistoire has not linked your history yet! If you close the game now, you will lose any progress and have to start over the next time.", primaryButton.text, originalCallback)
+            self:ShowQuitWarningDialog(
+                "LibHistoire has not linked your history yet! If you close the game now, you will lose any progress and have to start over the next time.",
+                primaryButton.text, originalCallback)
         else
             originalCallback(dialog)
         end
@@ -80,7 +84,12 @@ function internal:InitializeExitHooks()
     function ReloadUI(...)
         internal.logger:Debug("ReloadUI called")
         if self.historyCache:IsProcessing() then
-            self:ShowQuitWarningDialog("LibHistoire is currently processing history! If you reload the UI now, you may corrupt your save data.", "Reload UI", originalReloadUI)
+            local params = { ... }
+            self:ShowQuitWarningDialog(
+                "LibHistoire is currently processing history! If you reload the UI now, you may corrupt your save data.",
+                "Reload UI", function()
+                    return originalReloadUI(unpack(params))
+                end)
         else
             return originalReloadUI(...)
         end

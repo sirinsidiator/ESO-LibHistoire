@@ -6,39 +6,48 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
-local GuildHistoryAdapter = ZO_Object:Subclass()
+local GuildHistoryAdapter = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryAdapter = GuildHistoryAdapter
 
-function GuildHistoryAdapter:New(...)
-    local object = ZO_Object.New(self)
-    object:Initialize(...)
-    return object
-end
+function GuildHistoryAdapter:Initialize(history, cache)
+    self.history = history
+    self.cache = cache
+    self.selectedCategoryCache = cache:GetCategoryCache(history.guildId, history.selectedEventCategory)
 
-function GuildHistoryAdapter:Initialize()
-    local guildSelectionProxy = {
-        SetGuildId = function(_, guildId)
-            internal:FireCallbacks(internal.callback.SELECTED_GUILD_CHANGED, guildId)
+    local function RefreshSelectedCategoryCache()
+        local selectedCategoryCache = cache:GetCategoryCache(history.guildId, history.selectedEventCategory)
+        if selectedCategoryCache ~= self.selectedCategoryCache then
+            self.selectedCategoryCache = selectedCategoryCache
+            internal:FireCallbacks(internal.callback.SELECTED_CATEGORY_CACHE_CHANGED, selectedCategoryCache)
         end
+    end
+
+    local guildSelectionProxy = {
+        SetGuildId = RefreshSelectedCategoryCache
     }
     local guildWindows = GUILD_SELECTOR.guildWindows
     guildWindows[#guildWindows + 1] = guildSelectionProxy
 
     local function OnSelectionChanged(control, data, selected, reselectingDuringRebuild)
         if selected then
-            internal:FireCallbacks(internal.callback.SELECTED_CATEGORY_CHANGED, data.categoryId)
+            RefreshSelectedCategoryCache()
         end
     end
 
     self.nodesByCategory = {}
-    local categoryTree = GUILD_HISTORY.categoryTree
+    local categoryTree = history.categoryTree
     local root = categoryTree.rootNode
     for i = 1, #root.children do
         local child = root.children[i]
-        self.nodesByCategory[child.data] = child.children[1]
-        for j = 1, #child.children do
-            local leaf = child.children[j]
-            SecurePostHook(leaf, "selectionFunction", OnSelectionChanged)
+        if child.children then
+            self.nodesByCategory[child.data.eventCategory] = child.children[1]
+            for j = 1, #child.children do
+                local leaf = child.children[j]
+                SecurePostHook(leaf, "selectionFunction", OnSelectionChanged)
+            end
+        else
+            self.nodesByCategory[child.data.eventCategory] = child
+            SecurePostHook(child, "selectionFunction", OnSelectionChanged)
         end
     end
 end
@@ -50,6 +59,10 @@ end
 function GuildHistoryAdapter:SelectCategory(category)
     local node = self.nodesByCategory[category]
     if node then
-        GUILD_HISTORY.categoryTree:SelectNode(node)
+        self.history.categoryTree:SelectNode(node)
     end
+end
+
+function GuildHistoryAdapter:GetSelectedCategoryCache()
+    return self.selectedCategoryCache
 end

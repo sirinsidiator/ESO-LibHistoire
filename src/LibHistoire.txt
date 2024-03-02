@@ -5,7 +5,7 @@
 ## APIVersion: @API_VERSION@
 ## IsLibrary: true
 ## DependsOn: LibDebugLogger LibAsync LibCustomMenu
-## SavedVariables: LibHistoire_Settings LibHistoire_GuildNames LibHistoire_NameDictionary LibHistoire_GuildHistory
+## SavedVariables: LibHistoire_Settings LibHistoire_GuildNames LibHistoire_NameDictionary LibHistoire_GuildHistory LibHistoire_GuildHistoryCache
 ## Description: |c000000|u1:800::|u|u1:800::.|u|u1:800::.|u|u1:800::|u|t256:256:LibHistoire/histoire.dds|t|u1:800::.|u|u1:800::.|u|u1:800::.|u|u1:800::.|u|u1:800::.|u|rHisty takes good care of all your data, so others don't have to.
 ##
 ## This Add-on is not created by, affiliated with or sponsored by ZeniMax Media Inc. or its affiliates. 
@@ -19,16 +19,21 @@ $(APIVersion)/Dialogs.lua
 $(APIVersion)/Codec.lua
 $(APIVersion)/DisplayNameCache.lua
 $(APIVersion)/PerformanceTracker.lua
+$(APIVersion)/CacheStatusBar.lua
+$(APIVersion)/guildHistoryCache/compatibility.lua
 $(APIVersion)/guildHistoryCache/controls.xml
 $(APIVersion)/guildHistoryCache/GuildHistoryAdapter.lua
 $(APIVersion)/guildHistoryCache/GuildHistoryStatusTooltip.lua
 $(APIVersion)/guildHistoryCache/GuildHistoryStatusSelectionWidget.lua
+$(APIVersion)/guildHistoryCache/GuildHistoryStatusLinkedIcon.lua
 $(APIVersion)/guildHistoryCache/GuildHistoryStatusWindow.lua
 $(APIVersion)/guildHistoryCache/GuildHistoryCacheEntry.lua
 $(APIVersion)/guildHistoryCache/GuildHistoryCacheCategory.lua
 $(APIVersion)/guildHistoryCache/GuildHistoryCacheGuild.lua
 $(APIVersion)/guildHistoryCache/GuildHistoryRequestManager.lua
 $(APIVersion)/guildHistoryCache/GuildHistoryCache.lua
+$(APIVersion)/guildHistoryCache/GuildHistoryProcessingRequest.lua
 $(APIVersion)/guildHistoryCache/GuildHistoryEventListener.lua
 $(APIVersion)/guildHistoryCache/GuildHistoryNoopListener.lua
+$(APIVersion)/guildHistoryCache/GuildHistoryLegacyEventListener.lua
 $(APIVersion)/api.lua

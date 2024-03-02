@@ -11,13 +11,10 @@ lib.callback = {
     -- fired when the library has finished setting everything up
     -- any calls to the api (aside of registering for the event) should happen after this has fired
     INITIALIZED = internal.callback.INITIALIZED,
-    -- fired when a category rescan is about to start
-    -- passes the guildId and category to the callback
-    HISTORY_RESCAN_STARTED = internal.callback.HISTORY_RESCAN_STARTED,
-    -- fired after a category rescan has finished
-    -- passes the guildId and category as well as the number of events that have been added before,
-    -- inside and after the stored history and a boolean in case invalid events have been detected and the rescan aborted early
-    HISTORY_RESCAN_ENDED = internal.callback.HISTORY_RESCAN_ENDED,
+    --- @deprecated rescan is no longer needed
+    HISTORY_RESCAN_STARTED = "deprecated",
+    --- @deprecated rescan is no longer needed
+    HISTORY_RESCAN_ENDED = "deprecated",
 }
 
 -- Register to a callback fired by the library. Usage is the same as with CALLBACK_MANAGER:RegisterCallback. You can find the list of exposed callbacks in api.lua
@@ -31,15 +28,23 @@ function lib:UnregisterCallback(...)
 end
 
 -- Creates a listener object which can be configured before it starts listening to history events. See guildHistory/GuildHistoryEventListener.lua for details
-function lib:CreateGuildHistoryListener(guildId, category)
-    if GetAPIVersion() >= 101041 then
-        return internal.class.GuildHistoryNoopListener:New(guildId, category)
-    end
-
+function lib:CreateGuildHistoryListener(guildId, category, addonName)
     local listener = nil
-    if internal.historyCache:HasCategoryCache(guildId, category) then
-        local categoryCache = internal.historyCache:GetOrCreateCategoryCache(guildId, category)
-        listener = internal.class.GuildHistoryEventListener:New(categoryCache)
+    if not addonName then
+        logger:Warn("No addon name provided for guild history listener - creating a legacy listener")
+        local caches = internal.GetCachesForLegacyCategory(guildId, category)
+        if #caches > 0 then
+            listener = internal.class.GuildHistoryLegacyEventListener:New(guildId, category, caches)
+        else
+            logger:Warn("No category caches found for guild", guildId, "and legacy category", category)
+        end
+    else
+        local categoryCache = internal.historyCache:GetCategoryCache(guildId, category)
+        if categoryCache then
+            listener = internal.class.GuildHistoryEventListener:New(categoryCache)
+        else
+            logger:Warn("No category cache found for guild", guildId, "and category", category)
+        end
     end
     return listener
 end

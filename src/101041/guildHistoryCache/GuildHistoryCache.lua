@@ -6,138 +6,96 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
-local GuildHistoryCache = ZO_Object:Subclass()
+local GuildHistoryCache = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryCache = GuildHistoryCache
 
-local GuildHistoryRequestManager = internal.class.GuildHistoryRequestManager
 local GuildHistoryCacheGuild = internal.class.GuildHistoryCacheGuild
-local GuildHistoryCacheEntry = internal.class.GuildHistoryCacheEntry
-local RegisterForEvent = internal.RegisterForEvent
 
-local LINKED_ICON = "LibHistoire/image/linked_down.dds"
-local UNLINKED_ICON = "LibHistoire/image/unlinked_down.dds"
-
-function GuildHistoryCache:New(...)
-    local object = ZO_Object.New(self)
-    object:Initialize(...)
-    return object
-end
-
-function GuildHistoryCache:Initialize(nameCache, statusTooltip, saveData)
-    self.nameCache = nameCache
-    self.statusTooltip = statusTooltip
+function GuildHistoryCache:Initialize(manager, saveData)
     self.saveData = saveData
+    self.manager = manager
     self.cache = {}
 
-    self.linkedIcon = WINDOW_MANAGER:CreateControlFromVirtual("LibHistoireLinkedIcon", ZO_GuildHistory,
-        "LibHistoireLinkedIconTemplate")
-    local icon = self.linkedIcon
-
-    icon:SetHandler("OnMouseEnter", function()
-        local cache = self:GetSelectedCache()
-        if cache then
-            statusTooltip:Show(icon, cache)
-        end
-    end)
-    icon:SetHandler("OnMouseExit", function()
-        statusTooltip:Hide()
-    end)
-
-    SecurePostHook(GUILD_HISTORY, "SetGuildId", function(manager, guildId)
-        self:UpdateLinkedIcon()
-        if statusTooltip:GetTarget() == icon then
-            local cache = self:GetSelectedCache()
-            statusTooltip:Show(icon, cache)
-        end
-    end)
-
-    local function OnSelectionChanged(control, data, selected, reselectingDuringRebuild)
-        if selected then
-            self:UpdateLinkedIcon()
-        end
+    local function CreateGuildCache(guildId)
+        local guildData = manager:GetGuildData(guildId)
+        self.cache[guildId] = GuildHistoryCacheGuild:New(saveData, guildData)
     end
 
-    for key, info in pairs(GUILD_HISTORY.categoryTree.templateInfo) do
-        SecurePostHook(info, "selectionFunction", OnSelectionChanged)
+    for i = 1, GetNumGuilds() do
+        local guildId = GetGuildId(i)
+        CreateGuildCache(guildId)
     end
 
-    local function RefreshLinkInformation(guildId, category)
-        local manager = GUILD_HISTORY
-        if manager.guildId == guildId and manager.selectedCategory == category then
-            self:UpdateLinkedIcon()
-            if statusTooltip:GetTarget() == icon then
-                local cache = self:GetSelectedCache()
-                statusTooltip:Show(icon, cache)
-            end
-        end
-    end
+    internal.RegisterForEvent(EVENT_GUILD_SELF_JOINED_GUILD, function(_, guildId)
+        CreateGuildCache(guildId)
+    end)
 
-    internal:RegisterCallback(internal.callback.UNLINKED_EVENTS_ADDED, RefreshLinkInformation)
-    internal:RegisterCallback(internal.callback.HISTORY_BEGIN_LINKING, RefreshLinkInformation)
-    internal:RegisterCallback(internal.callback.HISTORY_LINKED, RefreshLinkInformation)
+    -- TODO get a list of all guilds in the cache that we are not currently in if the setting to keep history for all guilds is enabled
 
-    self.requestManager = GuildHistoryRequestManager:New(self)
-    self:UpdateLinkedIcon()
+    manager:RegisterCallback("CategoryUpdated", function(categoryData, flags)
+        local guildId = categoryData:GetGuildData():GetId()
+        local category = categoryData:GetEventCategory()
+        local categoryCache = self:GetCategoryCache(guildId, category)
+        categoryCache:OnCategoryUpdated(flags)
+    end)
 end
 
-function GuildHistoryCache:GetSelectedCache()
-    local manager = GUILD_HISTORY
-    if manager.guildId and manager.selectedCategory then
-        return self:GetOrCreateCategoryCache(manager.guildId, manager.selectedCategory)
+function GuildHistoryCache:ForEachActiveGuild(func)
+    for i = 1, GetNumGuilds() do
+        local guildId = GetGuildId(i)
+        local guildCache = self:GetGuildCache(guildId)
+        if guildCache and func(guildCache) then
+            return
+        end
     end
+end
+
+function GuildHistoryCache:StartRequests()
+    self:ForEachActiveGuild(function(guildCache)
+        guildCache:StartRequests()
+    end)
 end
 
 function GuildHistoryCache:HasLinkedAllCaches()
-    for i = 1, GetNumGuilds() do
-        local guildId = GetGuildId(i)
-        local cache = self:GetOrCreateGuildCache(guildId)
-        if not cache:HasLinked() then
-            return false
+    local allLinked = true
+    self:ForEachActiveGuild(function(guildCache)
+        if not guildCache:HasLinked() then
+            allLinked = false
+            return true -- break
         end
-    end
-    return true
+    end)
+    return allLinked
 end
 
 function GuildHistoryCache:IsProcessing()
-    for i = 1, GetNumGuilds() do
-        local guildId = GetGuildId(i)
-        local cache = self:GetOrCreateGuildCache(guildId)
-        if cache:IsProcessing() then
-            return true
+    local isProcessing = false
+    self:ForEachActiveGuild(function(guildCache)
+        if not guildCache:IsProcessing() then
+            isProcessing = true
+            return true -- break
         end
-    end
-    return false
+    end)
+    return isProcessing
 end
 
-function GuildHistoryCache:UpdateLinkedIcon()
-    local cache = self:GetSelectedCache()
-    if cache then
-        self.linkedIcon:SetTexture(cache:HasLinked() and LINKED_ICON or UNLINKED_ICON)
-        self.linkedIcon:SetHidden(false)
-    else
-        self.linkedIcon:SetHidden(true)
-    end
-end
-
-function GuildHistoryCache:HasGuildCache(guildId)
-    if not self.cache[guildId] then return false end
-    return true
-end
-
-function GuildHistoryCache:GetOrCreateGuildCache(guildId)
-    if not self.cache[guildId] then
-        self.cache[guildId] = GuildHistoryCacheGuild:New(self.nameCache, self.saveData, guildId)
-    end
+function GuildHistoryCache:GetGuildCache(guildId)
     return self.cache[guildId]
 end
 
-function GuildHistoryCache:HasCategoryCache(guildId, category)
-    if not self.cache[guildId] or not self.cache[guildId]:HasCategoryCache(category) then return false end
-    return true
+function GuildHistoryCache:GetCategoryCache(guildId, category)
+    local guildCache = self:GetGuildCache(guildId)
+    if not guildCache then
+        return
+    end
+    local categoryCache = guildCache:GetCategoryCache(category)
+    return categoryCache
 end
 
-function GuildHistoryCache:GetOrCreateCategoryCache(guildId, category)
-    local guildCache = self:GetOrCreateGuildCache(guildId)
-    local categoryCache = guildCache:GetOrCreateCategoryCache(category)
-    return categoryCache
+function GuildHistoryCache:HasLegacyData()
+    return next(self.saveData) ~= nil -- TODO separate legacy data from current data
+end
+
+function GuildHistoryCache:DeleteLegacyData()
+    ZO_ClearTable(self.saveData)
+    -- TODO request flush saved variables
 end

@@ -6,18 +6,12 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
-local PerformanceTracker = ZO_Object:Subclass()
+local PerformanceTracker = ZO_InitializingObject:Subclass()
 internal.class.PerformanceTracker = PerformanceTracker
 
 local ROLLING_AVERAGE_INTERVAL = 10 -- seconds
 local MIN_DATA_COUNT = 2
 local CURRENT_SPEED_WEIGHT = 0.1
-
-function PerformanceTracker:New(...)
-    local object = ZO_Object.New(self)
-    object:Initialize(...)
-    return object
-end
 
 function PerformanceTracker:Initialize()
     self:Reset()
