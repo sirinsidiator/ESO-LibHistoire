@@ -70,7 +70,7 @@ end
 function GuildHistoryCache:IsProcessing()
     local isProcessing = false
     self:ForEachActiveGuild(function(guildCache)
-        if not guildCache:IsProcessing() then
+        if guildCache:IsProcessing() then
             isProcessing = true
             return true -- break
         end
