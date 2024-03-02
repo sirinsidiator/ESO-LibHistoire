@@ -20,24 +20,39 @@ function GuildHistoryStatusTooltip:Show(target, cache)
     local tooltip = self.control
     InitializeTooltip(tooltip, target, RIGHT, 0, 0)
 
-    SetTooltipText(tooltip,
-        zo_strformat("Stored events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumLinkedEvents())))
-    local firstStoredEvent = cache:GetOldestLinkedEvent()
-    if firstStoredEvent then
-        local date, time = FormatAchievementLinkTimestamp(firstStoredEvent:GetEventTimestampS())
-        SetTooltipText(tooltip, zo_strformat("Oldest stored event: |cffffff<<1>> <<2>>|r", date, time))
+    if cache:IsAggregated() then
+        self:SetupForGuild(cache)
+    else
+        self:SetupForCategory(cache)
     end
 
-    local lastStoredEvent = cache:GetNewestLinkedEvent()
-    if lastStoredEvent then
-        local date, time = FormatAchievementLinkTimestamp(lastStoredEvent:GetEventTimestampS())
-        SetTooltipText(tooltip, zo_strformat("Newest stored event: |cffffff<<1>> <<2>>|r", date, time))
+    self.target = target
+    self.cache = cache
+end
+
+function GuildHistoryStatusTooltip:SetupForCategory(cache)
+    local tooltip = self.control
+
+    if cache:IsWatching() then
+        SetTooltipText(tooltip,
+            zo_strformat("Linked events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumLinkedEvents())))
+        local firstLinkedEvent = cache:GetOldestLinkedEvent()
+        if firstLinkedEvent then
+            local date, time = FormatAchievementLinkTimestamp(firstLinkedEvent:GetEventTimestampS())
+            SetTooltipText(tooltip, zo_strformat("Oldest linked event: |cffffff<<1>> <<2>>|r", date, time))
+        end
+
+        local lastLinkedEvent = cache:GetNewestLinkedEvent()
+        if lastLinkedEvent then
+            local date, time = FormatAchievementLinkTimestamp(lastLinkedEvent:GetEventTimestampS())
+            SetTooltipText(tooltip, zo_strformat("Newest linked event: |cffffff<<1>> <<2>>|r", date, time))
+        end
+    else
+        SetTooltipText(tooltip, "Cache is not actively watching for new events", 0, 1, 0)
     end
 
     local shouldUnregisterForUpdate = true
-    if cache:IsAggregated() then
-        SetTooltipText(tooltip, "For progress details check each category")
-    elseif cache:IsProcessing() then
+    if cache:IsProcessing() then
         SetTooltipText(tooltip, "Events are being processed...", 1, 1, 0)
         local count, speed, timeLeft = cache:GetPendingEventMetrics()
         SetTooltipText(tooltip, zo_strformat("<<1>> events left", count), 1, 1, 0)
@@ -57,7 +72,9 @@ function GuildHistoryStatusTooltip:Show(target, cache)
         self:RegisterForUpdate()
         shouldUnregisterForUpdate = false
     elseif cache:HasLinked() then
-        SetTooltipText(tooltip, "History has been linked to stored events", 0, 1, 0)
+        if cache:HasCachedEvents() then
+            SetTooltipText(tooltip, "History has been linked to stored events", 0, 1, 0)
+        end
     else
         SetTooltipText(tooltip, "History has not linked to stored events yet", 1, 0, 0)
         SetTooltipText(tooltip,
@@ -76,31 +93,46 @@ function GuildHistoryStatusTooltip:Show(target, cache)
         end
     end
 
-    if cache.GetListenerInfo then
-        local names, count, lastSeenTime = cache:GetListenerInfo()
-        if count > 0 then
-            names[#names + 1] = string.format("%d legacy listener%s", count, count > 1 and "s" or "")
+    local names, count, lastSeenTime = cache:GetListenerInfo()
+    if count > 0 then
+        names[#names + 1] = string.format("%d legacy listener%s", count, count > 1 and "s" or "")
+    end
+    if #names > 0 then
+        SetTooltipText(tooltip, "Registered Listeners:")
+        for i = 1, #names do
+            SetTooltipText(tooltip, string.format("|cffffff%s|r", names[i]))
         end
-        if #names > 0 then
-            SetTooltipText(tooltip, "Registered Listeners:")
-            for i = 1, #names do
-                SetTooltipText(tooltip, string.format("|cffffff%s|r", names[i]))
-            end
-        else
-            SetTooltipText(tooltip, "No registered listeners")
-            if lastSeenTime then
-                SetTooltipText(tooltip,
-                    string.format("Last listener seen: |cffffff%s|r", ZO_FormatDurationAgo(lastSeenTime)))
-            end
+    else
+        SetTooltipText(tooltip, "No registered listeners")
+        if lastSeenTime then
+            SetTooltipText(tooltip,
+                string.format("Last listener seen: |cffffff%s|r", ZO_FormatDurationAgo(lastSeenTime)))
         end
     end
 
     if shouldUnregisterForUpdate then
         self:UnregisterForUpdate()
     end
+end
 
-    self.target = target
-    self.cache = cache
+function GuildHistoryStatusTooltip:SetupForGuild(cache)
+    local tooltip = self.control
+
+    SetTooltipText(tooltip,
+        zo_strformat("Linked events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumLinkedEvents())))
+    local firstLinkedEvent = cache:GetOldestLinkedEvent()
+    if firstLinkedEvent then
+        local date, time = FormatAchievementLinkTimestamp(firstLinkedEvent:GetEventTimestampS())
+        SetTooltipText(tooltip, zo_strformat("Oldest linked event: |cffffff<<1>> <<2>>|r", date, time))
+    end
+
+    local lastLinkedEvent = cache:GetNewestLinkedEvent()
+    if lastLinkedEvent then
+        local date, time = FormatAchievementLinkTimestamp(lastLinkedEvent:GetEventTimestampS())
+        SetTooltipText(tooltip, zo_strformat("Newest linked event: |cffffff<<1>> <<2>>|r", date, time))
+    end
+
+    SetTooltipText(tooltip, "For progress details check each category")
 end
 
 function GuildHistoryStatusTooltip:RegisterForUpdate()

@@ -432,16 +432,23 @@ function GuildHistoryCacheCategory:GetNumLinkedEvents()
     local _, oldestEventTime = self:GetOldestLinkedEventInfo()
     local _, newestEventTime = self:GetNewestLinkedEventInfo()
     if not oldestEventTime or not newestEventTime then return 0 end
-    local events = self.categoryData:GetEventsInTimeRange(oldestEventTime, newestEventTime)
-    return #events
+    local newestIndex, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(self.guildId, self.category, newestEventTime,
+        oldestEventTime)
+    if not newestIndex or not oldestIndex then return 0 end
+    return oldestIndex - newestIndex + 1
 end
 
 function GuildHistoryCacheCategory:GetNumUnlinkedEvents()
     local _, newestEventTime = self:GetNewestLinkedEventInfo()
     if not newestEventTime then return 0 end
     local now = GetTimeStamp()
-    local events = self.categoryData:GetEventsInTimeRange(newestEventTime + 1, now)
-    return #events
+    local newestIndex, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(self.guildId, self.category, now,
+        newestEventTime + 1)
+    if not newestIndex or not oldestIndex then return 0 end
+end
+
+function GuildHistoryCacheCategory:HasCachedEvents()
+    return self.categoryData:GetNumEvents() > 0
 end
 
 function GuildHistoryCacheCategory:GetEvent(i)
