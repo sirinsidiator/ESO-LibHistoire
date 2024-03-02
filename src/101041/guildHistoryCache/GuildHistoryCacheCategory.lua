@@ -38,6 +38,8 @@ function GuildHistoryCacheCategory:Initialize(saveData, categoryData)
     saveData[self.key] = self.saveData
     self.performanceTracker = internal.class.PerformanceTracker:New()
     self.unprocessedEventsStartTime = self.saveData.newestLinkedEventTime
+    self.rangeInfo = {}
+    self.rangeInfoDirty = true
     self.progressDirty = true
     self.processingQueue = {}
     self.listeners = {}
@@ -227,6 +229,8 @@ function GuildHistoryCacheCategory:GetOldestLinkedEventInfo()
 end
 
 function GuildHistoryCacheCategory:OnCategoryUpdated(flags)
+    self.rangeInfoDirty = true
+
     internal:FireCallbacks(internal.callback.CATEGORY_DATA_UPDATED, self, flags)
     self:RestartProcessingTask()
     if self:ContinueExistingRequest() then return end
@@ -538,22 +542,43 @@ function GuildHistoryCacheCategory:GetProcessingTimeRange()
     return self.processingStartTime, self.processingEndTime
 end
 
+function GuildHistoryCacheCategory:UpdateRangeInfo()
+    if self.rangeInfoDirty then
+        self.rangeInfoDirty = false
+
+        local guildId, category = self.guildId, self.category
+        local ranges = {}
+        for i = 1, GetNumGuildHistoryEventRanges(guildId, category) do
+            local newestTimeS, oldestTimeS = GetGuildHistoryEventRangeInfo(guildId, category, i)
+            -- range info includes events that are hidden due to permissions, so we check for actually visible events here
+            local newestIndex, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(guildId, category, newestTimeS,
+                oldestTimeS)
+            if newestIndex then
+                local newestEventId = GetGuildHistoryEventId(guildId, category, newestIndex)
+                newestTimeS = GetGuildHistoryEventTimestamp(guildId, category, newestIndex)
+                local oldestEventId = GetGuildHistoryEventId(guildId, category, oldestIndex)
+                oldestTimeS = GetGuildHistoryEventTimestamp(guildId, category, oldestIndex)
+                ranges[#ranges + 1] = { newestTimeS, oldestTimeS, newestEventId, oldestEventId }
+            end
+        end
+
+        table.sort(ranges, function(a, b)
+            return a[1] < b[1]
+        end)
+        self.rangeInfo = ranges
+    end
+end
+
 function GuildHistoryCacheCategory:GetNumRanges()
-    return GetNumGuildHistoryEventRanges(self.guildId, self.category)
+    self:UpdateRangeInfo()
+    return #self.rangeInfo
 end
 
 function GuildHistoryCacheCategory:GetRangeInfo(index)
-    local guildId, category = self.guildId, self.category
-    local newestTimeS, oldestTimeS = GetGuildHistoryEventRangeInfo(guildId, category, index)
-
-    -- range info includes events that are hidden due to permissions, so we check for actually visible events here
-    local newestIndex, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(guildId, category, newestTimeS, oldestTimeS)
-    if not newestIndex or not oldestIndex then return end
-    local newestEventId = GetGuildHistoryEventId(guildId, category, newestIndex)
-    newestTimeS = GetGuildHistoryEventTimestamp(guildId, category, newestIndex)
-    local oldestEventId = GetGuildHistoryEventId(guildId, category, oldestIndex)
-    oldestTimeS = GetGuildHistoryEventTimestamp(guildId, category, oldestIndex)
-    return newestTimeS, oldestTimeS, newestEventId, oldestEventId
+    self:UpdateRangeInfo()
+    local range = self.rangeInfo[index]
+    if not range then return end
+    return unpack(range)
 end
 
 function GuildHistoryCacheCategory:GetIndexRangeForEventIdRange(startId, endId)
