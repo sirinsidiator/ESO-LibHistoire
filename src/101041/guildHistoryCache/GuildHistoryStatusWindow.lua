@@ -71,7 +71,6 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
     internal:RegisterCallback(internal.callback.PROCESSING_STARTED, DoUpdate)
     internal:RegisterCallback(internal.callback.PROCESSING_LINKED_EVENTS_FINISHED, DoUpdate)
     internal:RegisterCallback(internal.callback.PROCESSING_FINISHED, DoUpdate)
-    internal:RegisterCallback(internal.callback.PROCESSING_STOPPED, DoUpdate)
     internal:RegisterCallback(internal.callback.WATCH_MODE_CHANGED, DoUpdate)
     internal:RegisterCallback(internal.callback.ZOOM_MODE_CHANGED, DoUpdate)
     internal:RegisterCallback(internal.callback.SELECTED_CATEGORY_CACHE_CHANGED, function(cache)

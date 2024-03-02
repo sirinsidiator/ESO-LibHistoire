@@ -42,7 +42,6 @@ lib.internal = {
         PROCESSING_STARTED = "HistyHasStartedProcessing",
         PROCESSING_LINKED_EVENTS_FINISHED = "HistyHasFinishedProcessingLinkedEvents",
         PROCESSING_FINISHED = "HistyHasFinishedProcessing",
-        PROCESSING_STOPPED = "HistyHasStoppedProcessing",
         PROCESS_LINKED_EVENT = "HistyIsProcessingALinkedEvent",
         PROCESS_MISSED_EVENT = "HistyIsProcessingAMissedEvent",
         SELECTED_CATEGORY_CACHE_CHANGED = "HistyDetectedTheSelectedCategoryCacheHasChanged",

@@ -94,20 +94,7 @@ function GuildHistoryCacheCategory:RequestMissingData()
         return
     end
 
-    local request = self.request
-    if request then
-        logger:Debug("Request already exists")
-        if not request:IsValid() or request:IsComplete() or self.initialRequest then
-            logger:Warn("Request is invalid, complete or initial - destroy")
-            self.initialRequest = false
-            DestroyGuildHistoryRequest(request:GetRequestId())
-            self.request = nil
-        else
-            logger:Debug("Request is still valid - reuse")
-            request:RequestMoreEvents(true)
-            return
-        end
-    end
+    if self:ContinueExistingRequest() then return end
 
     local _, requestOldestTime = self:GetNewestLinkedEventInfo()
     local oldestGaplessEvent = self.categoryData:GetOldestEventForUpToDateEventsWithoutGaps()
@@ -127,6 +114,24 @@ function GuildHistoryCacheCategory:RequestMissingData()
     end
 
     self:SendRequest(requestNewestTime, requestOldestTime)
+end
+
+function GuildHistoryCacheCategory:ContinueExistingRequest()
+    local request = self.request
+    if request then
+        logger:Debug("Request already exists")
+        if not request:IsValid() or request:IsComplete() or self.initialRequest then
+            logger:Warn("Request is invalid, complete or initial - destroy")
+            self.initialRequest = false
+            DestroyGuildHistoryRequest(request:GetRequestId())
+            self.request = nil
+        else
+            logger:Debug("Request is still valid - reuse")
+            request:RequestMoreEvents(true)
+            return true
+        end
+    end
+    return false
 end
 
 function GuildHistoryCacheCategory:SendRequest(newestTime, oldestTime)
@@ -223,7 +228,9 @@ end
 
 function GuildHistoryCacheCategory:OnCategoryUpdated(flags)
     internal:FireCallbacks(internal.callback.CATEGORY_DATA_UPDATED, self, flags)
-    self:StopProcessingEvents()
+    self:RestartProcessingTask()
+    if self:ContinueExistingRequest() then return end
+
     self.progressDirty = true
     local guildId, category = self.guildId, self.category
     local oldestLinkedEventId = self:GetOldestLinkedEventInfo()
@@ -380,15 +387,14 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
     end
 end
 
-function GuildHistoryCacheCategory:StopProcessingEvents()
+function GuildHistoryCacheCategory:RestartProcessingTask()
     if self.processingTask then
-        logger:Info("Stop processing events for guild %d category %d", self.guildId, self.category)
+        logger:Info("Restart processing events for guild %d category %d", self.guildId, self.category)
         self.processingTask:Cancel()
         self.processingTask = nil
-        self.processingStartTime = nil
-        self.processingEndTime = nil
-        self:ResetPendingEventMetrics()
-        internal:FireCallbacks(internal.callback.PROCESSING_STOPPED, self.guildId, self.category)
+        local newestLinkedEventId = self:GetNewestLinkedEventInfo()
+        local oldestLinkedEventId = self:GetOldestLinkedEventInfo()
+        self:StartProcessingEvents(newestLinkedEventId, oldestLinkedEventId)
     end
 end
 
