@@ -24,6 +24,7 @@ local WATCH_MODE_FRAME_COLOR = {
     [internal.WATCH_MODE_OFF] = ZO_ColorDef:New("808080"),
     [internal.WATCH_MODE_ON] = ZO_ColorDef:New("FF0000"),
 }
+local LEADING_EDGE_WIDTH = 10 -- see ZO_ArrowStatusBarOverlayRight
 
 function CacheStatusBar:Initialize(control, window)
     self.control = control
@@ -76,7 +77,10 @@ function CacheStatusBar:Update(cache)
     local width = self.control:GetWidth()
     self:Clear()
 
-    if not cache:HasCachedEvents() or width <= 0 then return end
+    if not cache:HasCachedEvents() or width <= 0 then
+        logger:Verbose("no cached events or invalid width", cache:GetGuildId(), cache:GetCategory())
+        return
+    end
 
     local startTime
     local zoomMode = self.window:GetZoomMode()
@@ -98,7 +102,7 @@ function CacheStatusBar:Update(cache)
     local endTime = GetTimeStamp()
     local overallTime = endTime - startTime
     if overallTime <= 0 then
-        logger:Warn("invalid overallTime", overallTime)
+        logger:Warn("invalid overallTime", overallTime, cache:GetGuildId(), cache:GetCategory())
         return
     end
 
@@ -119,113 +123,97 @@ function CacheStatusBar:Update(cache)
     if requestStartTime then
         logger:Debug("add request time range", requestStartTime, requestEndTime)
         self:AddSegment({
-            start = (endTime - requestStartTime) / overallTime * width,
-            width = (requestEndTime - requestStartTime) / overallTime * width,
+            startTime = startTime,
+            endTime = endTime,
+            segmentStartTime = requestStartTime,
+            segmentEndTime = requestEndTime,
             color = GRADIENT_REQUEST_RANGE,
         })
     end
 
     for i = 1, cache:GetNumRanges() do
-        local rangeEndTime, rangeStartTime = cache:GetRangeInfo(i)
+        local rangeEndTime, rangeStartTime, startId, endId = cache:GetRangeInfo(i)
         if rangeEndTime and rangeStartTime then
-            local trimmedStartTime, trimmedEndTime = self:GetTrimmedRangeTimes(rangeStartTime, rangeEndTime, startTime,
-                endTime)
-            if trimmedStartTime and trimmedEndTime then
-                local data = {}
-                data.color = isWatching and GRADIENT_CACHE_SEGMENT_LINKED_RANGE or
-                    GRADIENT_CACHE_SEGMENT_LINKED_RANGE_UNWATCHED
-                if rangeEndTime < linkedRangeStartTime then
-                    data.color = GRADIENT_CACHE_SEGMENT_BEFORE_LINKED_RANGE
-                elseif rangeStartTime > linkedRangeEndTime then
-                    data.color = isWatching and GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE or
-                        GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_UNWATCHED
-                end
+            local isGaplessRange = gaplessRangeStartTime and rangeStartTime == gaplessRangeStartTime
+            local data = {
+                startTime = startTime,
+                endTime = endTime,
+                segmentStartTime = rangeStartTime,
+                segmentEndTime = isGaplessRange and endTime or rangeEndTime,
+            }
 
-                local isGaplessRange = gaplessRangeStartTime and rangeStartTime == gaplessRangeStartTime
-                if isGaplessRange then
-                    data.width = (endTime - trimmedStartTime) / overallTime * width
-                    data.enableLeadingEdge = true
-                else
-                    data.width = (trimmedEndTime - trimmedStartTime) / overallTime * width
-                end
-                data.start = (trimmedStartTime - startTime) / overallTime * width
-                logger:Debug("add cache range", i)
-                self:AddSegment(data)
+            data.color = isWatching and GRADIENT_CACHE_SEGMENT_LINKED_RANGE or
+                GRADIENT_CACHE_SEGMENT_LINKED_RANGE_UNWATCHED
+            if rangeEndTime < linkedRangeStartTime then
+                data.color = GRADIENT_CACHE_SEGMENT_BEFORE_LINKED_RANGE
+            elseif rangeStartTime > linkedRangeEndTime then
+                data.color = isWatching and GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE or
+                    GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_UNWATCHED
             end
+
+            logger:Debug("add cache range", i, rangeEndTime, rangeStartTime, startId, endId, isGaplessRange)
+            self:AddSegment(data)
         else
             logger:Debug("skip empty range", i)
         end
     end
 
     if oldestLinkedEvent and newestLinkedEvent then
-        local trimmedStartTime, trimmedEndTime = self:GetTrimmedRangeTimes(linkedRangeStartTime, linkedRangeEndTime,
-            startTime, endTime)
-        if trimmedStartTime and trimmedEndTime then
-            local linkedRangeStart = (trimmedStartTime - startTime) / overallTime * width
-            local linkedRangeWidth = (trimmedEndTime - trimmedStartTime) / overallTime * width
-            local isGaplessRange = gaplessRangeStartTime and linkedRangeStartTime == gaplessRangeStartTime
-            if isGaplessRange then
-                linkedRangeWidth = (endTime - trimmedStartTime) / overallTime * width
-            end
-            logger:Debug("add linked range", linkedRangeStartTime, linkedRangeEndTime)
-
-            self:AddSegment({
-                start = linkedRangeStart,
-                width = linkedRangeWidth,
-                color = isWatching and GRADIENT_CACHE_SEGMENT_LINKED_PROCESSED_RANGE or
-                    GRADIENT_CACHE_SEGMENT_LINKED_PROCESSED_RANGE_UNWATCHED,
-                enableLeadingEdge = isGaplessRange,
-            })
-        end
+        local isGaplessRange = gaplessRangeStartTime and linkedRangeStartTime == gaplessRangeStartTime
+        local data = {
+            startTime = startTime,
+            endTime = endTime,
+            segmentStartTime = linkedRangeStartTime,
+            segmentEndTime = isGaplessRange and endTime or linkedRangeEndTime,
+            color = isWatching and GRADIENT_CACHE_SEGMENT_LINKED_PROCESSED_RANGE or
+                GRADIENT_CACHE_SEGMENT_LINKED_PROCESSED_RANGE_UNWATCHED,
+        }
+        logger:Debug("add linked range", linkedRangeStartTime, linkedRangeEndTime, isGaplessRange)
+        self:AddSegment(data)
     end
 
     local processingStartTime, processingEndTime = cache:GetProcessingTimeRange()
     if processingStartTime then
-        logger:Debug("add processing time range", processingStartTime, processingEndTime)
-        self:AddSegment({
-            start = (endTime - processingStartTime) / overallTime * width,
-            width = (processingEndTime - processingStartTime) / overallTime * width,
+        local data = {
+            startTime = startTime,
+            endTime = endTime,
+            segmentStartTime = processingStartTime,
+            segmentEndTime = processingEndTime,
             color = GRADIENT_PROCESSING_RANGE,
-            enableLeadingEdge = true,
-        })
+        }
+        logger:Debug("add processing time range", processingStartTime, processingEndTime)
+        self:AddSegment(data)
     end
-end
-
-function CacheStatusBar:GetTrimmedRangeTimes(rangeStartTime, rangeEndTime, startTime, endTime)
-    if rangeEndTime < startTime or rangeStartTime > endTime then
-        logger:Debug("range outside display range - skip")
-        return nil, nil
-    end
-
-    if rangeStartTime < startTime then
-        logger:Verbose("range start time before display range - trim", rangeStartTime, startTime)
-        rangeStartTime = startTime
-    end
-
-    if rangeEndTime > endTime then
-        logger:Verbose("range end time after display range - trim", rangeEndTime, endTime)
-        rangeEndTime = endTime
-    end
-
-    return rangeStartTime, rangeEndTime
 end
 
 function CacheStatusBar:AddSegment(data)
-    assert(data.start >= 0 and data.start <= self.control:GetWidth(), "start out of bounds")
-    assert(data.width >= 0 and data.width <= self.control:GetWidth(), "width out of bounds")
-
-    if data.width == 0 then
-        data.width = 1 -- ensure it is visible
-    end
+    local trimmedStartTime, trimmedEndTime = self:GetTrimmedTimeRange(data)
+    local barWidth = self.control:GetWidth()
+    local overallTime = data.endTime - data.startTime
+    local segmentStart = (trimmedStartTime - data.startTime) / overallTime * barWidth
+    local segmentWidth = zo_max(1, (trimmedEndTime - trimmedStartTime) / overallTime * barWidth)
 
     local control = self.segmentControlPool:AcquireObject()
-    control:SetAnchor(TOPLEFT, self.control, TOPLEFT, data.start, 0)
-    control:SetWidth(data.width)
+    control:SetAnchor(TOPLEFT, self.control, TOPLEFT, segmentStart, 0)
+    control:SetWidth(segmentWidth)
     control:SetValue(data.value or 1)
-    if data.enableLeadingEdge then
-        control:EnableLeadingEdge(true)
-        control.gloss:EnableLeadingEdge(true)
-    end
+
+    local enableLeadingEdge = (segmentStart + segmentWidth > barWidth - LEADING_EDGE_WIDTH)
+    control:EnableLeadingEdge(enableLeadingEdge)
+    control.gloss:EnableLeadingEdge(enableLeadingEdge)
+
     ZO_StatusBar_SetGradientColor(control, data.color)
     return control
+end
+
+function CacheStatusBar:GetTrimmedTimeRange(data)
+    if data.segmentEndTime < data.startTime or data.segmentStartTime > data.endTime then
+        logger:Debug("segment outside display range - skip")
+        return nil, nil
+    end
+
+    local segmentStartTime = zo_max(data.segmentStartTime, data.startTime)
+    local segmentEndTime = zo_min(data.segmentEndTime, data.endTime)
+
+    return segmentStartTime, segmentEndTime
 end
