@@ -110,29 +110,33 @@ function CacheStatusBar:Update(cache)
 
     for i = 1, cache:GetNumRanges() do
         local rangeEndTime, rangeStartTime = cache:GetRangeInfo(i)
-        local trimmedStartTime, trimmedEndTime = self:GetTrimmedRangeTimes(rangeStartTime, rangeEndTime, startTime,
-            endTime)
-        if trimmedStartTime and trimmedEndTime then
-            local data = {}
-            data.color = isWatching and GRADIENT_CACHE_SEGMENT_LINKED_RANGE or
-                GRADIENT_CACHE_SEGMENT_LINKED_RANGE_UNWATCHED
-            if rangeEndTime < linkedRangeStartTime then
-                data.color = GRADIENT_CACHE_SEGMENT_BEFORE_LINKED_RANGE
-            elseif rangeStartTime > linkedRangeEndTime then
-                data.color = isWatching and GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE or
-                    GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_UNWATCHED
-            end
+        if rangeEndTime and rangeStartTime then
+            local trimmedStartTime, trimmedEndTime = self:GetTrimmedRangeTimes(rangeStartTime, rangeEndTime, startTime,
+                endTime)
+            if trimmedStartTime and trimmedEndTime then
+                local data = {}
+                data.color = isWatching and GRADIENT_CACHE_SEGMENT_LINKED_RANGE or
+                    GRADIENT_CACHE_SEGMENT_LINKED_RANGE_UNWATCHED
+                if rangeEndTime < linkedRangeStartTime then
+                    data.color = GRADIENT_CACHE_SEGMENT_BEFORE_LINKED_RANGE
+                elseif rangeStartTime > linkedRangeEndTime then
+                    data.color = isWatching and GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE or
+                        GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_UNWATCHED
+                end
 
-            local isGaplessRange = gaplessRangeStartTime and rangeStartTime == gaplessRangeStartTime
-            if isGaplessRange then
-                data.width = (endTime - trimmedStartTime) / overallTime * width
-                data.enableLeadingEdge = true
-            else
-                data.width = (trimmedEndTime - trimmedStartTime) / overallTime * width
+                local isGaplessRange = gaplessRangeStartTime and rangeStartTime == gaplessRangeStartTime
+                if isGaplessRange then
+                    data.width = (endTime - trimmedStartTime) / overallTime * width
+                    data.enableLeadingEdge = true
+                else
+                    data.width = (trimmedEndTime - trimmedStartTime) / overallTime * width
+                end
+                data.start = (trimmedStartTime - startTime) / overallTime * width
+                logger:Debug("add cache range", i)
+                self:AddSegment(data)
             end
-            data.start = (trimmedStartTime - startTime) / overallTime * width
-            logger:Debug("add cache range", i)
-            self:AddSegment(data)
+        else
+            logger:Debug("skip empty range", i)
         end
     end
 

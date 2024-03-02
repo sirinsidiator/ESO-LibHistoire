@@ -537,7 +537,17 @@ function GuildHistoryCacheCategory:GetNumRanges()
 end
 
 function GuildHistoryCacheCategory:GetRangeInfo(index)
-    return GetGuildHistoryEventRangeInfo(self.guildId, self.category, index)
+    local guildId, category = self.guildId, self.category
+    local newestTimeS, oldestTimeS = GetGuildHistoryEventRangeInfo(guildId, category, index)
+
+    -- range info includes events that are hidden due to permissions, so we check for actually visible events here
+    local newestIndex, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(guildId, category, newestTimeS, oldestTimeS)
+    if not newestIndex or not oldestIndex then return end
+    local newestEventId = GetGuildHistoryEventId(guildId, category, newestIndex)
+    newestTimeS = GetGuildHistoryEventTimestamp(guildId, category, newestIndex)
+    local oldestEventId = GetGuildHistoryEventId(guildId, category, oldestIndex)
+    oldestTimeS = GetGuildHistoryEventTimestamp(guildId, category, oldestIndex)
+    return newestTimeS, oldestTimeS, newestEventId, oldestEventId
 end
 
 function GuildHistoryCacheCategory:GetIndexRangeForEventIdRange(startId, endId)
