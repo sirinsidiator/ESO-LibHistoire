@@ -72,6 +72,8 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
     internal:RegisterCallback(internal.callback.PROCESSING_LINKED_EVENTS_FINISHED, DoUpdate)
     internal:RegisterCallback(internal.callback.PROCESSING_FINISHED, DoUpdate)
     internal:RegisterCallback(internal.callback.PROCESSING_STOPPED, DoUpdate)
+    internal:RegisterCallback(internal.callback.WATCH_MODE_CHANGED, DoUpdate)
+    internal:RegisterCallback(internal.callback.ZOOM_MODE_CHANGED, DoUpdate)
     internal:RegisterCallback(internal.callback.SELECTED_CATEGORY_CACHE_CHANGED, function(cache)
         self:SetGuildId(cache:GetGuildId())
         self:SetCategory(cache:GetCategory())
@@ -86,7 +88,7 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
         local oldestTime = newestTime - 24 * 3600
         logger:Info("Send requests for", daysAgo, "days ago")
         internal.historyCache:GetGuildCache(self.guildId):SendRequests(newestTime, oldestTime)
-        internal.FireCallbacks(internal.callback.CATEGORY_DATA_UPDATED)
+        internal:FireCallbacks(internal.callback.CATEGORY_DATA_UPDATED)
     end
 end
 
@@ -101,6 +103,39 @@ function GuildHistoryStatusWindow:InitializeButtons()
             AddCustomMenuItem("Lock Window", function() self:Lock() end)
             AddCustomMenuItem("Reset Position", function() self:ResetPosition() end)
         end
+
+        AddCustomSubMenuItem("Zoom Mode", {
+            {
+                label = "Automatic",
+                itemType = MENU_ADD_OPTION_CHECKBOX,
+                callback = function()
+                    self:SetZoomMode(internal.ZOOM_MODE_AUTO)
+                end,
+                checked = function()
+                    return self:GetZoomMode() == internal.ZOOM_MODE_AUTO
+                end
+            },
+            {
+                label = "Full Range",
+                itemType = MENU_ADD_OPTION_CHECKBOX,
+                callback = function()
+                    self:SetZoomMode(internal.ZOOM_MODE_FULL_RANGE)
+                end,
+                checked = function()
+                    return self:GetZoomMode() == internal.ZOOM_MODE_FULL_RANGE
+                end
+            },
+            {
+                label = "Missing Range",
+                itemType = MENU_ADD_OPTION_CHECKBOX,
+                callback = function()
+                    self:SetZoomMode(internal.ZOOM_MODE_MISSING_RANGE)
+                end,
+                checked = function()
+                    return self:GetZoomMode() == internal.ZOOM_MODE_MISSING_RANGE
+                end
+            }
+        })
 
         AddCustomMenuItem("Hide Window", function() self:Disable() end)
 
@@ -134,9 +169,9 @@ function GuildHistoryStatusWindow:InitializeButtons()
     end
 end
 
-local function InitializeProgress(rowControl)
+local function InitializeProgress(rowControl, window)
     local control = rowControl:GetNamedChild("StatusBar")
-    rowControl.statusBar = internal.class.CacheStatusBar:New(control)
+    rowControl.statusBar = internal.class.CacheStatusBar:New(control, window)
 end
 
 local function InitializeHighlight(rowControl)
@@ -202,7 +237,7 @@ end
 function GuildHistoryStatusWindow:InitializeBaseList(listControl, template, OnInit, OnUpdate)
     local function InitializeRow(rowControl, entry)
         if not rowControl.initialized then
-            InitializeProgress(rowControl)
+            InitializeProgress(rowControl, self)
             InitializeHighlight(rowControl)
             InitializeTooltip(rowControl, self.statusTooltip)
             OnInit(rowControl)
@@ -432,4 +467,13 @@ function GuildHistoryStatusWindow:Disable()
     guildHistoryScene:RemoveFragment(self.fragment)
     self.toggleWindowButton:SetNormalTexture(BUTTON_NORMAL_TEXTURE)
     self.toggleWindowButton:SetPressedTexture(BUTTON_PRESSED_TEXTURE)
+end
+
+function GuildHistoryStatusWindow:GetZoomMode()
+    return self.saveData.zoomMode or internal.ZOOM_MODE_AUTO
+end
+
+function GuildHistoryStatusWindow:SetZoomMode(zoomMode)
+    self.saveData.zoomMode = zoomMode
+    internal:FireCallbacks(internal.callback.ZOOM_MODE_CHANGED, zoomMode)
 end

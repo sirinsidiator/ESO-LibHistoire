@@ -47,6 +47,7 @@ lib.internal = {
         PROCESS_MISSED_EVENT = "HistyIsProcessingAMissedEvent",
         SELECTED_CATEGORY_CACHE_CHANGED = "HistyDetectedTheSelectedCategoryCacheHasChanged",
         WATCH_MODE_CHANGED = "HistyDetectedTheWatchModeHasChanged",
+        ZOOM_MODE_CHANGED = "HistyDetectedTheZoomModeHasChanged",
     },
     class = {},
     logger = LibDebugLogger(LIB_IDENTIFIER),
@@ -63,6 +64,10 @@ internal.WORLD_NAME = GetWorldName()
 internal.WATCH_MODE_AUTO = 'auto'
 internal.WATCH_MODE_OFF = 'off'
 internal.WATCH_MODE_ON = 'on'
+
+internal.ZOOM_MODE_AUTO = 'auto'
+internal.ZOOM_MODE_FULL_RANGE = 'full'
+internal.ZOOM_MODE_MISSING_RANGE = 'missing'
 
 function internal:FireCallbacks(...)
     return callbackObject:FireCallbacks(...)

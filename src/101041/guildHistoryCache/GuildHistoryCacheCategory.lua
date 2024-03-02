@@ -181,7 +181,7 @@ end
 function GuildHistoryCacheCategory:SetWatchMode(mode)
     logger:Info("Set watch mode for guild %d category %d to %s", self.guildId, self.category, mode)
     self.saveData.watching = mode
-    internal.FireCallbacks(internal.callback.WATCH_MODE_CHANGED, self.guildId, self.category, mode)
+    internal:FireCallbacks(internal.callback.WATCH_MODE_CHANGED, self.guildId, self.category, mode)
 end
 
 function GuildHistoryCacheCategory:SetNewestLinkedEventInfo(eventId, eventTime)
@@ -337,7 +337,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
         local task = internal:CreateAsyncTask()
         self.processingTask = task
         self:InitializePendingEventMetrics(#unlinkedEvents + #missedEvents)
-        internal.FireCallbacks(internal.callback.PROCESSING_STARTED, guildId, category, #unlinkedEvents, #missedEvents)
+        internal:FireCallbacks(internal.callback.PROCESSING_STARTED, guildId, category, #unlinkedEvents, #missedEvents)
         task:For(1, #unlinkedEvents):Do(function(i)
             self:IncrementPendingEventMetrics()
             local event = unlinkedEvents[i]
@@ -352,7 +352,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
             self:SetNewestLinkedEventInfo(eventId, event:GetEventTimestampS())
         end):Then(function()
             logger:Debug("Finished processing unlinked events for guild %d category %d", guildId, category)
-            internal.FireCallbacks(internal.callback.PROCESSING_LINKED_EVENTS_FINISHED, guildId, category)
+            internal:FireCallbacks(internal.callback.PROCESSING_LINKED_EVENTS_FINISHED, guildId, category)
             self.processingStartTime = nil
             self.processingEndTime = nil
             self.progressDirty = true
@@ -374,7 +374,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
             self.processingStartTime = nil
             self.processingEndTime = nil
             logger:Debug("Finished processing missed events for guild %d category %d", guildId, category)
-            internal.FireCallbacks(internal.callback.PROCESSING_FINISHED, guildId, category)
+            internal:FireCallbacks(internal.callback.PROCESSING_FINISHED, guildId, category)
             self:ProcessNextRequest()
         end)
     end
@@ -388,7 +388,7 @@ function GuildHistoryCacheCategory:StopProcessingEvents()
         self.processingStartTime = nil
         self.processingEndTime = nil
         self:ResetPendingEventMetrics()
-        internal.FireCallbacks(internal.callback.PROCESSING_STOPPED, self.guildId, self.category)
+        internal:FireCallbacks(internal.callback.PROCESSING_STOPPED, self.guildId, self.category)
     end
 end
 

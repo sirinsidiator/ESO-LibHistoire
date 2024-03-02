@@ -25,14 +25,17 @@ local WATCH_MODE_FRAME_COLOR = {
     [internal.WATCH_MODE_ON] = ZO_ColorDef:New("FF0000"),
 }
 
-function CacheStatusBar:Initialize(control)
+function CacheStatusBar:Initialize(control, window)
     self.control = control
+    self.window = window
     self.frame = control:GetNamedChild("Overlay")
 
     self.segmentControlPool = ZO_ControlPool:New("ZO_ArrowStatusBar", control:GetNamedChild("Segments"), "Segment")
     self.segmentControlPool:SetCustomFactoryBehavior(function(segment)
         -- "This ensures proper draw ordering using accumulators" according to ZO_MultisegmentProgressBar
         segment:SetAutoRectClipChildren(true) -- TODO check if it works without that?
+        segment:EnableLeadingEdge(false)
+        segment.gloss:EnableLeadingEdge(false)
     end)
     self.segmentControlPool:SetCustomResetBehavior(function(segment)
         segment:SetWidth(nil)
@@ -70,17 +73,32 @@ function CacheStatusBar:SetFrameColor(color)
 end
 
 function CacheStatusBar:Update(cache)
-    local startTime = cache:GetUnprocessedEventsStartTime()
-    -- if cache:HasLinked() or self.viewRange == FULL_RANGE then
+    local width = self.control:GetWidth()
+    self:Clear()
+
+    if not cache:HasCachedEvents() or width <= 0 then return end
+
+    local startTime
+    local zoomMode = self.window:GetZoomMode()
+    if not zoomMode or zoomMode == internal.ZOOM_MODE_AUTO then
+        zoomMode = cache:HasLinked() and internal.ZOOM_MODE_FULL_RANGE or internal.ZOOM_MODE_MISSING_RANGE
+    end
+
+    if zoomMode == internal.ZOOM_MODE_FULL_RANGE then
+        startTime = cache:GetCacheStartTime()
+    else
+        startTime = cache:GetUnprocessedEventsStartTime()
+    end
+
     if not startTime then
+        logger:Debug("no start time - use full range")
         startTime = cache:GetCacheStartTime()
     end
-    local endTime = GetTimeStamp()
 
+    local endTime = GetTimeStamp()
     local overallTime = endTime - startTime
-    local width = self.control:GetWidth()
-    if width <= 0 or overallTime <= 0 then
-        logger:Warn("invalid width or time", width, overallTime)
+    if overallTime <= 0 then
+        logger:Warn("invalid overallTime", overallTime)
         return
     end
 
@@ -95,7 +113,6 @@ function CacheStatusBar:Update(cache)
     local linkedRangeEndTime = newestLinkedEvent and newestLinkedEvent:GetEventTimestampS() or endTime
     local gaplessRangeStartTime = cache:GetGaplessRangeStartTime()
 
-    self:Clear()
     logger:Debug("update cache status bar", cache:GetGuildId(), cache:GetCategory())
 
     local requestStartTime, requestEndTime = cache:GetRequestTimeRange()
