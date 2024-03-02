@@ -47,12 +47,14 @@ function CacheStatusBar:Clear()
     self.segment = nil
 end
 
-function CacheStatusBar:SetValue(value, color) -- TODO get rid of this?
+function CacheStatusBar:SetValue(value)
     self:Clear()
     local segmentControl = self.segmentControlPool:AcquireObject()
     segmentControl:SetWidth(nil)
     segmentControl:SetAnchorFill(self.control)
     segmentControl:SetValue(value)
+    segmentControl:EnableLeadingEdge(true)
+    segmentControl.gloss:EnableLeadingEdge(true)
     self.segment = segmentControl
 end
 
@@ -112,11 +114,13 @@ function CacheStatusBar:Update(cache)
             endTime)
         if trimmedStartTime and trimmedEndTime then
             local data = {}
-            data.color = isWatching and GRADIENT_CACHE_SEGMENT_LINKED_RANGE or GRADIENT_CACHE_SEGMENT_LINKED_RANGE_UNWATCHED
+            data.color = isWatching and GRADIENT_CACHE_SEGMENT_LINKED_RANGE or
+                GRADIENT_CACHE_SEGMENT_LINKED_RANGE_UNWATCHED
             if rangeEndTime < linkedRangeStartTime then
                 data.color = GRADIENT_CACHE_SEGMENT_BEFORE_LINKED_RANGE
             elseif rangeStartTime > linkedRangeEndTime then
-                data.color = isWatching and GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE or GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_UNWATCHED
+                data.color = isWatching and GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE or
+                    GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_UNWATCHED
             end
 
             local isGaplessRange = gaplessRangeStartTime and rangeStartTime == gaplessRangeStartTime
@@ -147,7 +151,8 @@ function CacheStatusBar:Update(cache)
             self:AddSegment({
                 start = linkedRangeStart,
                 width = linkedRangeWidth,
-                color = isWatching and GRADIENT_CACHE_SEGMENT_LINKED_PROCESSED_RANGE or GRADIENT_CACHE_SEGMENT_LINKED_PROCESSED_RANGE_UNWATCHED,
+                color = isWatching and GRADIENT_CACHE_SEGMENT_LINKED_PROCESSED_RANGE or
+                    GRADIENT_CACHE_SEGMENT_LINKED_PROCESSED_RANGE_UNWATCHED,
                 enableLeadingEdge = isGaplessRange,
             })
         end

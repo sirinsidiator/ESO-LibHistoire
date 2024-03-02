@@ -192,6 +192,7 @@ function GuildHistoryCacheCategory:SetNewestLinkedEventInfo(eventId, eventTime)
         self.saveData.newestLinkedEventId = nil
         self.saveData.newestLinkedEventTime = nil
     end
+    self.progressDirty = true
 end
 
 function GuildHistoryCacheCategory:SetOldestLinkedEventInfo(eventId, eventTime)
@@ -223,6 +224,7 @@ end
 function GuildHistoryCacheCategory:OnCategoryUpdated(flags)
     internal:FireCallbacks(internal.callback.CATEGORY_DATA_UPDATED, self, flags)
     self:StopProcessingEvents()
+    self.progressDirty = true
     local guildId, category = self.guildId, self.category
     local oldestLinkedEventId = self:GetOldestLinkedEventInfo()
     local newestLinkedEventId = self:GetNewestLinkedEventInfo()
@@ -353,6 +355,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
             internal.FireCallbacks(internal.callback.PROCESSING_LINKED_EVENTS_FINISHED, guildId, category)
             self.processingStartTime = nil
             self.processingEndTime = nil
+            self.progressDirty = true
         end):For(#missedEvents, 1, -1):Do(function(i)
             self:IncrementPendingEventMetrics()
             local event = missedEvents[i]
@@ -403,13 +406,17 @@ end
 
 function GuildHistoryCacheCategory:HasLinked()
     if self.processingTask then return false end
+
     local event = self.categoryData:GetOldestEventForUpToDateEventsWithoutGaps()
-    if event then
-        local newestLinkedEventId = self:GetNewestLinkedEventInfo()
-        if newestLinkedEventId then
-            return event:GetEventId() <= newestLinkedEventId
-        end
+    if not event then
+        return true
     end
+
+    local newestLinkedEventId = self:GetNewestLinkedEventInfo()
+    if newestLinkedEventId then
+        return event:GetEventId() <= newestLinkedEventId
+    end
+
     return false
 end
 

@@ -49,8 +49,10 @@ function GuildHistoryCacheGuild:GetProgress()
     local progress = 0
     local count = 0
     for _, cache in pairs(self.cache) do
-        progress = progress + cache:GetProgress()
-        count = count + 1
+        if cache:IsWatching() then
+            progress = progress + cache:GetProgress()
+            count = count + 1
+        end
     end
     if count == 0 then
         return 0
@@ -111,7 +113,7 @@ end
 function GuildHistoryCacheGuild:HasLinked()
     if not next(self.cache) then return false end
     for _, cache in pairs(self.cache) do
-        if not cache:HasLinked() then return false end
+        if cache:IsWatching() and not cache:HasLinked() then return false end
     end
     return true
 end
