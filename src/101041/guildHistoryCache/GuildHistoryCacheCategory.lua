@@ -73,7 +73,7 @@ function GuildHistoryCacheCategory:UnregisterListener(listener)
     self.listeners[listener] = nil
 end
 
-function GuildHistoryCacheCategory:GetListenerNames()
+function GuildHistoryCacheCategory:GetListenerInfo()
     local names = {}
     local legacyCount = 0
     for listener in pairs(self.listeners) do
@@ -83,7 +83,7 @@ function GuildHistoryCacheCategory:GetListenerNames()
             legacyCount = legacyCount + 1
         end
     end
-    return names, legacyCount
+    return names, legacyCount, self.saveData.lastListenerRegisteredTime
 end
 
 function GuildHistoryCacheCategory:RequestMissingData()

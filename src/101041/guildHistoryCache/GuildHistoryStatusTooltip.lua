@@ -76,16 +76,23 @@ function GuildHistoryStatusTooltip:Show(target, cache)
         end
     end
 
-    if cache.GetListenerNames then
-        local names, count = cache:GetListenerNames()
-        local listenerText = table.concat(names, ", ")
-        local legacyListenerText = ""
+    if cache.GetListenerInfo then
+        local names, count, lastSeenTime = cache:GetListenerInfo()
         if count > 0 then
-            legacyListenerText = string.format("%d unnamed legacy listener%s", count, count > 1 and "s" or "")
+            names[#names + 1] = string.format("%d legacy listener%s", count, count > 1 and "s" or "")
         end
-        SetTooltipText(tooltip,
-            string.format("Registered Listeners: |cffffff%s%s%s|r", listenerText, (#listenerText > 0 and " + " or ""),
-                legacyListenerText))
+        if #names > 0 then
+            SetTooltipText(tooltip, "Registered Listeners:")
+            for i = 1, #names do
+                SetTooltipText(tooltip, string.format("|cffffff%s|r", names[i]))
+            end
+        else
+            SetTooltipText(tooltip, "No registered listeners")
+            if lastSeenTime then
+                SetTooltipText(tooltip,
+                    string.format("Last listener seen: |cffffff%s|r", ZO_FormatDurationAgo(lastSeenTime)))
+            end
+        end
     end
 
     if shouldUnregisterForUpdate then

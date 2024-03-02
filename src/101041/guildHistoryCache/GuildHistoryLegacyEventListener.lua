@@ -13,6 +13,7 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
     self.guildId = guildId
     self.legacyCategory = legacyCategory
     self.key = string.format("%s/%d/%d", internal.WORLD_NAME, guildId, legacyCategory)
+    self.caches = caches
     self.listeners = {}
     self.cachedEvents = {}
     self.iterationCompletedCount = 0
@@ -301,6 +302,10 @@ function GuildHistoryLegacyEventListener:Start()
         end
     end
 
+    for _, cache in ipairs(self.caches) do
+        cache:RegisterListener(self)
+    end
+
     self.running = true
     return true
 end
@@ -324,6 +329,10 @@ function GuildHistoryLegacyEventListener:Stop()
         self.task = nil
     end
     self.cachedEvents = {}
+
+    for _, cache in ipairs(self.caches) do
+        cache:UnregisterListener(self)
+    end
 
     self.running = false
     return true

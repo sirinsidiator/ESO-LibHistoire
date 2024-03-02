@@ -69,6 +69,11 @@ end
 
 --- public api
 
+-- returns the name of the addon that created the listener
+function GuildHistoryEventListener:GetAddonName()
+    return self.addonName
+end
+
 -- returns a key consisting of server, guild id and history category, which can be used to store the last received eventId
 function GuildHistoryEventListener:GetKey()
     return self.categoryCache:GetKey()
@@ -193,7 +198,9 @@ function GuildHistoryEventListener:Start()
         return false
     end
 
-    self.categoryCache:RegisterListener(self)
+    if self.addonName then
+        self.categoryCache:RegisterListener(self)
+    end
     self.running = true
     return true
 end
@@ -212,7 +219,9 @@ function GuildHistoryEventListener:Stop()
         internal:UnregisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.nextEventProcessor)
     end
 
-    self.categoryCache:UnregisterListener(self)
+    if self.addonName then
+        self.categoryCache:UnregisterListener(self)
+    end
     self.currentEventId = nil
     self.running = false
     return true
