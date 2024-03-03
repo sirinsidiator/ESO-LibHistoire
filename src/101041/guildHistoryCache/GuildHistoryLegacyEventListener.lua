@@ -44,18 +44,32 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
         if not IsFor(guildId, category) then return end
         self.cachedEvents[#self.cachedEvents + 1] = {
             eventId = event:GetEventId(),
-            arguments = { internal:ConvertEventToLegacyFormat(event) }
+            arguments = { internal.ConvertEventToLegacyFormat(event) }
         }
     end
 
     self.uncachedNextEventCallback = function(guildId, category, event)
         if not IsFor(guildId, category) then return end
         local eventId = event:GetEventId()
-        if self.missedEventCallback and eventId < self.currentEventId then
-            self.missedEventCallback(internal:ConvertEventToLegacyFormat(event))
-        elseif self.nextEventCallback and eventId > self.currentEventId then
-            self.nextEventCallback(internal:ConvertEventToLegacyFormat(event))
+        if self.missedEventCallback and self.currentEventId and eventId < self.currentEventId then
+            self.missedEventCallback(internal.ConvertEventToLegacyFormat(event))
+        elseif self.nextEventCallback and (not self.currentEventId or eventId > self.currentEventId) then
+            self.nextEventCallback(internal.ConvertEventToLegacyFormat(event))
             self.currentEventId = eventId
+        end
+    end
+
+    if #self.listeners > 1 then
+        self.onEvent = function(event)
+            local guildId = event:GetGuildId()
+            local category = event:GetEventCategory()
+            return self.cachedNextEventCallback(guildId, category, event)
+        end
+    else
+        self.onEvent = function(event)
+            local guildId = event:GetGuildId()
+            local category = event:GetEventCategory()
+            return self.uncachedNextEventCallback(guildId, category, event)
         end
     end
 end
@@ -69,6 +83,7 @@ function GuildHistoryLegacyEventListener:OnIterationsCompleted()
 
     self.cachedEvents = {}
     self.performanceTracker:Reset()
+    logger:Debug("register cached event callbacks")
     internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.cachedNextEventCallback)
     internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.cachedNextEventCallback)
 
@@ -96,6 +111,7 @@ function GuildHistoryLegacyEventListener:OnProcessingCachedEventsCompleted()
 
     if #events > 0 then
         self.cachedEvents = {}
+        logger:Debug("unregister cached event callbacks")
         internal:UnregisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.cachedNextEventCallback)
         internal:UnregisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.cachedNextEventCallback)
 
@@ -114,8 +130,10 @@ function GuildHistoryLegacyEventListener:OnProcessingCachedEventsCompleted()
     end
 
     if self.shouldStop then
+        logger:Debug("stop after iteration")
         self:Stop()
     elseif #self.listeners > 1 then
+        logger:Debug("register uncached event callbacks")
         internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.uncachedNextEventCallback)
         internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.uncachedNextEventCallback)
     end
@@ -177,13 +195,14 @@ end
 function GuildHistoryLegacyEventListener:SetAfterEventId(eventId)
     if self.running then return false end
 
-    eventId = Id64ToNumber(eventId)
-    if eventId < internal.LEGACY_EVENT_ID_OFFSET then
+    local id = internal.ConvertLegacyId64ToEventId(eventId)
+    if not id then
+        logger:Warn("Could not convert legacy eventId for SetAfterEventId")
         return false
     end
 
     for _, listener in ipairs(self.listeners) do
-        listener:SetAfterEventId(eventId)
+        listener:SetAfterEventId(id)
     end
     return true
 end
@@ -202,13 +221,14 @@ end
 function GuildHistoryLegacyEventListener:SetBeforeEventId(eventId)
     if self.running then return false end
 
-    eventId = Id64ToNumber(eventId)
-    if eventId < internal.LEGACY_EVENT_ID_OFFSET then
+    local id = internal.ConvertLegacyId64ToEventId(eventId)
+    if not id then
+        logger:Warn("Could not convert legacy eventId for SetBeforeEventId")
         return false
     end
 
     for _, listener in ipairs(self.listeners) do
-        listener:SetBeforeEventId(eventId)
+        listener:SetBeforeEventId(id)
     end
     return true
 end
@@ -244,9 +264,8 @@ function GuildHistoryLegacyEventListener:SetNextEventCallback(callback)
     if self.running then return false end
 
     self.nextEventCallback = callback
-    local nextEventCallback = #self.listeners > 1 and self.cachedNextEventCallback or callback
     for _, listener in ipairs(self.listeners) do
-        listener:SetNextEventCallback(nextEventCallback)
+        listener:SetNextEventCallback(self.onEvent)
     end
     return true
 end
@@ -256,8 +275,9 @@ end
 function GuildHistoryLegacyEventListener:SetMissedEventCallback(callback)
     if self.running then return false end
 
+    self.missedEventCallback = callback
     for _, listener in ipairs(self.listeners) do
-        listener:SetMissedEventCallback(callback)
+        listener:SetMissedEventCallback(self.onEvent)
     end
     return true
 end
@@ -320,6 +340,7 @@ function GuildHistoryLegacyEventListener:Stop()
         end
     end
 
+    logger:Debug("unregister all event callbacks")
     internal:UnregisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.cachedNextEventCallback)
     internal:UnregisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.cachedNextEventCallback)
     internal:UnregisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.uncachedNextEventCallback)

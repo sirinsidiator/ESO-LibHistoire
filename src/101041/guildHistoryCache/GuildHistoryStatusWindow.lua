@@ -64,22 +64,45 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
     self:InitializeCategoryList(self.categoryListControl)
     self:InitializeButtons()
 
-    local function DoUpdate() -- TODO defer update and check which controls have to be updated
-        self:Update()
+    local updateHandle
+    local function ClearUpdate()
+        if updateHandle then
+            zo_removeCallLater(updateHandle)
+            updateHandle = nil
+        end
     end
-    internal:RegisterCallback(internal.callback.CATEGORY_DATA_UPDATED, DoUpdate)
-    internal:RegisterCallback(internal.callback.PROCESSING_STARTED, DoUpdate)
-    internal:RegisterCallback(internal.callback.PROCESSING_LINKED_EVENTS_FINISHED, DoUpdate)
-    internal:RegisterCallback(internal.callback.PROCESSING_FINISHED, DoUpdate)
-    internal:RegisterCallback(internal.callback.WATCH_MODE_CHANGED, DoUpdate)
-    internal:RegisterCallback(internal.callback.ZOOM_MODE_CHANGED, DoUpdate)
-    internal:RegisterCallback(internal.callback.REQUEST_CREATED, DoUpdate)
-    internal:RegisterCallback(internal.callback.REQUEST_DESTROYED, DoUpdate)
+
+    local function DoUpdate()
+        self:Update()
+        ClearUpdate()
+    end
+
+    local function RequestUpdate()
+        if updateHandle then return end
+        updateHandle = zo_callLater(DoUpdate, 500)
+    end
+
+    local function RequestImmediateUpdate()
+        ClearUpdate()
+        updateHandle = zo_callLater(DoUpdate, 0)
+    end
+
+    internal:RegisterCallback(internal.callback.CATEGORY_DATA_UPDATED, RequestUpdate)
+    internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENTS_STARTED, RequestImmediateUpdate)
+    internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENT, RequestUpdate)
+    internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENTS_FINISHED, RequestImmediateUpdate)
+    internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENTS_STARTED, RequestImmediateUpdate)
+    internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENT, RequestUpdate)
+    internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENTS_FINISHED, RequestImmediateUpdate)
+    internal:RegisterCallback(internal.callback.WATCH_MODE_CHANGED, RequestImmediateUpdate)
+    internal:RegisterCallback(internal.callback.ZOOM_MODE_CHANGED, RequestImmediateUpdate)
+    internal:RegisterCallback(internal.callback.REQUEST_CREATED, RequestImmediateUpdate)
+    internal:RegisterCallback(internal.callback.REQUEST_DESTROYED, RequestImmediateUpdate)
     internal:RegisterCallback(internal.callback.SELECTED_CATEGORY_CACHE_CHANGED, function(cache)
         self:SetGuildId(cache:GetGuildId())
         self:SetCategory(cache:GetCategory())
     end)
-    guildHistoryScene:RegisterCallback("StateChange", DoUpdate)
+    guildHistoryScene:RegisterCallback("StateChange", RequestImmediateUpdate)
 
     self:LoadPosition()
 
@@ -89,15 +112,13 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
         local oldestTime = newestTime - 24 * 3600
         logger:Info("Send requests for", daysAgo, "days ago")
         local cache = internal.historyCache:GetGuildCache(self.guildId)
-        cache:CreateRequest(newestTime, oldestTime)
-        cache:QueueRequest()
+        cache:SendRequests(newestTime, oldestTime)
     end
 
     SLASH_COMMANDS["/testrequest2"] = function() -- TODO remove
         logger:Info("Send requests for all missing history")
         local cache = internal.historyCache:GetGuildCache(self.guildId)
-        cache:CreateRequest()
-        cache:QueueRequest()
+        cache:SendRequests()
     end
 end
 

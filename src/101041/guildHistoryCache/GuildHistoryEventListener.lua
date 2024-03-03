@@ -40,9 +40,9 @@ local function HandleEvent(listener, event)
     end
 
     local eventId = event:GetEventId()
-    if listener.missedEventCallback and eventId < listener.currentEventId then
+    if listener.missedEventCallback and listener.currentEventId and eventId < listener.currentEventId then
         listener.missedEventCallback(event)
-    elseif listener.nextEventCallback and eventId > listener.currentEventId then
+    elseif listener.nextEventCallback and (not listener.currentEventId or eventId > listener.currentEventId) then
         listener.nextEventCallback(event)
         listener.currentEventId = eventId
     end

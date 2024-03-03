@@ -23,16 +23,15 @@ function GuildHistoryProcessingRequest:StartProcessing(endId)
     local listener = self.listener
     local startId = listener.currentEventId
     if not startId then
-        logger:Verbose("no startId - find one")
+        logger:Debug("no startId - find one")
         startId = self:FindStartId()
     end
 
     if not startId then
-        logger:Verbose("still no startId - are we done?")
+        logger:Debug("still no startId - are we done?")
         self:EnsureIterationIsComplete()
         return
     end
-    listener.currentEventId = startId
 
     endId = endId or self:FindEndId()
     assert(endId and startId <= endId,
@@ -44,18 +43,19 @@ function GuildHistoryProcessingRequest:StartProcessing(endId)
     self.endIndex = endIndex
     self.performanceTracker:Reset()
     self.task = internal:CreateAsyncTask()
-    logger:Debug("run processing task", endIndex, startIndex)
+    logger:Debug("run processing task", startIndex, endIndex)
     self.task:For(startIndex, endIndex, -1):Do(function(i)
         self.currentIndex = i
         self.performanceTracker:Increment()
         local event = listener.categoryCache:GetEvent(i)
         local eventId = event:GetEventId()
         if eventId < startId or eventId > endId then
-            logger:Verbose("event out of range", eventId, startId, endId)
+            logger:Debug("event out of range", eventId, startId, endId)
             return
         end
         self.onEvent(listener, event)
     end):Then(function()
+        logger:Debug("processing complete")
         self.task = nil
         self:EnsureIterationIsComplete()
     end)
@@ -77,14 +77,14 @@ function GuildHistoryProcessingRequest:FindStartId()
     local listener = self.listener
     if listener.afterEventId then
         startId = listener.categoryCache:FindFirstAvailableEventIdForEventId(listener.afterEventId + 1)
-        logger:Verbose("afterEventId", listener.afterEventId, startId)
+        logger:Debug("afterEventId", listener.afterEventId, startId)
     elseif listener.afterEventTime then
         startId = listener.categoryCache:FindFirstAvailableEventIdForEventTime(listener.afterEventTime + 1)
-        logger:Verbose("afterEventTime", listener.afterEventTime, startId)
+        logger:Debug("afterEventTime", listener.afterEventTime, startId)
     end
     if not startId then
         startId = listener.categoryCache:GetOldestLinkedEventInfo()
-        logger:Verbose("no currentEventId - use oldest", startId)
+        logger:Debug("no currentEventId - use oldest", startId)
     end
     return startId
 end
@@ -99,7 +99,7 @@ function GuildHistoryProcessingRequest:FindEndId()
     end
     if not endId then
         endId = listener.categoryCache:GetNewestLinkedEventInfo()
-        logger:Verbose("no endId - use newest", endId)
+        logger:Debug("no endId - use newest", endId)
     end
     return endId
 end
@@ -107,18 +107,18 @@ end
 function GuildHistoryProcessingRequest:EnsureIterationIsComplete()
     local endId = self:FindEndId()
     local listener = self.listener
-    if listener.currentEventId == endId then
-        logger:Verbose("iterated all stored events - register for callback")
+    if not listener.currentEventId or listener.currentEventId == endId then
+        logger:Debug("iterated all stored events - register for callback")
         self.onCompleted(listener)
     else
-        logger:Verbose("has not reached the end yet - go for another round")
+        logger:Debug("has not reached the end yet - go for another round")
         self:StartProcessing(endId)
     end
 end
 
 function GuildHistoryProcessingRequest:GetPendingEventMetrics()
     if not self.task then return 0, -1, -1 end
-    local count = self.endIndex - self.currentIndex
+    local count = self.currentIndex - self.endIndex
     local speed, timeLeft = self.performanceTracker:GetProcessingSpeedAndEstimatedTimeLeft(count)
     return count, speed, timeLeft
 end

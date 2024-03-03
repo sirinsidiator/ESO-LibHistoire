@@ -43,7 +43,8 @@ end
 
 function GuildHistoryCacheGuild:SendRequests(newestTime, oldestTime)
     for _, cache in pairs(self.cache) do
-        cache:SendRequest(newestTime, oldestTime)
+        cache:CreateRequest(newestTime, oldestTime)
+        cache:QueueRequest()
     end
 end
 

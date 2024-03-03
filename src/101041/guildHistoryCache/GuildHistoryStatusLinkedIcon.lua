@@ -35,8 +35,8 @@ function GuildHistoryStatusLinkedIcon:Initialize(history, adapter, statusTooltip
     end
 
     internal:RegisterCallback(internal.callback.SELECTED_CATEGORY_CACHE_CHANGED, RefreshLinkInformation)
-    internal:RegisterCallback(internal.callback.PROCESSING_STARTED, RefreshLinkInformation)
-    internal:RegisterCallback(internal.callback.PROCESSING_LINKED_EVENTS_FINISHED, RefreshLinkInformation)
+    internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENTS_STARTED, RefreshLinkInformation)
+    internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENTS_FINISHED, RefreshLinkInformation)
 
     self:Update()
 end

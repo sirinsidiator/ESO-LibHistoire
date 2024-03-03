@@ -16,8 +16,8 @@ local GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE = { ZO_ColorDef:New("FFC73F00"),
 local GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_UNWATCHED = { ZO_ColorDef:New("FFBDBDBD"), ZO_ColorDef:New("FFCACACA") }
 local GRADIENT_LINKED_RANGE = { ZO_ColorDef:New("FF00CA4E"), ZO_ColorDef:New("FF00E457") }
 local GRADIENT_LINKED_RANGE_UNWATCHED = { ZO_ColorDef:New("FF888888"), ZO_ColorDef:New("FF9C9C9C") }
-local GRADIENT_PROCESSING_RANGE = { ZO_ColorDef:New("CCC5B100"), ZO_ColorDef:New("CCFFEA00") }
-local GRADIENT_REQUEST_RANGE = { ZO_ColorDef:New("CCB900CA"), ZO_ColorDef:New("CCEA00FF") }
+local GRADIENT_PROCESSING_RANGE = { ZO_ColorDef:New("7FC5B100"), ZO_ColorDef:New("7FFFEA00") }
+local GRADIENT_REQUEST_RANGE = { ZO_ColorDef:New("7FB900CA"), ZO_ColorDef:New("7FEA00FF") }
 
 internal.GRADIENT_GUILD_INCOMPLETE = GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE
 internal.GRADIENT_GUILD_PROCESSING = { ZO_ColorDef:New("FFC5B100"), ZO_ColorDef:New("FFFFEA00") }
@@ -79,15 +79,14 @@ function CacheStatusBar:SetFrameColor(color)
 end
 
 function CacheStatusBar:Update(cache)
-    local width = self.control:GetWidth()
     self:Clear()
 
-    if not cache:HasCachedEvents() or width <= 0 then
-        logger:Verbose("no cached events or invalid width", cache:GetGuildId(), cache:GetCategory())
+    if self.control:GetWidth() <= 0 then
+        logger:Verbose("invalid bar width", cache:GetGuildId(), cache:GetCategory())
         return
     end
 
-    local startTime
+    local startTime, endTime
     local zoomMode = self.window:GetZoomMode()
     if not zoomMode or zoomMode == internal.ZOOM_MODE_AUTO then
         zoomMode = cache:HasLinked() and internal.ZOOM_MODE_FULL_RANGE or internal.ZOOM_MODE_MISSING_RANGE
@@ -95,8 +94,15 @@ function CacheStatusBar:Update(cache)
 
     if zoomMode == internal.ZOOM_MODE_FULL_RANGE then
         startTime = cache:GetCacheStartTime()
+        endTime = GetTimeStamp()
     else
         startTime = cache:GetUnprocessedEventsStartTime()
+        local newestEvent = cache:GetEvent(1)
+        if newestEvent then
+            endTime = newestEvent:GetEventTimestampS()
+        else
+            endTime = GetTimeStamp()
+        end
     end
 
     if not startTime then
@@ -104,76 +110,69 @@ function CacheStatusBar:Update(cache)
         startTime = cache:GetCacheStartTime()
     end
 
-    local endTime = GetTimeStamp()
-    local overallTime = endTime - startTime
-    if overallTime <= 0 then
-        logger:Warn("invalid overallTime", overallTime, cache:GetGuildId(), cache:GetCategory())
-        return
+    if not endTime then
+        logger:Debug("no end time - use full range")
+        endTime = GetTimeStamp()
     end
+
+    local overallTime = endTime - startTime
+    if overallTime <= 0 then return end
 
     local isWatching = cache:IsWatching()
     local watchMode = cache:GetWatchMode()
     local frameColor = WATCH_MODE_FRAME_COLOR[watchMode]
     self:SetFrameColor(frameColor)
 
-    local oldestLinkedEvent = cache:GetOldestLinkedEvent()
-    local newestLinkedEvent = cache:GetNewestLinkedEvent()
-    local linkedRangeStartTime = oldestLinkedEvent and oldestLinkedEvent:GetEventTimestampS() or startTime
-    local linkedRangeEndTime = newestLinkedEvent and newestLinkedEvent:GetEventTimestampS() or endTime
-    local gaplessRangeStartTime = cache:GetGaplessRangeStartTime()
-
-    logger:Debug("update cache status bar", cache:GetGuildId(), cache:GetCategory())
+    local _, oldestLinkedEventTime = cache:GetOldestLinkedEventInfo()
+    local _, newestLinkedEventTime = cache:GetNewestLinkedEventInfo()
 
     for i = 1, cache:GetNumRanges() do
-        local rangeEndTime, rangeStartTime, startId, endId = cache:GetRangeInfo(i)
-        if rangeEndTime and rangeStartTime then
-            local isGaplessRange = gaplessRangeStartTime and rangeStartTime == gaplessRangeStartTime
-            local data = {
-                startTime = startTime,
-                endTime = endTime,
-                segmentStartTime = rangeStartTime,
-                segmentEndTime = isGaplessRange and endTime or rangeEndTime,
-            }
-
-            data.color = isWatching and GRADIENT_CACHE_SEGMENT_LINKED_RANGE or
-                GRADIENT_CACHE_SEGMENT_LINKED_RANGE_UNWATCHED
-            if rangeEndTime < linkedRangeStartTime then
-                data.color = GRADIENT_CACHE_SEGMENT_BEFORE_LINKED_RANGE
-            elseif rangeStartTime > linkedRangeEndTime then
-                data.color = isWatching and GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE or
-                    GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_UNWATCHED
-            end
-
-            logger:Debug("add cache range", i, rangeEndTime, rangeStartTime, startId, endId, isGaplessRange)
-            self:AddSegment(data)
-        else
-            logger:Debug("skip empty range", i)
-        end
-    end
-
-    if oldestLinkedEvent and newestLinkedEvent then
-        local isGaplessRange = gaplessRangeStartTime and linkedRangeStartTime == gaplessRangeStartTime
+        local rangeEndTime, rangeStartTime = cache:GetRangeInfo(i)
         local data = {
             startTime = startTime,
             endTime = endTime,
-            segmentStartTime = linkedRangeStartTime,
-            segmentEndTime = isGaplessRange and endTime or linkedRangeEndTime,
+            segmentStartTime = rangeStartTime,
+            segmentEndTime = rangeEndTime,
+        }
+
+        if not oldestLinkedEventTime or rangeStartTime > newestLinkedEventTime then
+            if isWatching then
+                data.color = GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE
+            else
+                data.color = GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_UNWATCHED
+            end
+        elseif rangeEndTime < oldestLinkedEventTime then
+            data.color = GRADIENT_CACHE_SEGMENT_BEFORE_LINKED_RANGE
+        elseif isWatching then
+            data.color = GRADIENT_CACHE_SEGMENT_LINKED_RANGE
+        else
+            data.color = GRADIENT_CACHE_SEGMENT_LINKED_RANGE_UNWATCHED
+        end
+
+        self:AddSegment(data)
+    end
+
+    if oldestLinkedEventTime then
+        local data = {
+            startTime = startTime,
+            endTime = endTime,
+            segmentStartTime = oldestLinkedEventTime,
+            segmentEndTime = newestLinkedEventTime,
             color = isWatching and GRADIENT_LINKED_RANGE or GRADIENT_LINKED_RANGE_UNWATCHED,
         }
-        logger:Debug("add linked range", linkedRangeStartTime, linkedRangeEndTime, isGaplessRange)
         self:AddSegment(data)
     end
 
     local requestStartTime, requestEndTime = cache:GetRequestTimeRange()
     if requestStartTime then
-        logger:Debug("add request time range", requestStartTime, requestEndTime)
-        self:AddSegment({
+        local data = {
             startTime = startTime,
             endTime = endTime,
             segmentStartTime = requestStartTime,
             segmentEndTime = requestEndTime,
             color = GRADIENT_REQUEST_RANGE,
-        })
+        }
+        self:AddSegment(data)
     end
 
     local processingStartTime, processingEndTime = cache:GetProcessingTimeRange()
@@ -185,9 +184,10 @@ function CacheStatusBar:Update(cache)
             segmentEndTime = processingEndTime,
             color = GRADIENT_PROCESSING_RANGE,
         }
-        logger:Debug("add processing time range", processingStartTime, processingEndTime)
         self:AddSegment(data)
     end
+
+    logger:Debug("updated cache status bar", cache:GetGuildId(), cache:GetCategory())
 end
 
 function CacheStatusBar:AddSegment(data)

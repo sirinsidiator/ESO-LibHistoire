@@ -97,17 +97,26 @@ GUILD_EVENT_NAME_CHANGED = 18
 GUILD_EVENT_REMOVED_FROM_BLACKLIST = 47
 
 internal.LEGACY_EVENT_ID_OFFSET = 3000000000
-local function ConvertEventId(eventId)
+local function ConvertEventIdToLegacyId64(eventId)
     local idString = tostring(eventId)
     assert(#idString < 10, "eventId is too large to convert")
     while #idString < 9 do
         idString = "0" .. idString
     end
-    return "3" .. idString
+    return StringToId64("3" .. idString)
 end
 
+local function ConvertLegacyId64ToEventId(id64)
+    local idString = Id64ToString(id64)
+    if #idString == 10 and idString:sub(1, 1) == "3" then
+        local id = StringToId64(idString:sub(2))
+        return Id64ToNumber(id)
+    end
+end
+internal.ConvertLegacyId64ToEventId = ConvertLegacyId64ToEventId
+
 local function ConvertEvent(event)
-    local oldEventId = ConvertEventId(event:GetEventId())
+    local oldEventId = ConvertEventIdToLegacyId64(event:GetEventId())
     local eventTime = event:GetEventTimestampS()
     local category = event:GetEventCategory()
     local type = event:GetEventType()
