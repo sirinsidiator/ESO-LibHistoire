@@ -53,13 +53,27 @@ function GuildHistoryCacheCategory:RefreshLinkedEventInfo()
 
     local guildId, category = self.guildId, self.category
     local oldestIndex = GetNumGuildHistoryEvents(guildId, category)
-    if oldestIndex <= 0 then return end
+    if oldestIndex <= 0 then
+        logger:Warn("No events cached for guild %d category %d", guildId, category)
+        self:Reset()
+        return
+    end
 
     local oldestCachedEventId = GetGuildHistoryEventId(guildId, category, oldestIndex)
     if newestLinkedEventId < oldestCachedEventId then
         logger:Warn("Linked range is outside cached range for guild %d category %d", guildId, category)
         self:Reset()
-    elseif oldestCachedEventId ~= oldestLinkedEventId then
+        return
+    end
+
+    local rangeIndex = self:FindRangeIndexForEventId(oldestLinkedEventId)
+    if rangeIndex <= 0 then
+        logger:Warn("Could not find linked range for guild %d category %d", guildId, category)
+        self:Reset()
+        return
+    end
+
+    if oldestCachedEventId ~= oldestLinkedEventId then
         local oldestCachedEventTimestamp = GetGuildHistoryEventTimestamp(guildId, category, oldestIndex)
         logger:Info("Data was removed from linked range for guild %d category %d", guildId, category)
         self:SetOldestLinkedEventInfo(oldestCachedEventId, oldestCachedEventTimestamp)
@@ -621,6 +635,15 @@ function GuildHistoryCacheCategory:GetRangeInfo(index)
     local range = self.rangeInfo[index]
     if not range then return end
     return unpack(range)
+end
+
+function GuildHistoryCacheCategory:FindRangeIndexForEventId(eventId)
+    for i = 1, self:GetNumRanges() do
+        local _, _, newestEventId, oldestEventId = self:GetRangeInfo(i)
+        if eventId >= oldestEventId and eventId <= newestEventId then
+            return i
+        end
+    end
 end
 
 function GuildHistoryCacheCategory:GetIndexRangeForEventIdRange(startId, endId)
