@@ -71,11 +71,11 @@ function GuildHistoryCacheGuild:UpdateProgressBar(bar)
 
     local gradient
     if isProcessing then
-        gradient = ZO_SKILL_XP_BAR_GRADIENT_COLORS
+        gradient = internal.GRADIENT_GUILD_PROCESSING
     elseif self:HasLinked() then
-        gradient = ZO_XP_BAR_GRADIENT_COLORS
+        gradient = internal.GRADIENT_GUILD_COMPLETED
     else
-        gradient = ZO_CP_BAR_GRADIENT_COLORS[CHAMPION_DISCIPLINE_TYPE_CONDITIONING]
+        gradient = internal.GRADIENT_GUILD_INCOMPLETE
     end
     bar:SetGradient(gradient)
 end

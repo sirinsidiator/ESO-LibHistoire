@@ -98,23 +98,21 @@ function GuildHistoryCacheCategory:RequestMissingData()
 
     if self:ContinueExistingRequest() then return end
 
-    local _, requestOldestTime = self:GetNewestLinkedEventInfo()
+    local oldestLinkedEventId, oldestLinkedEventTime = self:GetOldestLinkedEventInfo()
+    local newestLinkedEventId, newestLinkedEventTime = self:GetNewestLinkedEventInfo()
     local oldestGaplessEvent = self.categoryData:GetOldestEventForUpToDateEventsWithoutGaps()
-    if not requestOldestTime and not oldestGaplessEvent then
-        self.initialRequest = true
-        return self:SendRequest()
-    elseif not requestOldestTime then
-        self:OnCategoryUpdated()
+    if not oldestLinkedEventId or not newestLinkedEventId then
+        if oldestGaplessEvent then
+            self:OnCategoryUpdated()
+        else
+            self.initialRequest = true
+            self:SendRequest()
+        end
         return
     end
 
-    local requestNewestTime = oldestGaplessEvent and oldestGaplessEvent:GetEventTimestampS() or GetTimeStamp()
-    local endTime = self:EstimateOptimalRequestRangeEndTime(requestOldestTime, requestNewestTime)
-    if endTime then
-        logger:Debug("Estimated optimal request range end time for guild %d category %d", guildId, category)
-        requestNewestTime = endTime
-    end
-
+    local requestNewestTime, requestOldestTime = self:OptimizeRequestTimeRange(oldestLinkedEventTime,
+        newestLinkedEventTime, oldestGaplessEvent)
     self:SendRequest(requestNewestTime, requestOldestTime)
 end
 
@@ -143,30 +141,29 @@ function GuildHistoryCacheCategory:SendRequest(newestTime, oldestTime)
     self.request:RequestMoreEvents(true)
 end
 
-function GuildHistoryCacheCategory:EstimateOptimalRequestRangeEndTime(requestOldestTime, requestNewestTime)
+function GuildHistoryCacheCategory:OptimizeRequestTimeRange(oldestLinkedEventTime, newestLinkedEventTime,
+                                                            oldestGaplessEvent)
+    local requestOldestTime = oldestLinkedEventTime
+    local requestNewestTime = oldestGaplessEvent and oldestGaplessEvent:GetEventTimestampS() or GetTimeStamp()
     local guildId, category = self.guildId, self.category
-    logger:Debug("Estimate missing events for guild %d category %d", guildId, category)
-    local newestLinkedEventId = self:GetNewestLinkedEventInfo()
-    if not newestLinkedEventId then
-        logger:Debug("No linked range stored for guild %d category %d", guildId, category)
-        return
+    logger:Debug("Optimize request time range for guild %d category %d", guildId, category)
+
+    local newestIndex, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(guildId, category, newestLinkedEventTime,
+        oldestLinkedEventTime)
+    if not newestIndex or not oldestIndex then
+        logger:Warn("Could not find events in linked range for guild %d category %d", guildId, category)
+        return requestNewestTime, requestOldestTime
     end
 
-    local rangeIndex = GetGuildHistoryEventRangeIndexForEventId(guildId, category, newestLinkedEventId)
-    if not rangeIndex then
-        logger:Warn("Could not find linked range for guild %d category %d", guildId, category)
-        return
-    end
-
-    local oldestTime, newestTime = GetGuildHistoryEventRangeInfo(guildId, category, rangeIndex)
-    local newestIndex, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(guildId, category, oldestTime, newestTime)
     local numEvents = oldestIndex - newestIndex + 1
-    local linkedRangeSeconds = newestTime - oldestTime
+    local linkedRangeSeconds = newestLinkedEventTime - oldestLinkedEventTime
     local requestRangeSeconds = requestNewestTime - requestOldestTime
     local estimatedMissingEvents = numEvents * (requestRangeSeconds / linkedRangeSeconds)
     if estimatedMissingEvents > MISSING_EVENT_COUNT_THRESHOLD then
-        return requestOldestTime + (linkedRangeSeconds / numEvents) * MISSING_EVENT_COUNT_THRESHOLD / 2
+        logger:Debug("Limit request time range")
+        requestNewestTime = requestOldestTime + (linkedRangeSeconds / numEvents) * MISSING_EVENT_COUNT_THRESHOLD / 2
     end
+    return requestNewestTime, requestOldestTime
 end
 
 function GuildHistoryCacheCategory:IsWatching()
