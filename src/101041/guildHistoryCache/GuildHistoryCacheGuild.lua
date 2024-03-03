@@ -68,7 +68,8 @@ end
 
 function GuildHistoryCacheGuild:UpdateProgressBar(bar)
     local isProcessing = self:IsProcessing()
-    if isProcessing then
+    local isRequesting = self:HasPendingRequests()
+    if isProcessing or isRequesting then
         bar:SetValue(1)
     else
         local progress = self:GetProgress()
@@ -78,6 +79,8 @@ function GuildHistoryCacheGuild:UpdateProgressBar(bar)
     local gradient
     if isProcessing then
         gradient = internal.GRADIENT_GUILD_PROCESSING
+    elseif isRequesting then
+        gradient = internal.GRADIENT_GUILD_REQUESTING
     elseif self:HasLinked() then
         gradient = internal.GRADIENT_GUILD_COMPLETED
     else
@@ -128,6 +131,14 @@ function GuildHistoryCacheGuild:IsProcessing()
     if not next(self.cache) then return false end
     for _, cache in pairs(self.cache) do
         if cache:IsProcessing() then return true end
+    end
+    return false
+end
+
+function GuildHistoryCacheGuild:HasPendingRequests()
+    if not next(self.cache) then return false end
+    for _, cache in pairs(self.cache) do
+        if cache:HasPendingRequest() then return true end
     end
     return false
 end

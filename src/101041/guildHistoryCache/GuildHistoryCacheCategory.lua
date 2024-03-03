@@ -144,6 +144,10 @@ function GuildHistoryCacheCategory:ContinueExistingRequest()
     return false
 end
 
+function GuildHistoryCacheCategory:HasPendingRequest()
+    return self.request ~= nil
+end
+
 function GuildHistoryCacheCategory:VerifyRequest()
     local request = self.request
     if request then
