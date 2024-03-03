@@ -73,6 +73,8 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
     internal:RegisterCallback(internal.callback.PROCESSING_FINISHED, DoUpdate)
     internal:RegisterCallback(internal.callback.WATCH_MODE_CHANGED, DoUpdate)
     internal:RegisterCallback(internal.callback.ZOOM_MODE_CHANGED, DoUpdate)
+    internal:RegisterCallback(internal.callback.REQUEST_CREATED, DoUpdate)
+    internal:RegisterCallback(internal.callback.REQUEST_DESTROYED, DoUpdate)
     internal:RegisterCallback(internal.callback.SELECTED_CATEGORY_CACHE_CHANGED, function(cache)
         self:SetGuildId(cache:GetGuildId())
         self:SetCategory(cache:GetCategory())
@@ -86,8 +88,16 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
         local newestTime = GetTimeStamp() - (daysAgo * 24 * 3600)
         local oldestTime = newestTime - 24 * 3600
         logger:Info("Send requests for", daysAgo, "days ago")
-        internal.historyCache:GetGuildCache(self.guildId):SendRequests(newestTime, oldestTime)
-        internal:FireCallbacks(internal.callback.CATEGORY_DATA_UPDATED)
+        local cache = internal.historyCache:GetGuildCache(self.guildId)
+        cache:CreateRequest(newestTime, oldestTime)
+        cache:QueueRequest()
+    end
+
+    SLASH_COMMANDS["/testrequest2"] = function() -- TODO remove
+        logger:Info("Send requests for all missing history")
+        local cache = internal.historyCache:GetGuildCache(self.guildId)
+        cache:CreateRequest()
+        cache:QueueRequest()
     end
 end
 
@@ -102,7 +112,7 @@ function GuildHistoryStatusWindow:InitializeButtons()
             AddCustomMenuItem("Lock Window", function() self:Lock() end)
             AddCustomMenuItem("Reset Position", function() self:ResetPosition() end)
         end
-
+        AddCustomMenuItem("Check Stuck Requests", function() internal.historyCache:VerifyRequests() end)
         AddCustomSubMenuItem("Zoom Mode", {
             {
                 label = "Automatic",

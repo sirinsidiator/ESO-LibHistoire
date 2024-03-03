@@ -47,6 +47,8 @@ lib.internal = {
         SELECTED_CATEGORY_CACHE_CHANGED = "HistyDetectedTheSelectedCategoryCacheHasChanged",
         WATCH_MODE_CHANGED = "HistyDetectedTheWatchModeHasChanged",
         ZOOM_MODE_CHANGED = "HistyDetectedTheZoomModeHasChanged",
+        REQUEST_CREATED = "HistyHasCreatedARequest",
+        REQUEST_DESTROYED = "HistyHasDestroyedARequest",
     },
     class = {},
     logger = LibDebugLogger(LIB_IDENTIFIER),

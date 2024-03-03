@@ -56,6 +56,12 @@ function GuildHistoryCache:StartRequests()
     end)
 end
 
+function GuildHistoryCache:VerifyRequests()
+    self:ForEachActiveGuild(function(guildCache)
+        guildCache:VerifyRequests()
+    end)
+end
+
 function GuildHistoryCache:HasLinkedAllCaches()
     local allLinked = true
     self:ForEachActiveGuild(function(guildCache)

@@ -35,6 +35,12 @@ function GuildHistoryCacheGuild:StartRequests()
     end
 end
 
+function GuildHistoryCacheGuild:VerifyRequests()
+    for _, cache in pairs(self.cache) do
+        cache:VerifyRequest()
+    end
+end
+
 function GuildHistoryCacheGuild:SendRequests(newestTime, oldestTime)
     for _, cache in pairs(self.cache) do
         cache:SendRequest(newestTime, oldestTime)

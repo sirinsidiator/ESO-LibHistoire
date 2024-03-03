@@ -106,45 +106,85 @@ function GuildHistoryCacheCategory:RequestMissingData()
             self:OnCategoryUpdated()
         else
             self.initialRequest = true
-            self:SendRequest()
+            self:CreateRequest()
+            self:QueueRequest()
         end
         return
     end
 
     local requestNewestTime, requestOldestTime = self:OptimizeRequestTimeRange(oldestLinkedEventTime,
         newestLinkedEventTime, oldestGaplessEvent)
-    self:SendRequest(requestNewestTime, requestOldestTime)
+    self:CreateRequest(requestNewestTime, requestOldestTime)
+    self:QueueRequest()
 end
 
 function GuildHistoryCacheCategory:ContinueExistingRequest()
     local request = self.request
     if request then
-        logger:Debug("Request already exists")
         if not request:IsValid() or request:IsComplete() or self.initialRequest then
-            logger:Warn("Request is invalid, complete or initial - destroy")
-            self.initialRequest = false
-            DestroyGuildHistoryRequest(request:GetRequestId())
-            self.request = nil
+            self:DestroyRequest()
         else
-            logger:Debug("Request is still valid - reuse")
-            request:RequestMoreEvents(true)
-            return true
+            return self:QueueRequest()
         end
     end
     return false
 end
 
-function GuildHistoryCacheCategory:SendRequest(newestTime, oldestTime)
+function GuildHistoryCacheCategory:VerifyRequest()
+    local request = self.request
+    if request then
+        if request:IsComplete() then
+            logger:Warn("Request is complete but was not destroyed")
+            self:DestroyRequest()
+        elseif not request:IsValid() then
+            logger:Warn("Request is invalid but was not destroyed")
+            self:DestroyRequest()
+        elseif not request:IsRequestQueued() then
+            logger:Warn("Request is not queued")
+            self:QueueRequest()
+        end
+    end
+end
+
+function GuildHistoryCacheCategory:CreateRequest(newestTime, oldestTime)
     local guildId, category = self.guildId, self.category
-    logger:Debug("Send data request for guild %d category %d", guildId, category)
+    logger:Debug("Create data request for guild %d category %d", guildId, category)
     self.request = ZO_GuildHistoryRequest:New(guildId, category, newestTime, oldestTime)
-    self.request:RequestMoreEvents(true)
+    internal:FireCallbacks(internal.callback.REQUEST_CREATED, self.request)
+end
+
+function GuildHistoryCacheCategory:QueueRequest()
+    local request = self.request
+    logger:Debug("Queue server request for guild %d category %d", self.guildId, self.category)
+    if request:IsComplete() then
+        logger:Warn("Tried to queue already completed request")
+        self:DestroyRequest()
+        return false
+    end
+    if request:RequestMoreEvents(true) == GUILD_HISTORY_DATA_READY_STATE_INVALID_REQUEST then
+        self:DestroyRequest()
+        return false
+    end
+    if request:IsComplete() then
+        logger:Warn("Request is complete right after queuing it")
+        self:DestroyRequest()
+        return false
+    end
+    return true
+end
+
+function GuildHistoryCacheCategory:DestroyRequest()
+    local request = self.request
+    DestroyGuildHistoryRequest(request:GetRequestId())
+    internal:FireCallbacks(internal.callback.REQUEST_DESTROYED, request)
+    self.initialRequest = false
+    self.request = nil
 end
 
 function GuildHistoryCacheCategory:OptimizeRequestTimeRange(oldestLinkedEventTime, newestLinkedEventTime,
                                                             oldestGaplessEvent)
     local requestOldestTime = oldestLinkedEventTime
-    local requestNewestTime = oldestGaplessEvent and oldestGaplessEvent:GetEventTimestampS() or GetTimeStamp()
+    local requestNewestTime = oldestGaplessEvent and oldestGaplessEvent:GetEventTimestampS()
     local guildId, category = self.guildId, self.category
     logger:Debug("Optimize request time range for guild %d category %d", guildId, category)
 
@@ -157,11 +197,16 @@ function GuildHistoryCacheCategory:OptimizeRequestTimeRange(oldestLinkedEventTim
 
     local numEvents = oldestIndex - newestIndex + 1
     local linkedRangeSeconds = newestLinkedEventTime - oldestLinkedEventTime
-    local requestRangeSeconds = requestNewestTime - requestOldestTime
+    local requestRangeSeconds = (requestNewestTime or GetTimeStamp()) - requestOldestTime
     local estimatedMissingEvents = numEvents * (requestRangeSeconds / linkedRangeSeconds)
     if estimatedMissingEvents > MISSING_EVENT_COUNT_THRESHOLD then
         logger:Debug("Limit request time range")
         requestNewestTime = requestOldestTime + (linkedRangeSeconds / numEvents) * MISSING_EVENT_COUNT_THRESHOLD / 2
+    end
+
+    if requestNewestTime <= requestOldestTime then
+        logger:Debug("Request time range is invalid - request from oldest time up to latest")
+        requestNewestTime = nil
     end
     return requestNewestTime, requestOldestTime
 end
@@ -531,7 +576,7 @@ end
 function GuildHistoryCacheCategory:GetRequestTimeRange()
     local request = self.request
     if request and not self.initialRequest then
-        return request.oldestTimeS, request.newestTimeS
+        return request.oldestTimeS or 0, request.newestTimeS or GetTimeStamp()
     end
 end
 
