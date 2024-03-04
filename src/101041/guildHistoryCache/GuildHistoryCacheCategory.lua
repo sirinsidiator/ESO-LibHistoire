@@ -89,8 +89,8 @@ end
 function GuildHistoryCacheCategory:RequestMissingData()
     local guildId, category = self.guildId, self.category
     logger:Debug("Request missing data for guild %d category %d", guildId, category)
-    if not self:IsWatching() then
-        logger:Debug("Not actively watching")
+    if not self:IsAutoRequesting() then
+        logger:Debug("Not automatically requesting more")
         return
     end
 
@@ -213,11 +213,11 @@ function GuildHistoryCacheCategory:OptimizeRequestTimeRange(oldestLinkedEventTim
     return requestNewestTime, requestOldestTime
 end
 
-function GuildHistoryCacheCategory:IsWatching()
-    local mode = self:GetWatchMode()
-    if mode == internal.WATCH_MODE_ON then
+function GuildHistoryCacheCategory:IsAutoRequesting()
+    local mode = self:GetRequestMode()
+    if mode == internal.REQUEST_MODE_ON then
         return true
-    elseif mode == internal.WATCH_MODE_OFF then
+    elseif mode == internal.REQUEST_MODE_OFF then
         return false
     else
         local lastListenerTime = self.saveData.lastListenerRegisteredTime or 0
@@ -225,14 +225,14 @@ function GuildHistoryCacheCategory:IsWatching()
     end
 end
 
-function GuildHistoryCacheCategory:GetWatchMode()
-    return self.saveData.watching or internal.WATCH_MODE_AUTO
+function GuildHistoryCacheCategory:GetRequestMode()
+    return self.saveData.requestMode or internal.REQUEST_MODE_AUTO
 end
 
-function GuildHistoryCacheCategory:SetWatchMode(mode)
-    logger:Info("Set watch mode for guild %d category %d to %s", self.guildId, self.category, mode)
-    self.saveData.watching = mode
-    internal:FireCallbacks(internal.callback.WATCH_MODE_CHANGED, self.guildId, self.category, mode)
+function GuildHistoryCacheCategory:SetRequestMode(mode)
+    logger:Info("Set request mode for guild %d category %d to %s", self.guildId, self.category, mode)
+    self.saveData.requestMode = mode
+    internal:FireCallbacks(internal.callback.REQUEST_MODE_CHANGED, self.guildId, self.category, mode)
 end
 
 function GuildHistoryCacheCategory:SetNewestLinkedEventInfo(eventId, eventTime)

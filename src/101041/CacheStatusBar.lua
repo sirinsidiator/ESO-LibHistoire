@@ -10,25 +10,20 @@ local CacheStatusBar = ZO_InitializingObject:Subclass()
 internal.class.CacheStatusBar = CacheStatusBar
 
 local GRADIENT_CACHE_SEGMENT_BEFORE_LINKED_RANGE = { ZO_ColorDef:New("FF929292"), ZO_ColorDef:New("FFACACAC") }
-local GRADIENT_CACHE_SEGMENT_LINKED_RANGE = { ZO_ColorDef:New("FF0074C2"), ZO_ColorDef:New("FF0099FF") }
-local GRADIENT_CACHE_SEGMENT_LINKED_RANGE_UNWATCHED = { ZO_ColorDef:New("FFC1C1C1"), ZO_ColorDef:New("FFD3D3D3") }
-local GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE = { ZO_ColorDef:New("FFC73F00"), ZO_ColorDef:New("FFFC5000") }
-local GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_UNWATCHED = { ZO_ColorDef:New("FFBDBDBD"), ZO_ColorDef:New("FFCACACA") }
-local GRADIENT_LINKED_RANGE = { ZO_ColorDef:New("FF00CA4E"), ZO_ColorDef:New("FF00E457") }
-local GRADIENT_LINKED_RANGE_UNWATCHED = { ZO_ColorDef:New("FF888888"), ZO_ColorDef:New("FF9C9C9C") }
+local GRADIENT_CACHE_SEGMENT_LINKED_RANGE_ACTIVE = { ZO_ColorDef:New("FF0074C2"), ZO_ColorDef:New("FF0099FF") }
+local GRADIENT_CACHE_SEGMENT_LINKED_RANGE_INACTIVE = { ZO_ColorDef:New("FFC1C1C1"), ZO_ColorDef:New("FFD3D3D3") }
+local GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_ACTIVE = { ZO_ColorDef:New("FFC73F00"), ZO_ColorDef:New("FFFC5000") }
+local GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_INACTIVE = { ZO_ColorDef:New("FFBDBDBD"), ZO_ColorDef:New("FFCACACA") }
+local GRADIENT_LINKED_RANGE_ACTIVE = { ZO_ColorDef:New("FF00CA4E"), ZO_ColorDef:New("FF00E457") }
+local GRADIENT_LINKED_RANGE_INACTIVE = { ZO_ColorDef:New("FF888888"), ZO_ColorDef:New("FF9C9C9C") }
 local GRADIENT_PROCESSING_RANGE = { ZO_ColorDef:New("7FC5B100"), ZO_ColorDef:New("7FFFEA00") }
 local GRADIENT_REQUEST_RANGE = { ZO_ColorDef:New("7FB900CA"), ZO_ColorDef:New("7FEA00FF") }
 
-internal.GRADIENT_GUILD_INCOMPLETE = GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE
+internal.GRADIENT_GUILD_INCOMPLETE = GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_ACTIVE
 internal.GRADIENT_GUILD_PROCESSING = { ZO_ColorDef:New("FFC5B100"), ZO_ColorDef:New("FFFFEA00") }
 internal.GRADIENT_GUILD_REQUESTING = { ZO_ColorDef:New("FFB900CA"), ZO_ColorDef:New("FFEA00FF") }
-internal.GRADIENT_GUILD_COMPLETED = GRADIENT_LINKED_RANGE
+internal.GRADIENT_GUILD_COMPLETED = GRADIENT_LINKED_RANGE_ACTIVE
 
-local WATCH_MODE_FRAME_COLOR = {
-    [internal.WATCH_MODE_AUTO] = ZO_ColorDef:New("FFFFFFFF"),
-    [internal.WATCH_MODE_OFF] = ZO_ColorDef:New("FF808080"),
-    [internal.WATCH_MODE_ON] = ZO_ColorDef:New("FFFF0000"),
-}
 local LEADING_EDGE_WIDTH = 10 -- see ZO_ArrowStatusBarOverlayRight
 
 function CacheStatusBar:Initialize(control, window)
@@ -71,13 +66,6 @@ function CacheStatusBar:SetGradient(gradient)
     ZO_StatusBar_SetGradientColor(self.segment, gradient)
 end
 
-function CacheStatusBar:SetFrameColor(color)
-    for i = 1, self.frame:GetNumChildren() do
-        local child = self.frame:GetChild(i)
-        child:SetColor(color:UnpackRGBA())
-    end
-end
-
 function CacheStatusBar:Update(cache)
     self:Clear()
 
@@ -118,11 +106,7 @@ function CacheStatusBar:Update(cache)
     local overallTime = endTime - startTime
     if overallTime <= 0 then return end
 
-    local isWatching = cache:IsWatching()
-    local watchMode = cache:GetWatchMode()
-    local frameColor = WATCH_MODE_FRAME_COLOR[watchMode]
-    self:SetFrameColor(frameColor)
-
+    local isActive = cache:IsAutoRequesting()
     local _, oldestLinkedEventTime = cache:GetOldestLinkedEventInfo()
     local _, newestLinkedEventTime = cache:GetNewestLinkedEventInfo()
 
@@ -136,17 +120,17 @@ function CacheStatusBar:Update(cache)
         }
 
         if not oldestLinkedEventTime or rangeStartTime > newestLinkedEventTime then
-            if isWatching then
-                data.color = GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE
+            if isActive then
+                data.color = GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_ACTIVE
             else
-                data.color = GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_UNWATCHED
+                data.color = GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_INACTIVE
             end
         elseif rangeEndTime < oldestLinkedEventTime then
             data.color = GRADIENT_CACHE_SEGMENT_BEFORE_LINKED_RANGE
-        elseif isWatching then
-            data.color = GRADIENT_CACHE_SEGMENT_LINKED_RANGE
+        elseif isActive then
+            data.color = GRADIENT_CACHE_SEGMENT_LINKED_RANGE_ACTIVE
         else
-            data.color = GRADIENT_CACHE_SEGMENT_LINKED_RANGE_UNWATCHED
+            data.color = GRADIENT_CACHE_SEGMENT_LINKED_RANGE_INACTIVE
         end
 
         self:AddSegment(data)
@@ -158,7 +142,7 @@ function CacheStatusBar:Update(cache)
             endTime = endTime,
             segmentStartTime = oldestLinkedEventTime,
             segmentEndTime = newestLinkedEventTime,
-            color = isWatching and GRADIENT_LINKED_RANGE or GRADIENT_LINKED_RANGE_UNWATCHED,
+            color = isActive and GRADIENT_LINKED_RANGE_ACTIVE or GRADIENT_LINKED_RANGE_INACTIVE,
         }
         self:AddSegment(data)
     end

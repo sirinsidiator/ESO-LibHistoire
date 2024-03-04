@@ -10,6 +10,9 @@ local BUTTON_NORMAL_TEXTURE = "LibHistoire/image/histy_up.dds"
 local BUTTON_PRESSED_TEXTURE = "LibHistoire/image/histy_down.dds"
 local LINKED_ICON = "LibHistoire/image/linked_down.dds"
 local UNLINKED_ICON = "LibHistoire/image/unlinked_down.dds"
+local REQUEST_MODE_ICON_SIZE = 32
+local REQUEST_MODE_FORCE_ON_ICON = "EsoUI/Art/Miscellaneous/Keyboard/visible_up.dds"
+local REQUEST_MODE_FORCE_OFF_ICON = "EsoUI/Art/Miscellaneous/Keyboard/hidden_up.dds"
 local DEFAULT_COLOR = ZO_NORMAL_TEXT
 local SELECTED_COLOR = ZO_SELECTED_TEXT
 
@@ -94,7 +97,7 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
     internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENTS_STARTED, RequestImmediateUpdate)
     internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENT, RequestUpdate)
     internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENTS_FINISHED, RequestImmediateUpdate)
-    internal:RegisterCallback(internal.callback.WATCH_MODE_CHANGED, RequestImmediateUpdate)
+    internal:RegisterCallback(internal.callback.REQUEST_MODE_CHANGED, RequestImmediateUpdate)
     internal:RegisterCallback(internal.callback.ZOOM_MODE_CHANGED, RequestImmediateUpdate)
     internal:RegisterCallback(internal.callback.REQUEST_CREATED, RequestImmediateUpdate)
     internal:RegisterCallback(internal.callback.REQUEST_DESTROYED, RequestImmediateUpdate)
@@ -241,8 +244,19 @@ local function InitializeClickHandler(rowControl, OnSelect)
 end
 
 local function SetLabel(rowControl, entry)
+    local label = entry.label
+    local cache = entry.cache
+    if cache.GetRequestMode then
+        local mode = cache:GetRequestMode()
+        if mode == internal.REQUEST_MODE_ON then
+            label = label .. zo_iconFormat(REQUEST_MODE_FORCE_ON_ICON, REQUEST_MODE_ICON_SIZE, REQUEST_MODE_ICON_SIZE)
+        elseif mode == internal.REQUEST_MODE_OFF then
+            label = label .. zo_iconTextFormat(REQUEST_MODE_FORCE_OFF_ICON, REQUEST_MODE_ICON_SIZE, REQUEST_MODE_ICON_SIZE)
+        end
+    end
+
     local labelControl = rowControl:GetNamedChild("Label")
-    labelControl:SetText(entry.label)
+    labelControl:SetText(label)
     local color = entry.selected and SELECTED_COLOR or DEFAULT_COLOR
     labelControl:SetColor(color:UnpackRGBA())
 end
@@ -332,35 +346,35 @@ function GuildHistoryStatusWindow:InitializeCategoryList(listControl)
                     local entry = ZO_ScrollList_GetData(rowControl)
                     entry.cache:Clear()
                 end)
-                AddCustomSubMenuItem("Watch Mode", {
+                AddCustomSubMenuItem("Request Mode", {
                     {
                         label = "Automatic",
                         itemType = MENU_ADD_OPTION_CHECKBOX,
                         callback = function()
-                            cache:SetWatchMode(internal.WATCH_MODE_AUTO)
+                            cache:SetRequestMode(internal.REQUEST_MODE_AUTO)
                         end,
                         checked = function()
-                            return cache:GetWatchMode() == internal.WATCH_MODE_AUTO
+                            return cache:GetRequestMode() == internal.REQUEST_MODE_AUTO
                         end
                     },
                     {
                         label = "Force off",
                         itemType = MENU_ADD_OPTION_CHECKBOX,
                         callback = function()
-                            cache:SetWatchMode(internal.WATCH_MODE_OFF)
+                            cache:SetRequestMode(internal.REQUEST_MODE_OFF)
                         end,
                         checked = function()
-                            return cache:GetWatchMode() == internal.WATCH_MODE_OFF
+                            return cache:GetRequestMode() == internal.REQUEST_MODE_OFF
                         end
                     },
                     {
                         label = "Force on",
                         itemType = MENU_ADD_OPTION_CHECKBOX,
                         callback = function()
-                            cache:SetWatchMode(internal.WATCH_MODE_ON)
+                            cache:SetRequestMode(internal.REQUEST_MODE_ON)
                         end,
                         checked = function()
-                            return cache:GetWatchMode() == internal.WATCH_MODE_ON
+                            return cache:GetRequestMode() == internal.REQUEST_MODE_ON
                         end
                     }
                 })

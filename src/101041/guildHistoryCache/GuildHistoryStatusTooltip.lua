@@ -33,7 +33,7 @@ end
 function GuildHistoryStatusTooltip:SetupForCategory(cache)
     local tooltip = self.control
 
-    if cache:IsWatching() then
+    if cache:IsAutoRequesting() then
         SetTooltipText(tooltip,
             zo_strformat("Linked events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumLinkedEvents())))
         local firstLinkedEvent = cache:GetOldestLinkedEvent()
@@ -48,7 +48,7 @@ function GuildHistoryStatusTooltip:SetupForCategory(cache)
             SetTooltipText(tooltip, zo_strformat("Newest linked event: |cffffff<<1>> <<2>>|r", date, time))
         end
     else
-        SetTooltipText(tooltip, "Cache is not actively watching for new events", 0, 1, 0)
+        SetTooltipText(tooltip, "Not automatically requesting missing events", 0, 1, 0)
     end
 
     local shouldUnregisterForUpdate = true
