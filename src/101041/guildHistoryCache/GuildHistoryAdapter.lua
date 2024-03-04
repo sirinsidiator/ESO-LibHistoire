@@ -66,3 +66,8 @@ end
 function GuildHistoryAdapter:GetSelectedCategoryCache()
     return self.selectedCategoryCache
 end
+
+function GuildHistoryAdapter:GetGuildHistoryEventIndicesForTimeRange(guildId, category, newestTime, oldestTime)
+    assert(newestTime >= oldestTime, "newestTime must be greater or equal to oldestTime")
+    return GetGuildHistoryEventIndicesForTimeRange(guildId, category, newestTime, oldestTime)
+end

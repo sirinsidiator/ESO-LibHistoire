@@ -206,8 +206,8 @@ function GuildHistoryCacheCategory:OptimizeRequestTimeRange(oldestLinkedEventTim
     local guildId, category = self.guildId, self.category
     logger:Debug("Optimize request time range for guild %d category %d", guildId, category)
 
-    local newestIndex, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(guildId, category, newestLinkedEventTime,
-        oldestLinkedEventTime)
+    local newestIndex, oldestIndex = internal.adapter:GetGuildHistoryEventIndicesForTimeRange(guildId, category,
+        newestLinkedEventTime, oldestLinkedEventTime)
     if not newestIndex or not oldestIndex then
         logger:Warn("Could not find events in linked range for guild %d category %d", guildId, category)
         return requestNewestTime, requestOldestTime
@@ -518,8 +518,8 @@ function GuildHistoryCacheCategory:GetNumLinkedEvents()
     local _, oldestEventTime = self:GetOldestLinkedEventInfo()
     local _, newestEventTime = self:GetNewestLinkedEventInfo()
     if not oldestEventTime or not newestEventTime then return 0 end
-    local newestIndex, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(self.guildId, self.category, newestEventTime,
-        oldestEventTime)
+    local newestIndex, oldestIndex = internal.adapter:GetGuildHistoryEventIndicesForTimeRange(
+        self.guildId, self.category, newestEventTime, oldestEventTime)
     if not newestIndex or not oldestIndex then return 0 end
     return oldestIndex - newestIndex + 1
 end
@@ -528,8 +528,8 @@ function GuildHistoryCacheCategory:GetNumUnlinkedEvents()
     local _, newestEventTime = self:GetNewestLinkedEventInfo()
     if not newestEventTime then return 0 end
     local now = GetTimeStamp()
-    local newestIndex, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(self.guildId, self.category, now,
-        newestEventTime + 1)
+    local newestIndex, oldestIndex = internal.adapter:GetGuildHistoryEventIndicesForTimeRange(
+        self.guildId, self.category, now, newestEventTime + 1)
     if not newestIndex or not oldestIndex then return 0 end
 end
 
@@ -627,8 +627,8 @@ function GuildHistoryCacheCategory:UpdateRangeInfo()
         for i = 1, GetNumGuildHistoryEventRanges(guildId, category) do
             local newestTimeS, oldestTimeS = GetGuildHistoryEventRangeInfo(guildId, category, i)
             -- range info includes events that are hidden due to permissions, so we check for actually visible events here
-            local newestIndex, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(guildId, category, newestTimeS,
-                oldestTimeS)
+            local newestIndex, oldestIndex = internal.adapter:GetGuildHistoryEventIndicesForTimeRange(
+                guildId, category, newestTimeS, oldestTimeS)
             if newestIndex then
                 local newestEventId = GetGuildHistoryEventId(guildId, category, newestIndex)
                 newestTimeS = GetGuildHistoryEventTimestamp(guildId, category, newestIndex)
@@ -703,7 +703,8 @@ function GuildHistoryCacheCategory:GetLinkedRangeIndices()
     if not rangeIndex then return end
 
     local newestTime, oldestTime = self:GetRangeInfo(rangeIndex)
-    local newestIndex, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(guildId, category, newestTime, oldestTime)
+    local newestIndex, oldestIndex = internal.adapter:GetGuildHistoryEventIndicesForTimeRange(
+        guildId, category, newestTime, oldestTime)
     return newestIndex, oldestIndex
 end
 
@@ -772,7 +773,8 @@ function GuildHistoryCacheCategory:FindFirstAvailableEventIdForEventTime(eventTi
     end
 
     local guildId, category = self.guildId, self.category
-    local _, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(guildId, category, newestTime, eventTime)
+    local _, oldestIndex = internal.adapter:GetGuildHistoryEventIndicesForTimeRange(
+        guildId, category, newestTime, eventTime)
     if oldestIndex then
         return GetGuildHistoryEventId(guildId, category, oldestIndex)
     end
@@ -794,7 +796,8 @@ function GuildHistoryCacheCategory:FindLastAvailableEventIdForEventTime(eventTim
     end
 
     local guildId, category = self.guildId, self.category
-    local newestIndex = GetGuildHistoryEventIndicesForTimeRange(guildId, category, eventTime, oldestTime)
+    local newestIndex = internal.adapter:GetGuildHistoryEventIndicesForTimeRange(
+        guildId, category, eventTime, oldestTime)
     if newestIndex then
         return GetGuildHistoryEventId(guildId, category, newestIndex)
     end

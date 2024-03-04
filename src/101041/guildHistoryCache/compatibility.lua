@@ -352,8 +352,8 @@ end
 
 -- TODO remove this once the vanilla function was updated
 function ZO_GuildHistoryEventCategoryData:GetEventsInTimeRange(newestTimeS, oldestTimeS)
-    local newestIndex, oldestIndex = GetGuildHistoryEventIndicesForTimeRange(self.guildData:GetId(), self.eventCategory,
-        newestTimeS, oldestTimeS)
+    local newestIndex, oldestIndex = internal.adapter:GetGuildHistoryEventIndicesForTimeRange(
+        self.guildData:GetId(), self.eventCategory, newestTimeS, oldestTimeS)
     if newestIndex then
         return self:GetEventsInIndexRange(newestIndex, oldestIndex)
     end
