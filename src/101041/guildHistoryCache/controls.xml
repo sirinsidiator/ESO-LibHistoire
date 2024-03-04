@@ -148,13 +148,6 @@
                     <TextureCoords left="0" right="1" top="0" bottom=".625" />
                 </Texture>
 
-                <Label name="$(parent)Label" font="ZoFontGameShadow" wrapMode="ELLIPSIS"
-                    color="INTERFACE_COLOR_TYPE_TEXT_COLORS:INTERFACE_TEXT_COLOR_SELECTED">
-                    <Dimensions y="24" />
-                    <Anchor point="LEFT" offsetX="12" offsetY="-12" />
-                    <Anchor point="RIGHT" offsetY="-12" />
-                </Label>
-
                 <Control name="$(parent)StatusBar">
                     <Anchor point="TOPLEFT" relativeTo="$(parent)Label" relativePoint="BOTTOMLEFT" />
                     <Anchor point="TOPRIGHT" relativeTo="$(parent)Label" relativePoint="BOTTOMRIGHT" />

@@ -6,10 +6,28 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
+local MAX_NUMBER_OF_DAYS_CVAR_SUFFIX = {
+    [GUILD_HISTORY_EVENT_CATEGORY_ACTIVITY] = "activity",
+    [GUILD_HISTORY_EVENT_CATEGORY_AVA_ACTIVITY] = "ava_activity",
+    [GUILD_HISTORY_EVENT_CATEGORY_BANKED_CURRENCY] = "banked_currency",
+    [GUILD_HISTORY_EVENT_CATEGORY_BANKED_ITEM] = "banked_item",
+    [GUILD_HISTORY_EVENT_CATEGORY_MILESTONE] = "milestone",
+    [GUILD_HISTORY_EVENT_CATEGORY_ROSTER] = "roster",
+    [GUILD_HISTORY_EVENT_CATEGORY_TRADER] = "trader"
+}
+local SECONDS_PER_DAY = 60 * 60 * 24
+local DEFAULT_MAX_CACHE_TIMERANGE = 30 * SECONDS_PER_DAY
+local MAX_SERVER_TIMERANGE_FOR_CATEGORY = {}
+for eventCategory = GUILD_HISTORY_EVENT_CATEGORY_ITERATION_BEGIN, GUILD_HISTORY_EVENT_CATEGORY_ITERATION_END do
+    MAX_SERVER_TIMERANGE_FOR_CATEGORY[eventCategory] = DEFAULT_MAX_CACHE_TIMERANGE
+end
+MAX_SERVER_TIMERANGE_FOR_CATEGORY[GUILD_HISTORY_EVENT_CATEGORY_MILESTONE] = 180 * SECONDS_PER_DAY
+MAX_SERVER_TIMERANGE_FOR_CATEGORY[GUILD_HISTORY_EVENT_CATEGORY_ROSTER] = 180 * SECONDS_PER_DAY
+
 local GuildHistoryAdapter = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryAdapter = GuildHistoryAdapter
 
-function GuildHistoryAdapter:Initialize(history, cache)
+function GuildHistoryAdapter:InitializeDeferred(history, cache)
     self.history = history
     self.cache = cache
     self.selectedCategoryCache = cache:GetCategoryCache(history.guildId, history.selectedEventCategory)
@@ -70,4 +88,13 @@ end
 function GuildHistoryAdapter:GetGuildHistoryEventIndicesForTimeRange(guildId, category, newestTime, oldestTime)
     assert(newestTime >= oldestTime, "newestTime must be greater or equal to oldestTime")
     return GetGuildHistoryEventIndicesForTimeRange(guildId, category, newestTime, oldestTime)
+end
+
+function GuildHistoryAdapter:GetGuildHistoryCacheMaxTime(category)
+    local days = GetCVar("GuildHistoryCacheMaxNumberOfDays_" .. MAX_NUMBER_OF_DAYS_CVAR_SUFFIX[category])
+    return days and tonumber(days) * SECONDS_PER_DAY or DEFAULT_MAX_CACHE_TIMERANGE
+end
+
+function GuildHistoryAdapter:GetGuildHistoryServerMaxTime(category)
+    return MAX_SERVER_TIMERANGE_FOR_CATEGORY[category] or DEFAULT_MAX_CACHE_TIMERANGE
 end

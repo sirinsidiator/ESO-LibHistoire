@@ -11,7 +11,7 @@ internal.class.GuildHistoryCacheGuild = GuildHistoryCacheGuild
 
 local GuildHistoryCacheCategory = internal.class.GuildHistoryCacheCategory
 
-function GuildHistoryCacheGuild:Initialize(saveData, guildData)
+function GuildHistoryCacheGuild:Initialize(adapter, saveData, guildData)
     self.saveData = saveData
     self.guildData = guildData
     self.guildId = guildData:GetId()
@@ -20,7 +20,7 @@ function GuildHistoryCacheGuild:Initialize(saveData, guildData)
     for eventCategory = GUILD_HISTORY_EVENT_CATEGORY_ITERATION_BEGIN, GUILD_HISTORY_EVENT_CATEGORY_ITERATION_END do
         local categoryData = guildData:GetEventCategoryData(eventCategory)
         if categoryData then
-            self.cache[eventCategory] = GuildHistoryCacheCategory:New(saveData, categoryData)
+            self.cache[eventCategory] = GuildHistoryCacheCategory:New(adapter, saveData, categoryData)
         end
     end
 end

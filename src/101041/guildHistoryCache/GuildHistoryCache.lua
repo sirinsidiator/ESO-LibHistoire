@@ -11,14 +11,14 @@ internal.class.GuildHistoryCache = GuildHistoryCache
 
 local GuildHistoryCacheGuild = internal.class.GuildHistoryCacheGuild
 
-function GuildHistoryCache:Initialize(manager, saveData)
+function GuildHistoryCache:Initialize(adapter, manager, saveData)
     self.saveData = saveData
     self.manager = manager
     self.cache = {}
 
     local function CreateGuildCache(guildId)
         local guildData = manager:GetGuildData(guildId)
-        self.cache[guildId] = GuildHistoryCacheGuild:New(saveData, guildData)
+        self.cache[guildId] = GuildHistoryCacheGuild:New(adapter, saveData, guildData)
     end
 
     for i = 1, GetNumGuilds() do

@@ -42,7 +42,7 @@ lib.internal = {
         PROCESS_LINKED_EVENTS_STARTED = "HistyHasStartedProcessingLinkedEvents",
         PROCESS_LINKED_EVENT = "HistyIsProcessingALinkedEvent",
         PROCESS_LINKED_EVENTS_FINISHED = "HistyHasFinishedProcessingLinkedEvents",
-        PROCESS_MISSED_EVENTS_STARTED =  "HistyHasStartedProcessingMissedEvents",
+        PROCESS_MISSED_EVENTS_STARTED = "HistyHasStartedProcessingMissedEvents",
         PROCESS_MISSED_EVENT = "HistyIsProcessingAMissedEvent",
         PROCESS_MISSED_EVENTS_FINISHED = "HistyHasFinishedProcessingMissedEvents",
         SELECTED_CATEGORY_CACHE_CHANGED = "HistyDetectedTheSelectedCategoryCacheHasChanged",
@@ -107,11 +107,12 @@ end
 function internal:InitializeCaches()
     local logger = self.logger
     logger:Verbose("Initializing Caches")
-    self.historyCache = self.class.GuildHistoryCache:New(GUILD_HISTORY_MANAGER, LibHistoire_GuildHistory)
+    self.historyAdapter = self.class.GuildHistoryAdapter:New()
+    self.historyCache = self.class.GuildHistoryCache:New(self.historyAdapter, GUILD_HISTORY_MANAGER, LibHistoire_GuildHistory)
     SecurePostHook(ZO_GuildHistory_Keyboard, "OnDeferredInitialize", function(history)
-        if self.historyAdapter then return end
+        if self.statusWindow then return end
         logger:Verbose("Initializing user interface")
-        self.historyAdapter = self.class.GuildHistoryAdapter:New(history, self.historyCache)
+        self.historyAdapter:InitializeDeferred(history, self.historyCache)
         self.statusTooltip = self.class.GuildHistoryStatusTooltip:New()
         self.linkedIcon = self.class.GuildHistoryStatusLinkedIcon:New(history, self.historyAdapter, self.statusTooltip)
         self.statusWindow = self.class.GuildHistoryStatusWindow:New(self.historyAdapter, self.statusTooltip,

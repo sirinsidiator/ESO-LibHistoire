@@ -275,6 +275,8 @@ if not ZO_GuildHistoryEventCategoryData.GetEvent then
         end
         return nil
     end
+else
+    logger:Warn("ZO_GuildHistoryEventCategoryData.GetEvent already exists")
 end
 
 if not ZO_GuildHistoryEventCategoryData.GetOldestEventForUpToDateEventsWithoutGaps then
@@ -285,12 +287,16 @@ if not ZO_GuildHistoryEventCategoryData.GetOldestEventForUpToDateEventsWithoutGa
         end
         return nil
     end
+else
+    logger:Warn("ZO_GuildHistoryEventCategoryData.GetOldestEventForUpToDateEventsWithoutGaps already exists")
 end
 
 if not ZO_GuildHistoryEventData_Base.GetEventId then
     function ZO_GuildHistoryEventData_Base:GetEventId()
         return self:GetEventInfo().eventId
     end
+else
+    logger:Warn("ZO_GuildHistoryEventData_Base.GetEventId already exists")
 end
 
 if not GetGuildHistoryEventCategoryAndIndex then
@@ -304,6 +310,8 @@ if not GetGuildHistoryEventCategoryAndIndex then
             end
         end
     end
+else
+    logger:Warn("GetGuildHistoryEventCategoryAndIndex already exists")
 end
 
 if not GetGuildHistoryEventIndex then
@@ -315,6 +323,8 @@ if not GetGuildHistoryEventIndex then
             end
         end
     end
+else
+    logger:Warn("GetGuildHistoryEventIndex already exists")
 end
 
 if not GetGuildHistoryEventTimestamp then
@@ -337,6 +347,18 @@ if not GetGuildHistoryEventTimestamp then
         end
         return timestamp
     end
+else
+    logger:Warn("GetGuildHistoryEventTimestamp already exists")
+end
+
+if not GetGuildHistoryEventBasicInfo then
+    function GetGuildHistoryEventBasicInfo(guildId, category, index)
+        local eventId = GetGuildHistoryEventId(guildId, category, index)
+        local timestamp = GetGuildHistoryEventTimestamp(guildId, category, index)
+        return eventId, timestamp
+    end
+else
+    logger:Warn("GetGuildHistoryEventBasicInfo already exists")
 end
 
 if not GetGuildHistoryEventRangeIndexForEventId then
@@ -348,11 +370,13 @@ if not GetGuildHistoryEventRangeIndexForEventId then
             end
         end
     end
+else
+    logger:Warn("GetGuildHistoryEventRangeIndexForEventId already exists")
 end
 
 -- TODO remove this once the vanilla function was updated
 function ZO_GuildHistoryEventCategoryData:GetEventsInTimeRange(newestTimeS, oldestTimeS)
-    local newestIndex, oldestIndex = internal.adapter:GetGuildHistoryEventIndicesForTimeRange(
+    local newestIndex, oldestIndex = internal.historyAdapter:GetGuildHistoryEventIndicesForTimeRange(
         self.guildData:GetId(), self.eventCategory, newestTimeS, oldestTimeS)
     if newestIndex then
         return self:GetEventsInIndexRange(newestIndex, oldestIndex)
