@@ -55,4 +55,7 @@ function lib:CreateGuildHistoryListener(guildId, category, addonName)
     return listener
 end
 
+-- Function to convert id64s that have been artificially created by a legacy listener to the new id53 equivalent. Returns nil if the id64 cannot be converted.
+lib.ConvertArtificialLegacyId64ToEventId = internal.ConvertLegacyId64ToEventId
+
 internal:Initialize()
