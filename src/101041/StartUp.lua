@@ -158,8 +158,8 @@ function internal:InitializeChatMessage()
     local undeleteLink = ZO_LinkHandler_CreateLink("Click here to keep it for now", nil, UNDELETE_LINK_TYPE)
     CHAT_ROUTER:AddSystemMessage(
         "|cff6a00[LibHistoire][Warning] You have old LibHistoire data which is no longer used. " ..
-        "It will be automatically deleted now, to speed up your loading times.\n" ..
-        "This is your last chance to create a backup.\n|cff6a00" .. undeleteLink)
+        "It will be automatically deleted now, to speed up your loading times. " ..
+        "This is your last chance to create a backup.\n" .. undeleteLink)
     logger:Verbose("Chat message initialized")
 end
 
