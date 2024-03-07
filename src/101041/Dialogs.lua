@@ -59,6 +59,21 @@ function internal:ShowResetLinkedRangeDialog(callback)
     ZO_Dialogs_ShowDialog(DIALOG_ID)
 end
 
+function internal:ShowClearCacheDialog(callback)
+    local dialog = self:GetWarningDialog()
+    dialog.title.text = "Warning"
+    dialog.mainText.text = "Clearing the cache is not recommended and should only be used as an absolute last resort when nothing else worked!"
+
+    local primaryButton = dialog.buttons[1]
+    primaryButton.text = SI_DIALOG_CONFIRM
+    primaryButton.callback = callback
+
+    local secondaryButton = dialog.buttons[2]
+    secondaryButton.text = SI_DIALOG_CANCEL
+
+    ZO_Dialogs_ShowDialog(DIALOG_ID)
+end
+
 function internal:SetupDialogHook(name)
     local primaryButton = ESO_Dialogs[name].buttons[1]
     local originalCallback = primaryButton.callback

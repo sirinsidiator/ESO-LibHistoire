@@ -809,6 +809,7 @@ function GuildHistoryCacheCategory:Clear()
     logger:Warn("Clearing cache for guild %d category %d", self.guildId, self.category)
     local result = ClearGuildHistoryCache(self.guildId, self.category)
     logger:Info("Cache clear result:", result)
+    return result
 end
 
 function GuildHistoryCacheCategory:InitializePendingEventMetrics(numPendingEvents)

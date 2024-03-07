@@ -251,7 +251,8 @@ local function SetLabel(rowControl, entry)
         if mode == internal.REQUEST_MODE_ON then
             label = label .. zo_iconFormat(REQUEST_MODE_FORCE_ON_ICON, REQUEST_MODE_ICON_SIZE, REQUEST_MODE_ICON_SIZE)
         elseif mode == internal.REQUEST_MODE_OFF then
-            label = label .. zo_iconTextFormat(REQUEST_MODE_FORCE_OFF_ICON, REQUEST_MODE_ICON_SIZE, REQUEST_MODE_ICON_SIZE)
+            label = label ..
+                zo_iconTextFormat(REQUEST_MODE_FORCE_OFF_ICON, REQUEST_MODE_ICON_SIZE, REQUEST_MODE_ICON_SIZE)
         end
     end
 
@@ -344,9 +345,13 @@ function GuildHistoryStatusWindow:InitializeCategoryList(listControl)
                     end)
                 end)
                 AddCustomMenuItem("Clear Cache", function()
-                    -- TODO show confirmation dialog and then clear cache
-                    local entry = ZO_ScrollList_GetData(rowControl)
-                    entry.cache:Clear()
+                    internal:ShowClearCacheDialog(function()
+                        if cache:Clear() then
+                            ReloadUI()
+                        else
+                            ZO_Alert(UI_ALERT_CATEGORY_ERROR, SOUNDS.NEGATIVE_CLICK, "Could not reset history cache")
+                        end
+                    end)
                 end)
                 AddCustomSubMenuItem("Request Mode", {
                     {
