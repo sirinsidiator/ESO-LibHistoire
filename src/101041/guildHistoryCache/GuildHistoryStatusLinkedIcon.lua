@@ -8,6 +8,7 @@ local logger = internal.logger
 
 local LINKED_ICON = "LibHistoire/image/linked_down.dds"
 local UNLINKED_ICON = "LibHistoire/image/unlinked_down.dds"
+local REQUEST_MODE_FORCE_OFF_ICON = "EsoUI/Art/Miscellaneous/Keyboard/hidden_down.dds"
 
 local GuildHistoryStatusLinkedIcon = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryStatusLinkedIcon = GuildHistoryStatusLinkedIcon
@@ -21,7 +22,7 @@ function GuildHistoryStatusLinkedIcon:Initialize(history, adapter, statusTooltip
     local control = self.control
 
     control:SetHandler("OnMouseEnter", function()
-        local cache = self:GetSelectedCache()
+        local cache = self.adapter:GetSelectedCategoryCache()
         if cache then
             statusTooltip:Show(control, cache)
         end
@@ -37,6 +38,11 @@ function GuildHistoryStatusLinkedIcon:Initialize(history, adapter, statusTooltip
     internal:RegisterCallback(internal.callback.SELECTED_CATEGORY_CACHE_CHANGED, RefreshLinkInformation)
     internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENTS_STARTED, RefreshLinkInformation)
     internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENTS_FINISHED, RefreshLinkInformation)
+    internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENTS_STARTED, RefreshLinkInformation)
+    internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENTS_FINISHED, RefreshLinkInformation)
+    internal:RegisterCallback(internal.callback.REQUEST_MODE_CHANGED, RefreshLinkInformation)
+    internal:RegisterCallback(internal.callback.LINKED_RANGE_LOST, RefreshLinkInformation)
+    internal:RegisterCallback(internal.callback.LINKED_RANGE_FOUND, RefreshLinkInformation)
 
     self:Update()
 end
@@ -47,7 +53,13 @@ function GuildHistoryStatusLinkedIcon:Update()
 
     local cache = self.adapter:GetSelectedCategoryCache()
     if cache then
-        self.control:SetTexture(cache:HasLinked() and LINKED_ICON or UNLINKED_ICON)
+        local texture = UNLINKED_ICON
+        if not cache:IsAutoRequesting() then
+            texture = REQUEST_MODE_FORCE_OFF_ICON
+        elseif cache:HasLinked() then
+            texture = LINKED_ICON
+        end
+        self.control:SetTexture(texture)
         self.control:SetHidden(false)
     else
         self.control:SetHidden(true)

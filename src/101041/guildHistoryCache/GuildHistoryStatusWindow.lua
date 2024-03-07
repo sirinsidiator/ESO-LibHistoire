@@ -101,6 +101,8 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
     internal:RegisterCallback(internal.callback.ZOOM_MODE_CHANGED, RequestImmediateUpdate)
     internal:RegisterCallback(internal.callback.REQUEST_CREATED, RequestImmediateUpdate)
     internal:RegisterCallback(internal.callback.REQUEST_DESTROYED, RequestImmediateUpdate)
+    internal:RegisterCallback(internal.callback.LINKED_RANGE_LOST, RequestImmediateUpdate)
+    internal:RegisterCallback(internal.callback.LINKED_RANGE_FOUND, RequestImmediateUpdate)
     internal:RegisterCallback(internal.callback.SELECTED_CATEGORY_CACHE_CHANGED, function(cache)
         self:SetGuildId(cache:GetGuildId())
         self:SetCategory(cache:GetCategory())
