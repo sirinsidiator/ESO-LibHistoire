@@ -50,6 +50,8 @@ lib.internal = {
         ZOOM_MODE_CHANGED = "HistyDetectedTheZoomModeHasChanged",
         REQUEST_CREATED = "HistyHasCreatedARequest",
         REQUEST_DESTROYED = "HistyHasDestroyedARequest",
+        LINKED_RANGE_LOST = "HistyDetectedTheLinkedRangeHasBeenLost",
+        LINKED_RANGE_FOUND = "HistyDetectedTheLinkedRangeHasBeenFound",
     },
     class = {},
     logger = LibDebugLogger(LIB_IDENTIFIER),

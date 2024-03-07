@@ -15,6 +15,12 @@ lib.callback = {
     HISTORY_RESCAN_STARTED = "deprecated",
     --- @deprecated rescan is no longer needed
     HISTORY_RESCAN_ENDED = "deprecated",
+    -- fired when the linked range has been lost
+    -- this could be due to the cache being deleted or the lib detecting inconsistencies in its own save data
+    LINKED_RANGE_LOST = internal.callback.LINKED_RANGE_LOST,
+    -- fired when a new linked range has been found
+    -- this happens when the linked range is established initially or after the linked range was lost
+    LINKED_RANGE_FOUND = internal.callback.LINKED_RANGE_FOUND,
 }
 
 -- Register to a callback fired by the library. Usage is the same as with CALLBACK_MANAGER:RegisterCallback. You can find the list of exposed callbacks in api.lua

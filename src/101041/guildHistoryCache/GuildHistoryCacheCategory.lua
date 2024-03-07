@@ -253,6 +253,7 @@ function GuildHistoryCacheCategory:SetOldestLinkedEventInfo(eventId, eventTime)
     else
         self.saveData.oldestLinkedEventId = nil
         self.saveData.oldestLinkedEventTime = nil
+        internal:FireCallbacks(internal.callback.LINKED_RANGE_LOST, self.guildId, self.category)
     end
 end
 
@@ -322,6 +323,7 @@ function GuildHistoryCacheCategory:SetupFirstLinkedEventId()
     internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, self.guildId, self.category, event)
     self:SetOldestLinkedEventInfo(eventId, eventTime)
     self:SetNewestLinkedEventInfo(eventId, eventTime)
+    internal:FireCallbacks(internal.callback.LINKED_RANGE_FOUND, self.guildId, self.category)
     return eventId
 end
 
