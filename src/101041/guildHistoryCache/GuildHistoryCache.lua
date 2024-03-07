@@ -96,12 +96,3 @@ function GuildHistoryCache:GetCategoryCache(guildId, category)
     local categoryCache = guildCache:GetCategoryCache(category)
     return categoryCache
 end
-
-function GuildHistoryCache:HasLegacyData()
-    return next(self.saveData) ~= nil -- TODO separate legacy data from current data
-end
-
-function GuildHistoryCache:DeleteLegacyData()
-    ZO_ClearTable(self.saveData)
-    -- TODO request flush saved variables
-end

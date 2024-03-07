@@ -86,7 +86,6 @@ function internal:UnregisterCallback(...)
 end
 
 function internal:InitializeSaveData()
-    local server = internal.WORLD_NAME
     self.logger:Verbose("Initializing save data")
 
     LibHistoire_Settings = LibHistoire_Settings or {
@@ -97,12 +96,7 @@ function internal:InitializeSaveData()
         }
     }
 
-    LibHistoire_GuildNames = LibHistoire_GuildNames or {}
-    LibHistoire_NameDictionary = LibHistoire_NameDictionary or {}
-    LibHistoire_GuildHistory = LibHistoire_GuildHistory or {}
-
-    self.guildNames = LibHistoire_GuildNames[server] or {}
-    LibHistoire_GuildNames[server] = self.guildNames
+    LibHistoire_GuildHistoryCache = LibHistoire_GuildHistoryCache or {}
     self.logger:Verbose("Save data initialized")
 end
 
@@ -110,7 +104,8 @@ function internal:InitializeCaches()
     local logger = self.logger
     logger:Verbose("Initializing Caches")
     self.historyAdapter = self.class.GuildHistoryAdapter:New()
-    self.historyCache = self.class.GuildHistoryCache:New(self.historyAdapter, GUILD_HISTORY_MANAGER, LibHistoire_GuildHistory)
+    self.historyCache = self.class.GuildHistoryCache:New(self.historyAdapter, GUILD_HISTORY_MANAGER,
+        LibHistoire_GuildHistoryCache)
     SecurePostHook(ZO_GuildHistory_Keyboard, "OnDeferredInitialize", function(history)
         if self.statusWindow then return end
         logger:Verbose("Initializing user interface")
@@ -124,30 +119,47 @@ function internal:InitializeCaches()
     logger:Verbose("Caches initialized")
 end
 
+local function HasLegacyData()
+    return (LibHistoire_NameDictionary and next(LibHistoire_NameDictionary) ~= nil) or
+        (LibHistoire_GuildNames and next(LibHistoire_GuildNames) ~= nil) or
+        (LibHistoire_GuildHistory and next(LibHistoire_GuildHistory) ~= nil)
+end
+
 function internal:InitializeChatMessage()
     local logger = self.logger
     logger:Verbose("Initializing chat message")
-    if not self.historyCache:HasLegacyData() then
+    if not HasLegacyData() then
         logger:Verbose("Chat message initialization skipped")
         return
     end
-    local DELETE_LINK_TYPE = "histy_delete"
+
+    local legacyData = {}
+    legacyData.LibHistoire_NameDictionary = LibHistoire_NameDictionary
+    legacyData.LibHistoire_GuildNames = LibHistoire_GuildNames
+    legacyData.LibHistoire_GuildHistory = LibHistoire_GuildHistory
+    LibHistoire_NameDictionary = {}
+    LibHistoire_GuildNames = {}
+    LibHistoire_GuildHistory = {}
+
+    local UNDELETE_LINK_TYPE = "histy_undelete"
     local function HandleLinkClick(link, button, text, linkStyle, linkType)
         if button ~= MOUSE_BUTTON_INDEX_LEFT then return end
-        if linkType == DELETE_LINK_TYPE then
-            self.historyCache:DeleteLegacyData()
-            CHAT_ROUTER:AddSystemMessage("[LibHistoire] Obsolete data deleted.")
+        if linkType == UNDELETE_LINK_TYPE then
+            LibHistoire_NameDictionary = legacyData.LibHistoire_NameDictionary
+            LibHistoire_GuildNames = legacyData.LibHistoire_GuildNames
+            LibHistoire_GuildHistory = legacyData.LibHistoire_GuildHistory
+            CHAT_ROUTER:AddSystemMessage("[LibHistoire] Obsolete data temporarily restored.")
             return true
         end
     end
     LINK_HANDLER:RegisterCallback(LINK_HANDLER.LINK_CLICKED_EVENT, HandleLinkClick)
     LINK_HANDLER:RegisterCallback(LINK_HANDLER.LINK_MOUSE_UP_EVENT, HandleLinkClick)
 
-    local deleteLink = ZO_LinkHandler_CreateLink("Click here to delete it now", nil, DELETE_LINK_TYPE)
+    local undeleteLink = ZO_LinkHandler_CreateLink("Click here to keep it for now", nil, UNDELETE_LINK_TYPE)
     CHAT_ROUTER:AddSystemMessage(
         "|cff6a00[LibHistoire][Warning] You have old LibHistoire data which is no longer used. " ..
-        "This is your last chance to back it up in case you want to keep it.\n|cff6a00" ..
-        "It is highly recommended you delete it to improve loading times!\n" .. deleteLink)
+        "It will be automatically deleted now, to speed up your loading times.\n" ..
+        "This is your last chance to create a backup.\n|cff6a00" .. undeleteLink)
     logger:Verbose("Chat message initialized")
 end
 
