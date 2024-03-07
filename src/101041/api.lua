@@ -16,7 +16,7 @@ lib.callback = {
     --- @deprecated rescan is no longer needed
     HISTORY_RESCAN_ENDED = "deprecated",
     -- fired when the linked range has been lost
-    -- this could be due to the cache being deleted or the lib detecting inconsistencies in its own save data
+    -- this could be due to the cache being deleted, the lib detecting inconsistencies in its own save data or the user manually resetting the range
     LINKED_RANGE_LOST = internal.callback.LINKED_RANGE_LOST,
     -- fired when a new linked range has been found
     -- this happens when the linked range is established initially or after the linked range was lost

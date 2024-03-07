@@ -44,10 +44,10 @@ function internal:ShowQuitWarningDialog(message, buttonText, callback)
     ZO_Dialogs_ShowDialog(DIALOG_ID)
 end
 
-function internal:ShowForceLinkWarningDialog(callback)
+function internal:ShowResetLinkedRangeDialog(callback)
     local dialog = self:GetWarningDialog()
     dialog.title.text = "Warning"
-    dialog.mainText.text = "Forcing the history to link will produce a hole in your data!"
+    dialog.mainText.text = "Resetting the linked range may produce a hole in your data!"
 
     local primaryButton = dialog.buttons[1]
     primaryButton.text = SI_DIALOG_CONFIRM

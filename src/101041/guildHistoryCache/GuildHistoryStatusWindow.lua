@@ -338,8 +338,10 @@ function GuildHistoryStatusWindow:InitializeCategoryList(listControl)
             if (isInside and button == MOUSE_BUTTON_INDEX_LEFT) then
                 local cache = GetCacheFromRow(rowControl)
                 ClearMenu()
-                AddCustomMenuItem("Force Link", function()
-                    -- TODO show confirmation dialog and then set the newest event id to first one without a gap
+                AddCustomMenuItem("Reset Linked Range", function()
+                    internal:ShowResetLinkedRangeDialog(function()
+                        cache:Reset()
+                    end)
                 end)
                 AddCustomMenuItem("Clear Cache", function()
                     -- TODO show confirmation dialog and then clear cache
