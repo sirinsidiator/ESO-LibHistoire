@@ -305,9 +305,26 @@ end
 
 function GuildHistoryCacheCategory:Reset()
     logger:Info("Resetting cache for guild %d category %d", self.guildId, self.category)
-    self:SetOldestLinkedEventInfo()
+    if self.request then
+        self:DestroyRequest()
+    end
+
+    if self.processingTask then
+        self.processingTask:Cancel()
+        self.processingTask = nil
+    end
+
+    if self.processingRequest then
+        self.processingRequest:StopProcessing()
+        self.processingRequest = nil
+    end
+
+    for listener in pairs(self.listeners) do
+        listener:Stop()
+    end
+
     self:SetNewestLinkedEventInfo()
-    -- TODO inform listeners that a reset happened?
+    self:SetOldestLinkedEventInfo()
 end
 
 function GuildHistoryCacheCategory:SetupFirstLinkedEventId()
