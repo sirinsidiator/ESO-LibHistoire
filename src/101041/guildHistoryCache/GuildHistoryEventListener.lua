@@ -174,6 +174,13 @@ function GuildHistoryEventListener:SetStopOnLastEvent(shouldStop)
     return true
 end
 
+-- set a callback which is called when the listener starts waiting for future events
+function GuildHistoryEventListener:SetRegisteredForFutureEventsCallback(callback)
+    if self.running then return false end
+    self.futureEventsCallback = callback
+    return true
+end
+
 -- starts iterating over stored events and afterwards registers a listener for future events internally
 function GuildHistoryEventListener:Start()
     if self.running then return false end
@@ -190,6 +197,7 @@ function GuildHistoryEventListener:Start()
                 logger:Verbose("RegisterForFutureEvents")
                 internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.nextEventProcessor)
                 internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.nextEventProcessor)
+                if self.futureEventsCallback then self.futureEventsCallback() end
             end
         end)
         self.categoryCache:QueueProcessingRequest(self.request)
