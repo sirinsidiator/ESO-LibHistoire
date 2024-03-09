@@ -110,21 +110,6 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
     guildHistoryScene:RegisterCallback("StateChange", RequestImmediateUpdate)
 
     self:LoadPosition()
-
-    SLASH_COMMANDS["/testrequest"] = function(daysAgo) -- TODO remove
-        daysAgo = tonumber(daysAgo) or 1
-        local newestTime = GetTimeStamp() - (daysAgo * 24 * 3600)
-        local oldestTime = newestTime - 24 * 3600
-        logger:Info("Send requests for", daysAgo, "days ago")
-        local cache = internal.historyCache:GetGuildCache(self.guildId)
-        cache:SendRequests(newestTime, oldestTime)
-    end
-
-    SLASH_COMMANDS["/testrequest2"] = function() -- TODO remove
-        logger:Info("Send requests for all missing history")
-        local cache = internal.historyCache:GetGuildCache(self.guildId)
-        cache:SendRequests()
-    end
 end
 
 function GuildHistoryStatusWindow:InitializeButtons()
