@@ -226,7 +226,11 @@ function CacheStatusBar:Update(cache)
         self:AddSegment(data)
 
         if processingCurrentTime then
-            data.segmentEndTime = processingCurrentTime
+            if processingCurrentTime < 0 then
+                data.segmentStartTime = processingStartTime
+            else
+                data.segmentEndTime = processingCurrentTime
+            end
             data.color = GRADIENT_PROCESSING_RANGE_FOREGROUND
             self:AddSegment(data)
         end

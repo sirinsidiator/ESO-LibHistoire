@@ -461,7 +461,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
                 self:SetOldestLinkedEventInfo(eventId, eventTime)
                 logger:Verbose("Send missed event to listeners", guildId, category, eventId)
                 internal:FireCallbacks(internal.callback.PROCESS_MISSED_EVENT, guildId, category, event)
-                self.processingCurrentTime = eventTime
+                self.processingCurrentTime = -eventTime
             end
         end):Then(function()
             self.progressDirty = true
