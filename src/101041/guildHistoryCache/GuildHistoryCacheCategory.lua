@@ -186,7 +186,7 @@ end
 
 function GuildHistoryCacheCategory:OptimizeRequestTimeRange(oldestLinkedEventTime, newestLinkedEventTime,
                                                             oldestGaplessEvent)
-    local requestOldestTime = oldestLinkedEventTime
+    local requestOldestTime = newestLinkedEventTime
     local requestNewestTime = oldestGaplessEvent:GetEventTimestampS()
     local guildId, category = self.guildId, self.category
     logger:Debug("Optimize request time range for guild %d category %d", guildId, category)
