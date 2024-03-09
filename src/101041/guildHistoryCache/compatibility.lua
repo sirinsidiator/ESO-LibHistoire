@@ -108,10 +108,20 @@ end
 
 local function ConvertLegacyId64ToEventId(id64)
     local idString = Id64ToString(id64)
+    if idString == "0" then return 0 end
+
+    local idNumber, lostPrecision
     if #idString == 10 and idString:sub(1, 1) == "3" then
         local id = StringToId64(idString:sub(2))
-        return Id64ToNumber(id)
+        idNumber, lostPrecision = Id64ToNumber(id)
+        if lostPrecision then
+            logger:Warn("Lost precision converting legacy eventId", idString)
+        end
     end
+    if not idNumber then
+        logger:Warn("Could not convert legacy eventId", idString)
+    end
+    return idNumber
 end
 internal.ConvertLegacyId64ToEventId = ConvertLegacyId64ToEventId
 
@@ -124,55 +134,63 @@ local function ConvertEvent(event)
 
     if category == GUILD_HISTORY_EVENT_CATEGORY_ACTIVITY then
         if type == GUILD_HISTORY_ACTIVITY_EVENT_ABOUT_US_EDITED then
-            return GUILD_EVENT_ABOUT_US_EDITED, oldEventId, eventTime, info.displayName
+            return GUILD_EVENT_ABOUT_US_EDITED, oldEventId, eventTime, DecorateDisplayName(info.displayName)
         elseif type == GUILD_HISTORY_ACTIVITY_EVENT_MOTD_EDITED then
-            return GUILD_EVENT_MOTD_EDITED, oldEventId, eventTime, info.displayName
+            return GUILD_EVENT_MOTD_EDITED, oldEventId, eventTime, DecorateDisplayName(info.displayName)
         elseif type == GUILD_HISTORY_ACTIVITY_EVENT_RECRUITMENT_LISTED then
-            return GUILD_EVENT_GUILD_RECRUITMENT_GUILD_LISTED, oldEventId, eventTime, info.displayName
+            return GUILD_EVENT_GUILD_RECRUITMENT_GUILD_LISTED, oldEventId, eventTime,
+                DecorateDisplayName(info.displayName)
         elseif type == GUILD_HISTORY_ACTIVITY_EVENT_RECRUITMENT_UNLISTED then
-            return GUILD_EVENT_GUILD_RECRUITMENT_GUILD_UNLISTED, oldEventId, eventTime, info.displayName
+            return GUILD_EVENT_GUILD_RECRUITMENT_GUILD_UNLISTED, oldEventId, eventTime,
+                DecorateDisplayName(info.displayName)
         else
             logger:Warn("Unsupported activity event type", type)
         end
     elseif category == GUILD_HISTORY_EVENT_CATEGORY_AVA_ACTIVITY then
         if type == GUILD_HISTORY_AVA_ACTIVITY_EVENT_KEEP_CLAIMED then
-            return GUILD_EVENT_KEEP_CLAIMED, oldEventId, eventTime, info.displayName, GetKeepName(info.keepId),
-                GetCampaignName(info.campaignId)
+            return GUILD_EVENT_KEEP_CLAIMED, oldEventId, eventTime, DecorateDisplayName(info.displayName),
+                GetKeepName(info.keepId), GetCampaignName(info.campaignId)
         elseif type == GUILD_HISTORY_AVA_ACTIVITY_EVENT_KEEP_LOST then
             return GUILD_EVENT_KEEP_LOST, oldEventId, eventTime, GetKeepName(info.keepId),
                 GetCampaignName(info.campaignId)
         elseif type == GUILD_HISTORY_AVA_ACTIVITY_EVENT_KEEP_RELEASED then
-            return GUILD_EVENT_KEEP_RELEASED, oldEventId, eventTime, info.displayName, GetKeepName(info.keepId),
-                GetCampaignName(info.campaignId)
+            return GUILD_EVENT_KEEP_RELEASED, oldEventId, eventTime, DecorateDisplayName(info.displayName),
+                GetKeepName(info.keepId), GetCampaignName(info.campaignId)
         else
             logger:Warn("Unsupported AvA activity event type", type)
         end
     elseif category == GUILD_HISTORY_EVENT_CATEGORY_BANKED_CURRENCY then
-        if info.currency ~= CURT_MONEY then
-            logger:Warn("Unsupported currency type", info.currency)
+        if info.currencyType ~= CURT_MONEY then
+            logger:Warn("Unsupported currency type", info.currencyType)
             return
         end
         if type == GUILD_HISTORY_BANKED_CURRENCY_EVENT_DEPOSITED then
-            return GUILD_EVENT_BANKGOLD_ADDED, oldEventId, eventTime, info.displayName, info.amount
+            return GUILD_EVENT_BANKGOLD_ADDED, oldEventId, eventTime, DecorateDisplayName(info.displayName), info.amount
         elseif type == GUILD_HISTORY_BANKED_CURRENCY_EVENT_HERALDRY_EDITED then
-            return GUILD_EVENT_HERALDRY_EDITED, oldEventId, eventTime, info.displayName, info.amount
+            return GUILD_EVENT_HERALDRY_EDITED, oldEventId, eventTime, DecorateDisplayName(info.displayName), info
+                .amount
         elseif type == GUILD_HISTORY_BANKED_CURRENCY_EVENT_KIOSK_BID then
-            return GUILD_EVENT_BANKGOLD_KIOSK_BID, oldEventId, eventTime, info.displayName, info.amount, info.kioskName
+            return GUILD_EVENT_BANKGOLD_KIOSK_BID, oldEventId, eventTime, DecorateDisplayName(info.displayName),
+                info.amount, info.kioskName
         elseif type == GUILD_HISTORY_BANKED_CURRENCY_EVENT_KIOSK_BID_REFUND then
-            return GUILD_EVENT_BANKGOLD_KIOSK_BID_REFUND, oldEventId, eventTime, info.kioskName, info.amount
+            return GUILD_EVENT_BANKGOLD_KIOSK_BID_REFUND, oldEventId, eventTime, DecorateDisplayName(info.kioskName),
+                info.amount
         elseif type == GUILD_HISTORY_BANKED_CURRENCY_EVENT_KIOSK_PURCHASED then
-            return GUILD_EVENT_GUILD_KIOSK_PURCHASED, oldEventId, eventTime, info.displayName, info.amount,
-                info.kioskName
+            return GUILD_EVENT_GUILD_KIOSK_PURCHASED, oldEventId, eventTime, DecorateDisplayName(info.displayName),
+                info.amount, info.kioskName
         elseif type == GUILD_HISTORY_BANKED_CURRENCY_EVENT_WITHDRAWN then
-            return GUILD_EVENT_BANKGOLD_REMOVED, oldEventId, eventTime, info.displayName, info.amount
+            return GUILD_EVENT_BANKGOLD_REMOVED, oldEventId, eventTime, DecorateDisplayName(info.displayName),
+                info.amount
         else
             logger:Warn("Unsupported bank currency event type", type)
         end
     elseif category == GUILD_HISTORY_EVENT_CATEGORY_BANKED_ITEM then
         if type == GUILD_HISTORY_BANKED_ITEM_EVENT_ADDED then
-            return GUILD_EVENT_BANKITEM_ADDED, oldEventId, eventTime, info.displayName, info.quantity, info.itemLink
+            return GUILD_EVENT_BANKITEM_ADDED, oldEventId, eventTime, DecorateDisplayName(info.displayName),
+                info.quantity, info.itemLink
         elseif type == GUILD_HISTORY_BANKED_ITEM_EVENT_REMOVED then
-            return GUILD_EVENT_BANKITEM_REMOVED, oldEventId, eventTime, info.displayName, info.quantity, info.itemLink
+            return GUILD_EVENT_BANKITEM_REMOVED, oldEventId, eventTime, DecorateDisplayName(info.displayName),
+                info.quantity, info.itemLink
         else
             logger:Warn("Unsupported bank item event type", type)
         end
@@ -198,41 +216,44 @@ local function ConvertEvent(event)
         end
     elseif category == GUILD_HISTORY_EVENT_CATEGORY_ROSTER then
         if type == GUILD_HISTORY_ROSTER_EVENT_ADDED_TO_BLACKLIST then
-            return GUILD_EVENT_ADDED_TO_BLACKLIST, oldEventId, eventTime, info.actingDisplayName, info.targetDisplayName
+            return GUILD_EVENT_ADDED_TO_BLACKLIST, oldEventId, eventTime, DecorateDisplayName(info.actingDisplayName),
+                DecorateDisplayName(info.targetDisplayName)
         elseif type == GUILD_HISTORY_ROSTER_EVENT_APPLICATION_ACCEPTED then
-            return GUILD_EVENT_GUILD_APPLICATION_ACCEPTED, oldEventId, eventTime, info.actingDisplayName,
-                info.targetDisplayName
+            return GUILD_EVENT_GUILD_APPLICATION_ACCEPTED, oldEventId, eventTime,
+                DecorateDisplayName(info.actingDisplayName), DecorateDisplayName(info.targetDisplayName)
         elseif type == GUILD_HISTORY_ROSTER_EVENT_APPLICATION_DECLINED then
-            return GUILD_EVENT_GUILD_APPLICATION_DECLINED, oldEventId, eventTime, info.actingDisplayName,
-                info.targetDisplayName
+            return GUILD_EVENT_GUILD_APPLICATION_DECLINED, oldEventId, eventTime,
+                DecorateDisplayName(info.actingDisplayName), DecorateDisplayName(info.targetDisplayName)
         elseif type == GUILD_HISTORY_ROSTER_EVENT_DEMOTE then
-            return GUILD_EVENT_GUILD_DEMOTE, oldEventId, eventTime, info.actingDisplayName, info.targetDisplayName,
-                info.rankName
+            return GUILD_EVENT_GUILD_DEMOTE, oldEventId, eventTime, DecorateDisplayName(info.actingDisplayName),
+                DecorateDisplayName(info.targetDisplayName), info.rankName
         elseif type == GUILD_HISTORY_ROSTER_EVENT_EDIT_BLACKLIST_NOTE then
-            return GUILD_EVENT_EDIT_BLACKLIST_NOTE, oldEventId, eventTime, info.actingDisplayName, info
-                .targetDisplayName
+            return GUILD_EVENT_EDIT_BLACKLIST_NOTE, oldEventId, eventTime, DecorateDisplayName(info.actingDisplayName),
+                DecorateDisplayName(info.targetDisplayName)
         elseif type == GUILD_HISTORY_ROSTER_EVENT_INVITE then
-            return GUILD_EVENT_GUILD_INVITE, oldEventId, eventTime, info.actingDisplayName, info.targetDisplayName
+            return GUILD_EVENT_GUILD_INVITE, oldEventId, eventTime, DecorateDisplayName(info.actingDisplayName),
+                DecorateDisplayName(info.targetDisplayName)
         elseif type == GUILD_HISTORY_ROSTER_EVENT_JOIN then
-            return GUILD_EVENT_GUILD_JOIN, oldEventId, eventTime, info.actingDisplayName, info.targetDisplayName
+            return GUILD_EVENT_GUILD_JOIN, oldEventId, eventTime, DecorateDisplayName(info.actingDisplayName),
+                DecorateDisplayName(info.targetDisplayName)
         elseif type == GUILD_HISTORY_ROSTER_EVENT_KICKED then
-            return GUILD_EVENT_GUILD_KICKED, oldEventId, eventTime, info.actingDisplayName, info.targetDisplayName
+            return GUILD_EVENT_GUILD_KICKED, oldEventId, eventTime, DecorateDisplayName(info.actingDisplayName),
+                DecorateDisplayName(info.targetDisplayName)
         elseif type == GUILD_HISTORY_ROSTER_EVENT_LEAVE then
-            return GUILD_EVENT_GUILD_LEAVE, oldEventId, eventTime, info.actingDisplayName
+            return GUILD_EVENT_GUILD_LEAVE, oldEventId, eventTime, DecorateDisplayName(info.actingDisplayName)
         elseif type == GUILD_HISTORY_ROSTER_EVENT_PROMOTE then
-            return GUILD_EVENT_GUILD_PROMOTE, oldEventId, eventTime, info.actingDisplayName, info.targetDisplayName,
-                info.rankName
+            return GUILD_EVENT_GUILD_PROMOTE, oldEventId, eventTime, DecorateDisplayName(info.actingDisplayName),
+                DecorateDisplayName(info.targetDisplayName), info.rankName
         elseif type == GUILD_HISTORY_ROSTER_EVENT_REMOVED_FROM_BLACKLIST then
-            return GUILD_EVENT_REMOVED_FROM_BLACKLIST, oldEventId, eventTime, info.actingDisplayName,
-                info.targetDisplayName
+            return GUILD_EVENT_REMOVED_FROM_BLACKLIST, oldEventId, eventTime, DecorateDisplayName(info.actingDisplayName),
+                DecorateDisplayName(info.targetDisplayName)
         else
             logger:Warn("Unsupported roster event type", type)
         end
     elseif category == GUILD_HISTORY_EVENT_CATEGORY_TRADER then
         if type == GUILD_HISTORY_TRADER_EVENT_ITEM_SOLD then
-            return GUILD_EVENT_ITEM_SOLD, oldEventId, eventTime, info.sellerDisplayName, info.buyerDisplayName,
-                info.quantity, info.itemLink,
-                info.price, info.tax
+            return GUILD_EVENT_ITEM_SOLD, oldEventId, eventTime, DecorateDisplayName(info.sellerDisplayName),
+                DecorateDisplayName(info.buyerDisplayName), info.quantity, info.itemLink, info.price, info.tax
         else
             logger:Warn("Unsupported trader event type", type)
         end

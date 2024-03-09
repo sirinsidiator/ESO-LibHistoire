@@ -199,10 +199,7 @@ function GuildHistoryLegacyEventListener:SetAfterEventId(eventId)
     if self.running then return false end
 
     local id = internal.ConvertLegacyId64ToEventId(eventId)
-    if not id then
-        logger:Warn("Could not convert legacy eventId for SetAfterEventId")
-        return false
-    end
+    if not id then return false end
 
     for _, listener in ipairs(self.listeners) do
         listener:SetAfterEventId(id)
