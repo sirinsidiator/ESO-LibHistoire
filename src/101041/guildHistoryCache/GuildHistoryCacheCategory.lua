@@ -374,7 +374,7 @@ function GuildHistoryCacheCategory:ProcessNextRequest()
 end
 
 function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, oldestLinkedEventId)
-    if self:IsProcessing() then return end
+    if self:IsProcessing() or not self:IsAutoRequesting() then return end
 
     local guildId, category = self.guildId, self.category
     logger:Info("Start processing events for guild %d category %d", guildId, category)
@@ -501,7 +501,7 @@ function GuildHistoryCacheCategory:GetCategory()
 end
 
 function GuildHistoryCacheCategory:HasLinked()
-    if self.processingTask then return false end
+    if self.processingTask or self.request then return false end
 
     local event = self.categoryData:GetOldestEventForUpToDateEventsWithoutGaps()
     if not event then
@@ -510,7 +510,7 @@ function GuildHistoryCacheCategory:HasLinked()
 
     local newestLinkedEventId = self:GetNewestLinkedEventInfo()
     if newestLinkedEventId then
-        return event:GetEventId() <= newestLinkedEventId
+        return newestLinkedEventId >= event:GetEventId()
     end
 
     return false
@@ -541,6 +541,7 @@ function GuildHistoryCacheCategory:GetNumUnlinkedEvents()
     local newestIndex, oldestIndex = self.adapter:GetGuildHistoryEventIndicesForTimeRange(
         self.guildId, self.category, now, newestEventTime + 1)
     if not newestIndex or not oldestIndex then return 0 end
+    return oldestIndex - newestIndex + 1
 end
 
 function GuildHistoryCacheCategory:HasCachedEvents()

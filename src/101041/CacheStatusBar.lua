@@ -9,14 +9,18 @@ local logger = internal.logger
 local CacheStatusBar = ZO_InitializingObject:Subclass()
 internal.class.CacheStatusBar = CacheStatusBar
 
-local GRADIENT_GAPLESS_RANGE_BACKGROUND_INACTIVE = { ZO_ColorDef:New("FF4D4D4D"), ZO_ColorDef:New("FF5E5E5E") }
-local GRADIENT_GAPLESS_RANGE_BACKGROUND_ACTIVE = { ZO_ColorDef:New("FF00406B"), ZO_ColorDef:New("FF00548B") }
+local GRADIENT_GAPLESS_RANGE_AFTER_LINKED_RANGE_INACTIVE = { ZO_ColorDef:New("FF4D4D4D"), ZO_ColorDef:New("FF5E5E5E") }
+local GRADIENT_GAPLESS_RANGE_AFTER_LINKED_RANGE_ACTIVE = { ZO_ColorDef:New("FF00406B"), ZO_ColorDef:New("FF00548B") }
+local GRADIENT_GAPLESS_RANGE_BEFORE_LINKED_RANGE_INACTIVE = { ZO_ColorDef:New("FF5A5A5A"), ZO_ColorDef:New("FFA3A3A3") }
+local GRADIENT_GAPLESS_RANGE_BEFORE_LINKED_RANGE_ACTIVE = { ZO_ColorDef:New("FF611F00"), ZO_ColorDef:New("FFA33400") }
+local GRADIENT_GAPLESS_RANGE_LINKED_RANGE_INACTIVE = { ZO_ColorDef:New("FF4D4D4D"), ZO_ColorDef:New("FF5E5E5E") }
+local GRADIENT_GAPLESS_RANGE_LINKED_RANGE_ACTIVE = { ZO_ColorDef:New("FF005521"), ZO_ColorDef:New("FF008031") }
 local GRADIENT_CACHE_SEGMENT_BEFORE_LINKED_RANGE = { ZO_ColorDef:New("FF929292"), ZO_ColorDef:New("FFACACAC") }
 local GRADIENT_CACHE_SEGMENT_LINKED_RANGE_ACTIVE = { ZO_ColorDef:New("FF0074C2"), ZO_ColorDef:New("FF0099FF") }
 local GRADIENT_CACHE_SEGMENT_LINKED_RANGE_INACTIVE = { ZO_ColorDef:New("FFC1C1C1"), ZO_ColorDef:New("FFD3D3D3") }
 local GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_ACTIVE = { ZO_ColorDef:New("FFC73F00"), ZO_ColorDef:New("FFFC5000") }
 local GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_INACTIVE = { ZO_ColorDef:New("FFBDBDBD"), ZO_ColorDef:New("FFCACACA") }
-local GRADIENT_LINKED_RANGE_ACTIVE = { ZO_ColorDef:New("FF00CA4E"), ZO_ColorDef:New("FF00E457") }
+local GRADIENT_LINKED_RANGE_ACTIVE = { ZO_ColorDef:New("FF0CAD4A"), ZO_ColorDef:New("FF17B955") }
 local GRADIENT_LINKED_RANGE_INACTIVE = { ZO_ColorDef:New("FF888888"), ZO_ColorDef:New("FF9C9C9C") }
 local GRADIENT_REQUEST_RANGE_BACKGROUND = { ZO_ColorDef:New("FF462449"), ZO_ColorDef:New("FF592A5E") }
 local GRADIENT_REQUEST_RANGE_FOREGROUND = { ZO_ColorDef:New("FFB900CA"), ZO_ColorDef:New("FFEA00FF") }
@@ -123,8 +127,18 @@ function CacheStatusBar:Update(cache)
             endTime = endTime,
             segmentStartTime = gaplessRangeStartTime,
             segmentEndTime = endTime,
-            color = isActive and GRADIENT_GAPLESS_RANGE_BACKGROUND_ACTIVE or GRADIENT_GAPLESS_RANGE_BACKGROUND_INACTIVE,
         }
+
+        if not newestLinkedEventTime then
+            data.color = isActive and GRADIENT_GAPLESS_RANGE_BEFORE_LINKED_RANGE_ACTIVE or
+                GRADIENT_GAPLESS_RANGE_BEFORE_LINKED_RANGE_INACTIVE
+        elseif gaplessRangeStartTime > newestLinkedEventTime then
+            data.color = isActive and GRADIENT_GAPLESS_RANGE_AFTER_LINKED_RANGE_ACTIVE or
+                GRADIENT_GAPLESS_RANGE_AFTER_LINKED_RANGE_INACTIVE
+        else
+            data.color = isActive and GRADIENT_GAPLESS_RANGE_LINKED_RANGE_ACTIVE or
+                GRADIENT_GAPLESS_RANGE_LINKED_RANGE_INACTIVE
+        end
         self:AddSegment(data)
     end
 
@@ -245,7 +259,7 @@ end
 
 function CacheStatusBar:GetTrimmedTimeRange(data)
     if data.segmentEndTime < data.startTime or data.segmentStartTime > data.endTime then
-        logger:Debug("segment outside display range - skip")
+        logger:Warn("segment outside display range - skip")
         return nil, nil
     end
 
