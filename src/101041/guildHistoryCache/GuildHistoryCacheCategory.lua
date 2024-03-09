@@ -896,7 +896,7 @@ function GuildHistoryCacheCategory:GetProgress()
             local _, newestEventTime = self:GetNewestLinkedEventInfo()
             if newestEventTime then
                 local now = GetTimeStamp()
-                local events = self.categoryData:GetEventsInTimeRange(newestEventTime + 1, now) -- TODO optimize by getting the time directly
+                local events = self.categoryData:GetEventsInTimeRange(now, newestEventTime + 1) -- TODO optimize by getting the time directly
                 if #events > 0 then
                     self.missingTime = events[1]:GetEventTimestampS() - newestEventTime
                     self.progress = 1 - self.missingTime / (now - newestEventTime)
