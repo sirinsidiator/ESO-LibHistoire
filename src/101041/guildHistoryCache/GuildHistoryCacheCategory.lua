@@ -426,14 +426,17 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
             if eventId <= newestLinkedEventId then
                 logger:Warn("skip already linked event")
             else
-                self:SetNewestLinkedEventInfo(eventId, event:GetEventTimestampS())
+                local eventTime = event:GetEventTimestampS()
+                self:SetNewestLinkedEventInfo(eventId, eventTime)
                 logger:Verbose("Send unlinked event to listeners", guildId, category, eventId)
                 internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, guildId, category, event)
+                self.processingCurrentTime = eventTime
             end
         end):Then(function()
             self.progressDirty = true
             logger:Debug("Finished processing unlinked events", guildId, category)
             internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENTS_FINISHED, guildId, category)
+            self.processingCurrentTime = nil
             if numMissedEvents > 0 then
                 self.processingStartTime = missedEvents[numMissedEvents]:GetEventTimestampS()
                 self.processingEndTime = missedEvents[1]:GetEventTimestampS()
@@ -453,9 +456,11 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
             if eventId >= oldestLinkedEventId then
                 logger:Warn("skip already linked event")
             else
-                self:SetOldestLinkedEventInfo(eventId, event:GetEventTimestampS())
+                local eventTime = event:GetEventTimestampS()
+                self:SetOldestLinkedEventInfo(eventId, eventTime)
                 logger:Verbose("Send missed event to listeners", guildId, category, eventId)
                 internal:FireCallbacks(internal.callback.PROCESS_MISSED_EVENT, guildId, category, event)
+                self.processingCurrentTime = eventTime
             end
         end):Then(function()
             self.progressDirty = true
@@ -463,6 +468,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
             self.processingTask = nil
             self.processingStartTime = nil
             self.processingEndTime = nil
+            self.processingCurrentTime = nil
             logger:Info("Finished processing missed events", guildId, category)
             internal:FireCallbacks(internal.callback.PROCESS_MISSED_EVENTS_FINISHED, guildId, category)
             self:ProcessNextRequest()
@@ -617,7 +623,7 @@ function GuildHistoryCacheCategory:GetRequestTimeRange()
 end
 
 function GuildHistoryCacheCategory:GetProcessingTimeRange()
-    return self.processingStartTime, self.processingEndTime
+    return self.processingStartTime, self.processingEndTime, self.processingCurrentTime
 end
 
 function GuildHistoryCacheCategory:UpdateRangeInfo()

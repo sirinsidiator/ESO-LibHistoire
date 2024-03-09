@@ -9,6 +9,8 @@ local logger = internal.logger
 local CacheStatusBar = ZO_InitializingObject:Subclass()
 internal.class.CacheStatusBar = CacheStatusBar
 
+local GRADIENT_GAPLESS_RANGE_BACKGROUND_INACTIVE = { ZO_ColorDef:New("FF4D4D4D"), ZO_ColorDef:New("FF5E5E5E") }
+local GRADIENT_GAPLESS_RANGE_BACKGROUND_ACTIVE = { ZO_ColorDef:New("FF00406B"), ZO_ColorDef:New("FF00548B") }
 local GRADIENT_CACHE_SEGMENT_BEFORE_LINKED_RANGE = { ZO_ColorDef:New("FF929292"), ZO_ColorDef:New("FFACACAC") }
 local GRADIENT_CACHE_SEGMENT_LINKED_RANGE_ACTIVE = { ZO_ColorDef:New("FF0074C2"), ZO_ColorDef:New("FF0099FF") }
 local GRADIENT_CACHE_SEGMENT_LINKED_RANGE_INACTIVE = { ZO_ColorDef:New("FFC1C1C1"), ZO_ColorDef:New("FFD3D3D3") }
@@ -16,8 +18,10 @@ local GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_ACTIVE = { ZO_ColorDef:New("FFC7
 local GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_INACTIVE = { ZO_ColorDef:New("FFBDBDBD"), ZO_ColorDef:New("FFCACACA") }
 local GRADIENT_LINKED_RANGE_ACTIVE = { ZO_ColorDef:New("FF00CA4E"), ZO_ColorDef:New("FF00E457") }
 local GRADIENT_LINKED_RANGE_INACTIVE = { ZO_ColorDef:New("FF888888"), ZO_ColorDef:New("FF9C9C9C") }
-local GRADIENT_PROCESSING_RANGE = { ZO_ColorDef:New("7FC5B100"), ZO_ColorDef:New("7FFFEA00") }
-local GRADIENT_REQUEST_RANGE = { ZO_ColorDef:New("7FB900CA"), ZO_ColorDef:New("7FEA00FF") }
+local GRADIENT_REQUEST_RANGE_BACKGROUND = { ZO_ColorDef:New("FF462449"), ZO_ColorDef:New("FF592A5E") }
+local GRADIENT_REQUEST_RANGE_FOREGROUND = { ZO_ColorDef:New("FFB900CA"), ZO_ColorDef:New("FFEA00FF") }
+local GRADIENT_PROCESSING_RANGE_BACKGROUND = { ZO_ColorDef:New("FF5E582A"), ZO_ColorDef:New("FF726D34") }
+local GRADIENT_PROCESSING_RANGE_FOREGROUND = { ZO_ColorDef:New("FFC5B100"), ZO_ColorDef:New("FFFFEA00") }
 
 internal.GRADIENT_GUILD_INCOMPLETE = GRADIENT_CACHE_SEGMENT_AFTER_LINKED_RANGE_ACTIVE
 internal.GRADIENT_GUILD_PROCESSING = { ZO_ColorDef:New("FFC5B100"), ZO_ColorDef:New("FFFFEA00") }
@@ -109,9 +113,37 @@ function CacheStatusBar:Update(cache)
     local isActive = cache:IsAutoRequesting()
     local _, oldestLinkedEventTime = cache:GetOldestLinkedEventInfo()
     local _, newestLinkedEventTime = cache:GetNewestLinkedEventInfo()
+    local gaplessRangeStartTime = cache:GetGaplessRangeStartTime()
+    local requestStartTime, requestEndTime = cache:GetRequestTimeRange()
+    local processingStartTime, processingEndTime, processingCurrentTime = cache:GetProcessingTimeRange()
 
+    if gaplessRangeStartTime then
+        local data = {
+            startTime = startTime,
+            endTime = endTime,
+            segmentStartTime = gaplessRangeStartTime,
+            segmentEndTime = endTime,
+            color = isActive and GRADIENT_GAPLESS_RANGE_BACKGROUND_ACTIVE or GRADIENT_GAPLESS_RANGE_BACKGROUND_INACTIVE,
+        }
+        self:AddSegment(data)
+    end
+
+    local cacheSegementsInsideRequestRange = {}
     for i = 1, cache:GetNumRanges() do
         local rangeEndTime, rangeStartTime = cache:GetRangeInfo(i)
+
+        if requestStartTime and rangeEndTime > requestStartTime and rangeStartTime < requestEndTime then
+            local trimmedStartTime, trimmedEndTime = self:GetTrimmedTimeRange({
+                startTime = requestStartTime,
+                endTime = requestEndTime,
+                segmentStartTime = rangeStartTime,
+                segmentEndTime = rangeEndTime,
+            })
+            if trimmedStartTime then
+                table.insert(cacheSegementsInsideRequestRange, { trimmedStartTime, trimmedEndTime })
+            end
+        end
+
         local data = {
             startTime = startTime,
             endTime = endTime,
@@ -147,28 +179,43 @@ function CacheStatusBar:Update(cache)
         self:AddSegment(data)
     end
 
-    local requestStartTime, requestEndTime = cache:GetRequestTimeRange()
     if requestStartTime then
         local data = {
             startTime = startTime,
             endTime = endTime,
             segmentStartTime = requestStartTime,
             segmentEndTime = requestEndTime,
-            color = GRADIENT_REQUEST_RANGE,
+            color = GRADIENT_REQUEST_RANGE_BACKGROUND,
         }
         self:AddSegment(data)
+
+        for _, range in ipairs(cacheSegementsInsideRequestRange) do
+            local data = {
+                startTime = startTime,
+                endTime = endTime,
+                segmentStartTime = range[1],
+                segmentEndTime = range[2],
+                color = GRADIENT_REQUEST_RANGE_FOREGROUND,
+            }
+            self:AddSegment(data)
+        end
     end
 
-    local processingStartTime, processingEndTime = cache:GetProcessingTimeRange()
     if processingStartTime then
         local data = {
             startTime = startTime,
             endTime = endTime,
             segmentStartTime = processingStartTime,
             segmentEndTime = processingEndTime,
-            color = GRADIENT_PROCESSING_RANGE,
+            color = GRADIENT_PROCESSING_RANGE_BACKGROUND,
         }
         self:AddSegment(data)
+
+        if processingCurrentTime then
+            data.segmentEndTime = processingCurrentTime
+            data.color = GRADIENT_PROCESSING_RANGE_FOREGROUND
+            self:AddSegment(data)
+        end
     end
 
     logger:Debug("updated cache status bar", cache:GetGuildId(), cache:GetCategory())
