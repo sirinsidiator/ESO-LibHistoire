@@ -117,15 +117,16 @@ function GuildHistoryCacheCategory:RequestMissingData()
 end
 
 function GuildHistoryCacheCategory:ContinueExistingRequest()
+    local autoRequesting = self:IsAutoRequesting()
     local request = self.request
     if request then
         if not request:IsValid() or request:IsComplete() or self.initialRequest then
             self:DestroyRequest()
-        else
+        elseif autoRequesting then
             return self:QueueRequest()
         end
     end
-    return false
+    return not autoRequesting
 end
 
 function GuildHistoryCacheCategory:HasPendingRequest()
