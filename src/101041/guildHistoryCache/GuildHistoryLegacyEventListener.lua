@@ -24,6 +24,7 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
         listener:SetStopOnLastEvent(true)
         listener:SetIterationCompletedCallback(function()
             self.iterationCompletedCount = self.iterationCompletedCount + 1
+            logger:Debug("iteration completed", self.key, self.iterationCompletedCount, #self.listeners)
             if self.iterationCompletedCount == #self.listeners then
                 self:OnIterationsCompleted()
             end
@@ -33,11 +34,11 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
 
     local function IsFor(guildId, category)
         for _, cache in ipairs(caches) do
-            if not cache:IsFor(guildId, category) then
-                return false
+            if cache:IsFor(guildId, category) then
+                return true
             end
         end
-        return true
+        return false
     end
 
     self.cachedNextEventCallback = function(guildId, category, event)
@@ -60,12 +61,14 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
     end
 
     if #self.listeners > 1 then
+        logger:Debug("register cached event callbacks")
         self.onEvent = function(event)
             local guildId = event:GetGuildId()
             local category = event:GetEventCategory()
             return self.cachedNextEventCallback(guildId, category, event)
         end
     else
+        logger:Debug("register uncached event callbacks")
         self.onEvent = function(event)
             local guildId = event:GetGuildId()
             local category = event:GetEventCategory()

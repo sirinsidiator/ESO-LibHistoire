@@ -17,7 +17,7 @@ function GuildHistoryProcessingRequest:Initialize(listener, onEvent, onCompleted
 end
 
 function GuildHistoryProcessingRequest:StartProcessing(endId)
-    logger:Debug("start processing")
+    logger:Debug("start processing", self.listener:GetKey())
     self:StopProcessing()
 
     local listener = self.listener
@@ -55,7 +55,7 @@ function GuildHistoryProcessingRequest:StartProcessing(endId)
         end
         self.onEvent(listener, event)
     end):Then(function()
-        logger:Debug("processing complete")
+        logger:Debug("processing complete", listener:GetKey())
         self.task = nil
         self:EnsureIterationIsComplete()
     end)
@@ -76,15 +76,15 @@ function GuildHistoryProcessingRequest:FindStartId()
     local startId
     local listener = self.listener
     if listener.afterEventId then
-        startId = listener.categoryCache:FindFirstAvailableEventIdForEventId(listener.afterEventId + 1)
+        startId = listener.categoryCache:FindFirstAvailableEventIdForEventId(listener.afterEventId)
         logger:Debug("afterEventId", listener.afterEventId, startId)
     elseif listener.afterEventTime then
-        startId = listener.categoryCache:FindFirstAvailableEventIdForEventTime(listener.afterEventTime + 1)
+        startId = listener.categoryCache:FindFirstAvailableEventIdForEventTime(listener.afterEventTime)
         logger:Debug("afterEventTime", listener.afterEventTime, startId)
     end
     if not startId then
         startId = listener.categoryCache:GetOldestLinkedEventInfo()
-        logger:Debug("no currentEventId - use oldest", startId)
+        logger:Debug("no startId - use oldest", startId)
     end
     return startId
 end
@@ -93,9 +93,11 @@ function GuildHistoryProcessingRequest:FindEndId()
     local endId
     local listener = self.listener
     if listener.beforeEventId then
-        endId = listener.categoryCache:FindLastAvailableEventIdForEventId(listener.beforeEventId - 1)
+        endId = listener.categoryCache:FindLastAvailableEventIdForEventId(listener.beforeEventId)
+        logger:Debug("beforeEventId", listener.beforeEventId, endId)
     elseif listener.beforeEventTime then
-        endId = listener.categoryCache:FindLastAvailableEventIdForEventTime(listener.beforeEventTime - 1)
+        endId = listener.categoryCache:FindLastAvailableEventIdForEventTime(listener.beforeEventTime)
+        logger:Debug("beforeEventTime", listener.beforeEventTime, endId)
     end
     if not endId then
         endId = listener.categoryCache:GetNewestLinkedEventInfo()

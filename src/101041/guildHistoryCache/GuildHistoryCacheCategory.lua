@@ -683,20 +683,27 @@ end
 function GuildHistoryCacheCategory:FindFirstAvailableEventIdForEventId(eventId)
     local oldestLinkedEventId = self:GetOldestLinkedEventInfo()
     if not oldestLinkedEventId then
+        logger:Verbose("No oldestLinkedEventId found")
         return nil
     elseif eventId <= oldestLinkedEventId then
+        logger:Verbose("Event is older than oldestLinkedEventId")
         return oldestLinkedEventId
     end
 
     local newestLinkedEventId = self:GetNewestLinkedEventInfo()
     if not newestLinkedEventId or eventId > newestLinkedEventId then
+        logger:Verbose("No newestLinkedEventId found or event is newer than newestLinkedEventId")
         return nil
     elseif eventId == newestLinkedEventId then
+        logger:Verbose("Event is newestLinkedEventId")
         return newestLinkedEventId
     end
 
     local newestIndex, oldestIndex = self:GetLinkedRangeIndices()
-    if not newestIndex or not oldestIndex then return nil end
+    if not newestIndex or not oldestIndex then
+        logger:Verbose("No linked range found")
+        return nil
+    end
 
     local eventId = self:SearchEventIdInInterval(eventId, newestIndex, oldestIndex)
     return eventId
@@ -704,11 +711,17 @@ end
 
 function GuildHistoryCacheCategory:GetLinkedRangeIndices()
     local oldestLinkedEventId = self:GetOldestLinkedEventInfo()
-    if not oldestLinkedEventId then return end
+    if not oldestLinkedEventId then
+        logger:Verbose("No oldestLinkedEventId found")
+        return
+    end
 
     local guildId, category = self.guildId, self.category
     local rangeIndex = self:FindRangeIndexForEventId(oldestLinkedEventId)
-    if not rangeIndex then return end
+    if not rangeIndex then
+        logger:Verbose("No rangeIndex found for oldestLinkedEventId", oldestLinkedEventId)
+        return
+    end
 
     local newestTime, oldestTime = self:GetRangeInfo(rangeIndex)
     local newestIndex, oldestIndex = self.adapter:GetGuildHistoryEventIndicesForTimeRange(
@@ -717,12 +730,16 @@ function GuildHistoryCacheCategory:GetLinkedRangeIndices()
 end
 
 function GuildHistoryCacheCategory:SearchEventIdInInterval(eventId, firstIndex, lastIndex)
-    if lastIndex - firstIndex < 2 then return nil, nil end
+    if lastIndex - firstIndex < 2 then
+        logger:Verbose("Abort SearchEventIdInInterval - not enough events")
+        return nil, nil
+    end
 
     local firstEventId = self:GetEvent(firstIndex):GetEventId()
     local lastEventId = self:GetEvent(lastIndex):GetEventId()
     if eventId < firstEventId or eventId > lastEventId then
-        logger:Warn("Abort SearchEventIdInInterval", eventId < firstEventId, eventId > lastEventId)
+        logger:Warn("Abort SearchEventIdInInterval - eventId is outside current range", eventId < firstEventId,
+            eventId > lastEventId)
         return nil, nil
     end
 
@@ -731,37 +748,50 @@ function GuildHistoryCacheCategory:SearchEventIdInInterval(eventId, firstIndex, 
     if index == firstIndex or index == lastIndex then
         -- our approximation is likely incorrect, so we just do a regular binary search
         index = firstIndex + math.floor(0.5 * (lastIndex - firstIndex))
+        logger:Verbose("Use regular index", index)
+    else
+        logger:Verbose("Use approximated index", index)
     end
 
     local event = self:GetEvent(index)
     local foundEventId = event:GetEventId()
 
     if eventId > foundEventId then
+        logger:Verbose("SearchEventIdInInterval - eventId is greater than foundEventId")
         return self:SearchEventIdInInterval(eventId, index, lastIndex)
     elseif eventId < foundEventId then
+        logger:Verbose("SearchEventIdInInterval - eventId is smaller than foundEventId")
         return self:SearchEventIdInInterval(eventId, firstIndex, index)
     end
 
-    return event, index
+    logger:Verbose("SearchEventIdInInterval - eventId found")
+    return foundEventId, index
 end
 
 function GuildHistoryCacheCategory:FindLastAvailableEventIdForEventId(eventId)
     local oldestLinkedEventId = self:GetOldestLinkedEventInfo()
     if not oldestLinkedEventId or eventId < oldestLinkedEventId then
+        logger:Verbose("No oldestLinkedEventId found or event is older than oldestLinkedEventId")
         return nil
     elseif eventId == oldestLinkedEventId then
+        logger:Verbose("Event is oldestLinkedEventId")
         return oldestLinkedEventId
     end
 
     local newestLinkedEventId = self:GetNewestLinkedEventInfo()
     if not newestLinkedEventId then
+        logger:Verbose("No newestLinkedEventId found")
         return nil
     elseif eventId > newestLinkedEventId then
+        logger:Verbose("Event is newer than newestLinkedEventId")
         return newestLinkedEventId
     end
 
     local newestIndex, oldestIndex = self:GetLinkedRangeIndices()
-    if not newestIndex or not oldestIndex then return nil end
+    if not newestIndex or not oldestIndex then
+        logger:Verbose("No linked range found")
+        return nil
+    end
 
     local eventId = self:SearchEventIdInInterval(eventId, newestIndex, oldestIndex)
     return eventId
@@ -770,13 +800,16 @@ end
 function GuildHistoryCacheCategory:FindFirstAvailableEventIdForEventTime(eventTime)
     local oldestId, oldestTime = self:GetOldestLinkedEventInfo()
     if not oldestId then
+        logger:Verbose("No oldestId found")
         return nil
     elseif eventTime <= oldestTime then
+        logger:Verbose("Event is older than oldestTime")
         return oldestId
     end
 
     local newestId, newestTime = self:GetNewestLinkedEventInfo()
     if not newestId then
+        logger:Verbose("No newestId found")
         return nil
     end
 
@@ -784,22 +817,27 @@ function GuildHistoryCacheCategory:FindFirstAvailableEventIdForEventTime(eventTi
     local _, oldestIndex = self.adapter:GetGuildHistoryEventIndicesForTimeRange(
         guildId, category, newestTime, eventTime)
     if oldestIndex then
+        logger:Verbose("Found oldestIndex", oldestIndex)
         return GetGuildHistoryEventId(guildId, category, oldestIndex)
     end
 
+    logger:Verbose("No oldestIndex found")
     return nil
 end
 
 function GuildHistoryCacheCategory:FindLastAvailableEventIdForEventTime(eventTime)
     local newestId, newestTime = self:GetNewestLinkedEventInfo()
     if not newestId then
+        logger:Verbose("No newestId found")
         return nil
     elseif eventTime > newestTime then
+        logger:Verbose("Event is newer than newestTime")
         return newestId
     end
 
     local oldestId, oldestTime = self:GetOldestLinkedEventInfo()
     if not oldestId then
+        logger:Verbose("No oldestId found")
         return nil
     end
 
@@ -807,9 +845,11 @@ function GuildHistoryCacheCategory:FindLastAvailableEventIdForEventTime(eventTim
     local newestIndex = self.adapter:GetGuildHistoryEventIndicesForTimeRange(
         guildId, category, eventTime, oldestTime)
     if newestIndex then
+        logger:Verbose("Found newestIndex", newestIndex)
         return GetGuildHistoryEventId(guildId, category, newestIndex)
     end
 
+    logger:Verbose("No newestIndex found")
     return nil
 end
 
