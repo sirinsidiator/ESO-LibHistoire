@@ -41,8 +41,19 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
         return false
     end
 
+    local function ShouldHandleEvent(event)
+        if self.afterEventId and event:GetEventId() <= self.afterEventId then
+            logger:Verbose("event before afterEventId", event:GetEventId(), self.afterEventId)
+            return false
+        elseif self.afterEventTime and event:GetEventTimestampS() <= self.afterEventTime then
+            logger:Verbose("event before afterEventTime", event:GetEventTimestampS(), self.afterEventTime)
+            return false
+        end
+        return true
+    end
+
     self.cachedNextEventCallback = function(guildId, category, event)
-        if not IsFor(guildId, category) then return end
+        if not IsFor(guildId, category) or not ShouldHandleEvent(event) then return end
         self.cachedEvents[#self.cachedEvents + 1] = {
             eventId = event:GetEventId(),
             arguments = { internal.ConvertEventToLegacyFormat(event) }
@@ -50,7 +61,7 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
     end
 
     self.uncachedNextEventCallback = function(guildId, category, event)
-        if not IsFor(guildId, category) then return end
+        if not IsFor(guildId, category) or not ShouldHandleEvent(event) then return end
         local eventId = event:GetEventId()
         if self.missedEventCallback and self.currentEventId and eventId < self.currentEventId then
             self.missedEventCallback(internal.ConvertEventToLegacyFormat(event))
@@ -204,6 +215,7 @@ function GuildHistoryLegacyEventListener:SetAfterEventId(eventId)
     for _, listener in ipairs(self.listeners) do
         listener:SetAfterEventId(id)
     end
+    self.afterEventId = id
     return true
 end
 
@@ -214,6 +226,7 @@ function GuildHistoryLegacyEventListener:SetAfterEventTime(eventTime)
     for _, listener in ipairs(self.listeners) do
         listener:SetAfterEventTime(eventTime)
     end
+    self.afterEventTime = eventTime
     return true
 end
 
@@ -222,14 +235,12 @@ function GuildHistoryLegacyEventListener:SetBeforeEventId(eventId)
     if self.running then return false end
 
     local id = internal.ConvertLegacyId64ToEventId(eventId)
-    if not id then
-        logger:Warn("Could not convert legacy eventId for SetBeforeEventId")
-        return false
-    end
+    if not id then return false end
 
     for _, listener in ipairs(self.listeners) do
         listener:SetBeforeEventId(id)
     end
+    self.beforeEventId = id
     return true
 end
 
@@ -240,6 +251,7 @@ function GuildHistoryLegacyEventListener:SetBeforeEventTime(eventTime)
     for _, listener in ipairs(self.listeners) do
         listener:SetBeforeEventTime(eventTime)
     end
+    self.beforeEventTime = eventTime
     return true
 end
 
