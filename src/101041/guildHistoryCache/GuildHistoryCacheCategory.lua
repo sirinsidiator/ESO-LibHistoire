@@ -811,6 +811,9 @@ function GuildHistoryCacheCategory:FindFirstAvailableEventIdForEventTime(eventTi
     if not newestId then
         logger:Verbose("No newestId found")
         return nil
+    elseif eventTime > newestTime then
+        logger:Verbose("Event is newer than newestTime")
+        return newestId
     end
 
     local guildId, category = self.guildId, self.category
@@ -839,6 +842,9 @@ function GuildHistoryCacheCategory:FindLastAvailableEventIdForEventTime(eventTim
     if not oldestId then
         logger:Verbose("No oldestId found")
         return nil
+    elseif eventTime <= oldestTime then
+        logger:Verbose("Event is older than oldestTime")
+        return oldestId
     end
 
     local guildId, category = self.guildId, self.category
