@@ -16,8 +16,6 @@
 
 StartUp.lua
 Dialogs.lua
-Codec.lua
-DisplayNameCache.lua
 PerformanceTracker.lua
 CacheStatusBar.lua
 guildHistoryCache/compatibility.lua
@@ -27,13 +25,10 @@ guildHistoryCache/GuildHistoryStatusTooltip.lua
 guildHistoryCache/GuildHistoryStatusSelectionWidget.lua
 guildHistoryCache/GuildHistoryStatusLinkedIcon.lua
 guildHistoryCache/GuildHistoryStatusWindow.lua
-guildHistoryCache/GuildHistoryCacheEntry.lua
 guildHistoryCache/GuildHistoryCacheCategory.lua
 guildHistoryCache/GuildHistoryCacheGuild.lua
-guildHistoryCache/GuildHistoryRequestManager.lua
 guildHistoryCache/GuildHistoryCache.lua
 guildHistoryCache/GuildHistoryProcessingRequest.lua
 guildHistoryCache/GuildHistoryEventListener.lua
-guildHistoryCache/GuildHistoryNoopListener.lua
 guildHistoryCache/GuildHistoryLegacyEventListener.lua
 api.lua
