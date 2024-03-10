@@ -425,7 +425,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
             local event = unlinkedEvents[i]
             local eventId = event:GetEventId()
             if eventId <= newestLinkedEventId then
-                logger:Warn("skip already linked event")
+                logger:Warn("skip already linked event", guildId, category, eventId, newestLinkedEventId)
             else
                 local eventTime = event:GetEventTimestampS()
                 self:SetNewestLinkedEventInfo(eventId, eventTime)
@@ -730,6 +730,13 @@ function GuildHistoryCacheCategory:GetLinkedRangeIndices()
 end
 
 function GuildHistoryCacheCategory:SearchEventIdInInterval(eventId, firstIndex, lastIndex)
+    if firstIndex > lastIndex then
+        logger:Warn("SearchEventIdInInterval - firstIndex is greater than lastIndex", firstIndex, lastIndex)
+        local temp = firstIndex
+        firstIndex = lastIndex
+        lastIndex = temp
+    end
+
     if lastIndex - firstIndex < 2 then
         logger:Verbose("Abort SearchEventIdInInterval - not enough events")
         return nil, nil
