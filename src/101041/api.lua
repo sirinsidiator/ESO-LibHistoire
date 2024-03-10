@@ -45,12 +45,13 @@ function lib:CreateGuildHistoryListener(guildId, category, addonName)
             logger:Warn("No category caches found for guild", guildId, "and legacy category", category)
         end
     else
-        local categoryCache = internal.historyCache:GetCategoryCache(guildId, category)
-        if categoryCache then
-            listener = internal.class.GuildHistoryEventListener:New(categoryCache)
-        else
-            logger:Warn("No category cache found for guild", guildId, "and category", category)
-        end
+        return nil -- TODO: temporarily disabled until the new api is finalized
+        -- local categoryCache = internal.historyCache:GetCategoryCache(guildId, category)
+        -- if categoryCache then
+        --     listener = internal.class.GuildHistoryEventListener:New(categoryCache)
+        -- else
+        --     logger:Warn("No category cache found for guild", guildId, "and category", category)
+        -- end
     end
     return listener
 end
