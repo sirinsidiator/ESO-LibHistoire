@@ -150,7 +150,7 @@ function GuildHistoryLegacyEventListener:OnProcessingCachedEventsCompleted()
     if self.shouldStop then
         logger:Debug("stop after iteration")
         self:Stop()
-    elseif #self.listeners > 1 then
+    else
         logger:Debug("register uncached event callbacks")
         internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.uncachedNextEventCallback)
         internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.uncachedNextEventCallback)
