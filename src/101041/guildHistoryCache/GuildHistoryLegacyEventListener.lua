@@ -178,7 +178,7 @@ function GuildHistoryLegacyEventListener:GetPendingEventMetrics()
     local numListeners = #self.listeners
     if not self.running or numListeners == 0 then return 0, -1, -1 end
 
-    if self.iterationCompletedCallback < numListeners then
+    if self.iterationCompletedCount < numListeners then
         if numListeners == 1 then
             return self.listeners[1]:GetPendingEventMetrics()
         end
