@@ -17,6 +17,7 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
     self.listeners = {}
     self.cachedEvents = {}
     self.iterationCompletedCount = 0
+    self.eventsLeft = 0
     self.performanceTracker = internal.class.PerformanceTracker:New()
 
     for _, cache in ipairs(caches) do
@@ -90,6 +91,7 @@ end
 
 function GuildHistoryLegacyEventListener:OnIterationsCompleted()
     local events = self.cachedEvents
+    logger:Debug("iterations completed", self.key, #events)
     if #events == 0 then
         self:OnProcessingCachedEventsCompleted()
         return
@@ -107,6 +109,7 @@ function GuildHistoryLegacyEventListener:OnIterationsCompleted()
 
     local task = internal:CreateAsyncTask()
     local numEvents = #events
+    self.eventsLeft = numEvents
     task:For(1, numEvents):Do(function(i)
         self.currentEventId = events[i].eventId
         self.eventsLeft = numEvents - i
@@ -115,6 +118,7 @@ function GuildHistoryLegacyEventListener:OnIterationsCompleted()
     end):Then(function()
         self:OnProcessingCachedEventsCompleted()
         self.performanceTracker:Reset()
+        self.eventsLeft = 0
         self.task = nil
     end)
     self.task = task
@@ -122,7 +126,7 @@ end
 
 function GuildHistoryLegacyEventListener:OnProcessingCachedEventsCompleted()
     local events = self.cachedEvents
-
+    logger:Debug("processing cached events completed", self.key, #events)
     if #events > 0 then
         self.cachedEvents = {}
         logger:Debug("unregister cached event callbacks")
@@ -201,7 +205,9 @@ function GuildHistoryLegacyEventListener:GetPendingEventMetrics()
 
         return count, speed, time
     else
-        return self.performanceTracker:GetPendingEventMetrics()
+        local count = self.eventsLeft
+        local speed, time = self.performanceTracker:GetProcessingSpeedAndEstimatedTimeLeft(count)
+        return count, speed, time
     end
 end
 
@@ -346,13 +352,13 @@ end
 function GuildHistoryLegacyEventListener:Stop()
     if not self.running then return false end
 
+    logger:Warn("stop event listener", self.key)
     for _, listener in ipairs(self.listeners) do
         if not listener:Stop() then
             logger:Warn("Failed to stop inner listener")
         end
     end
 
-    logger:Debug("unregister all event callbacks")
     internal:UnregisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.cachedNextEventCallback)
     internal:UnregisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.cachedNextEventCallback)
     internal:UnregisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.uncachedNextEventCallback)
