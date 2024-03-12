@@ -124,6 +124,7 @@ function GuildHistoryStatusWindow:InitializeButtons()
             AddCustomMenuItem("Reset Position", function() self:ResetPosition() end)
         end
         AddCustomMenuItem("Check Stuck Requests", function() internal.historyCache:VerifyRequests() end)
+        AddCustomMenuItem("Delete All Requests", function() internal.historyCache:DeleteRequests() end)
         AddCustomSubMenuItem("Zoom Mode", {
             {
                 label = "Automatic",

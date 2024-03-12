@@ -11,7 +11,7 @@ internal.class.GuildHistoryCacheGuild = GuildHistoryCacheGuild
 
 local GuildHistoryCacheCategory = internal.class.GuildHistoryCacheCategory
 
-function GuildHistoryCacheGuild:Initialize(adapter, saveData, guildData)
+function GuildHistoryCacheGuild:Initialize(adapter, requestManager, saveData, guildData)
     self.saveData = saveData
     self.guildData = guildData
     self.guildId = guildData:GetId()
@@ -20,7 +20,7 @@ function GuildHistoryCacheGuild:Initialize(adapter, saveData, guildData)
     for eventCategory = GUILD_HISTORY_EVENT_CATEGORY_ITERATION_BEGIN, GUILD_HISTORY_EVENT_CATEGORY_ITERATION_END do
         local categoryData = guildData:GetEventCategoryData(eventCategory)
         if categoryData then
-            self.cache[eventCategory] = GuildHistoryCacheCategory:New(adapter, saveData, categoryData)
+            self.cache[eventCategory] = GuildHistoryCacheCategory:New(adapter, requestManager, saveData, categoryData)
         end
     end
 end
@@ -41,10 +41,12 @@ function GuildHistoryCacheGuild:VerifyRequests()
     end
 end
 
-function GuildHistoryCacheGuild:SendRequests(newestTime, oldestTime)
+function GuildHistoryCacheGuild:DeleteRequests()
     for _, cache in pairs(self.cache) do
-        cache:CreateRequest(newestTime, oldestTime)
-        cache:QueueRequest()
+        if cache.request then
+            cache:DestroyRequest()
+            logger:Debug("Deleted request for", cache.key)
+        end
     end
 end
 

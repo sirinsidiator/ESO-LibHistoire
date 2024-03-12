@@ -12,8 +12,9 @@ local NO_LISTENER_THRESHOLD = 3 * 24 * 3600 -- 3 days
 local GuildHistoryCacheCategory = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryCacheCategory = GuildHistoryCacheCategory
 
-function GuildHistoryCacheCategory:Initialize(adapter, saveData, categoryData)
+function GuildHistoryCacheCategory:Initialize(adapter, requestManager, saveData, categoryData)
     self.adapter = adapter
+    self.requestManager = requestManager
     self.categoryData = categoryData
     self.guildId = categoryData:GetGuildData():GetId()
     self.category = categoryData:GetEventCategory()
@@ -87,13 +88,7 @@ function GuildHistoryCacheCategory:GetListenerInfo()
 end
 
 function GuildHistoryCacheCategory:RequestMissingData()
-    local guildId, category = self.guildId, self.category
-    logger:Debug("Request missing data for guild %d category %d", guildId, category)
-    if not self:IsAutoRequesting() then
-        logger:Debug("Not automatically requesting more")
-        return
-    end
-
+    logger:Debug("Request missing data for", self.key)
     if self:ContinueExistingRequest() then return end
 
     local oldestLinkedEventId, oldestLinkedEventTime = self:GetOldestLinkedEventInfo()
@@ -103,30 +98,35 @@ function GuildHistoryCacheCategory:RequestMissingData()
         if oldestGaplessEvent then
             self:OnCategoryUpdated()
         else
-            self.initialRequest = true
-            self:CreateRequest()
-            self:QueueRequest()
+            self.requestManager:QueueRequest(self:CreateRequest())
         end
+        return
+    end
+
+    if oldestLinkedEventId == oldestGaplessEvent:GetEventId() then
+        logger:Debug("No missing data for", self.key)
         return
     end
 
     local requestNewestTime, requestOldestTime = self:OptimizeRequestTimeRange(oldestLinkedEventTime,
         newestLinkedEventTime, oldestGaplessEvent)
-    self:CreateRequest(requestNewestTime, requestOldestTime)
-    self:QueueRequest()
+    self.requestManager:QueueRequest(self:CreateRequest(requestNewestTime, requestOldestTime))
 end
 
 function GuildHistoryCacheCategory:ContinueExistingRequest()
-    local autoRequesting = self:IsAutoRequesting()
     local request = self.request
+    logger:Debug("Continue existing request", self.key)
     if request then
-        if not request:IsValid() or request:IsComplete() or self.initialRequest then
+        if request:ShouldContinue() then
+            logger:Debug("Queue existing request", self.key)
+            self.requestManager:QueueRequest(request)
+            return true
+        else
+            logger:Debug("Destroy existing request", self.key)
             self:DestroyRequest()
-        elseif autoRequesting then
-            return self:QueueRequest()
         end
     end
-    return not autoRequesting
+    return false
 end
 
 function GuildHistoryCacheCategory:HasPendingRequest()
@@ -137,50 +137,38 @@ function GuildHistoryCacheCategory:VerifyRequest()
     local request = self.request
     if request then
         if request:IsComplete() then
-            logger:Warn("Request is complete but was not destroyed")
+            logger:Warn("Request is complete but was not destroyed", self.key)
             self:DestroyRequest()
         elseif not request:IsValid() then
-            logger:Warn("Request is invalid but was not destroyed")
+            logger:Warn("Request is invalid but was not destroyed", self.key)
             self:DestroyRequest()
         elseif not request:IsRequestQueued() then
-            logger:Warn("Request is not queued")
-            self:QueueRequest()
+            logger:Warn("Request is not queued", self.key)
+            self.requestManager:QueueRequest(request)
+        else
+            logger:Debug("Request is valid and queued", self.key)
         end
+    else
+        logger:Debug("No request to verify", self.key)
     end
 end
 
 function GuildHistoryCacheCategory:CreateRequest(newestTime, oldestTime)
-    local guildId, category = self.guildId, self.category
-    logger:Debug("Create data request for guild %d category %d", guildId, category)
-    self.request = ZO_GuildHistoryRequest:New(guildId, category, newestTime, oldestTime)
+    logger:Debug("Create server request", self.key)
+    self.request = internal.class.GuildHistoryServerRequest:New(self, newestTime, oldestTime)
     internal:FireCallbacks(internal.callback.REQUEST_CREATED, self.request)
+    return self.request
 end
 
-function GuildHistoryCacheCategory:QueueRequest()
-    local request = self.request
-    logger:Debug("Queue server request for guild %d category %d", self.guildId, self.category)
-    if request:IsComplete() then
-        logger:Warn("Tried to queue already completed request")
-        self:DestroyRequest()
-        return false
-    end
-    if request:RequestMoreEvents(true) == GUILD_HISTORY_DATA_READY_STATE_INVALID_REQUEST then
-        self:DestroyRequest()
-        return false
-    end
-    if request:IsComplete() then
-        logger:Warn("Request is complete right after queuing it")
-        self:DestroyRequest()
-        return false
-    end
-    return true
-end
-
-function GuildHistoryCacheCategory:DestroyRequest()
+function GuildHistoryCacheCategory:DestroyRequest(request)
+    if not self.request or (request and self.request ~= request) then return end
+    logger:Debug("destroy server request", self.key)
     local request = self.request
     self.request = nil
-    self.initialRequest = false
-    DestroyGuildHistoryRequest(request:GetRequestId())
+    if not request:Destroy() then return end
+    if request:IsRequestQueued() then
+        self.requestManager:RemoveRequest(request)
+    end
     internal:FireCallbacks(internal.callback.REQUEST_DESTROYED, request)
 end
 
@@ -280,6 +268,10 @@ function GuildHistoryCacheCategory:OnCategoryUpdated(flags)
     internal:FireCallbacks(internal.callback.CATEGORY_DATA_UPDATED, self, flags)
     self:RestartProcessingTask()
     if self:ContinueExistingRequest() then return end
+    if not self:IsAutoRequesting() then
+        logger:Debug("Skip processing for inactive category", self.key)
+        return
+    end
 
     self.progressDirty = true
     local guildId, category = self.guildId, self.category
@@ -351,6 +343,8 @@ function GuildHistoryCacheCategory:QueueProcessingRequest(request)
 end
 
 function GuildHistoryCacheCategory:RemoveProcessingRequest(request)
+    if not request then return end
+
     if self.processingRequest == request then
         self.processingRequest:StopProcessing()
         self.processingRequest = nil

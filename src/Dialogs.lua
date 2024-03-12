@@ -103,9 +103,11 @@ function internal:InitializeExitHooks()
             self:ShowQuitWarningDialog(
                 "LibHistoire is currently processing history! If you reload the UI now, you may corrupt your save data.",
                 "Reload UI", function()
+                    self.historyCache:Shutdown()
                     return originalReloadUI(unpack(params))
                 end)
         else
+            self.historyCache:Shutdown()
             return originalReloadUI(...)
         end
     end

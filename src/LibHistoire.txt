@@ -31,4 +31,6 @@ guildHistoryCache/GuildHistoryCache.lua
 guildHistoryCache/GuildHistoryProcessingRequest.lua
 guildHistoryCache/GuildHistoryEventListener.lua
 guildHistoryCache/GuildHistoryLegacyEventListener.lua
+guildHistoryCache/GuildHistoryServerRequest.lua
+guildHistoryCache/GuildHistoryServerRequestManager.lua
 api.lua

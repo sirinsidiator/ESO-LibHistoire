@@ -14,11 +14,12 @@ local GuildHistoryCacheGuild = internal.class.GuildHistoryCacheGuild
 function GuildHistoryCache:Initialize(adapter, manager, saveData)
     self.saveData = saveData
     self.manager = manager
+    self.requestManager = internal.class.GuildHistoryServerRequestManager:New()
     self.cache = {}
 
     local function CreateGuildCache(guildId)
         local guildData = manager:GetGuildData(guildId)
-        self.cache[guildId] = GuildHistoryCacheGuild:New(adapter, saveData, guildData)
+        self.cache[guildId] = GuildHistoryCacheGuild:New(adapter, self.requestManager, saveData, guildData)
     end
 
     for i = 1, GetNumGuilds() do
@@ -37,6 +38,7 @@ function GuildHistoryCache:Initialize(adapter, manager, saveData)
         local category = categoryData:GetEventCategory()
         local categoryCache = self:GetCategoryCache(guildId, category)
         categoryCache:OnCategoryUpdated(flags)
+        self.requestManager:RequestSendNext()
     end)
 end
 
@@ -59,6 +61,12 @@ end
 function GuildHistoryCache:VerifyRequests()
     self:ForEachActiveGuild(function(guildCache)
         guildCache:VerifyRequests()
+    end)
+end
+
+function GuildHistoryCache:DeleteRequests()
+    self:ForEachActiveGuild(function(guildCache)
+        guildCache:DeleteRequests()
     end)
 end
 
@@ -95,4 +103,8 @@ function GuildHistoryCache:GetCategoryCache(guildId, category)
     end
     local categoryCache = guildCache:GetCategoryCache(category)
     return categoryCache
+end
+
+function GuildHistoryCache:Shutdown()
+    self.requestManager:Shutdown()
 end
