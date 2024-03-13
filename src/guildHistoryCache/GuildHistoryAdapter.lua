@@ -71,14 +71,14 @@ function GuildHistoryAdapter:InitializeDeferred(history, cache)
 end
 
 function GuildHistoryAdapter:SelectGuildByIndex(guildIndex)
-    GUILD_SELECTOR:SelectGuildByIndex(guildIndex)
+    -- GUILD_SELECTOR:SelectGuildByIndex(guildIndex)
 end
 
 function GuildHistoryAdapter:SelectCategory(category)
-    local node = self.nodesByCategory[category]
-    if node then
-        self.history.categoryTree:SelectNode(node)
-    end
+    -- local node = self.nodesByCategory[category]
+    -- if node then
+    --     self.history.categoryTree:SelectNode(node)
+    -- end
 end
 
 function GuildHistoryAdapter:GetSelectedCategoryCache()
