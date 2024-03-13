@@ -82,33 +82,21 @@ function CacheStatusBar:Update(cache)
         return
     end
 
-    local startTime, endTime
     local zoomMode = self.window:GetZoomMode()
     if not zoomMode or zoomMode == internal.ZOOM_MODE_AUTO then
         zoomMode = cache:HasLinked() and internal.ZOOM_MODE_FULL_RANGE or internal.ZOOM_MODE_MISSING_RANGE
     end
 
+    local startTime
+    local endTime = GetTimeStamp()
     if zoomMode == internal.ZOOM_MODE_FULL_RANGE then
         startTime = cache:GetCacheStartTime()
-        endTime = GetTimeStamp()
     else
-        startTime = cache:GetUnprocessedEventsStartTime()
-        local newestEvent = cache:GetEvent(1)
-        if newestEvent then
-            endTime = newestEvent:GetEventTimestampS()
-        else
-            endTime = GetTimeStamp()
-        end
-    end
-
-    if not startTime then
-        logger:Debug("no start time - use full range")
-        startTime = cache:GetCacheStartTime()
-    end
-
-    if not endTime then
-        logger:Debug("no end time - use full range")
-        endTime = GetTimeStamp()
+        startTime = cache:GetUnprocessedEventsStartTime() or endTime
+        -- ensure we see at least one day
+        startTime = zo_min(startTime, endTime - 24 * 3600)
+        -- add a bit extra to the start, so we actually see when there is already stored data
+        startTime = startTime - (endTime - startTime) * 0.05
     end
 
     local overallTime = endTime - startTime
