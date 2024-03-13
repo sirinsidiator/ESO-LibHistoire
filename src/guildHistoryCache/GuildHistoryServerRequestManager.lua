@@ -16,6 +16,7 @@ function GuildHistoryServerRequestManager:Initialize(saveData)
 end
 
 function GuildHistoryServerRequestManager:QueueRequest(request)
+    if not request then return end
     logger:Debug("Queue request", request.cache.key, request.request and request.request:GetRequestId() or -1,
         request.newestTime,
         request.oldestTime)
@@ -123,22 +124,24 @@ function GuildHistoryServerRequestManager:CleanUp()
 end
 
 function GuildHistoryServerRequestManager:Shutdown()
-    logger:Debug("Destroy all requests")
+    local requestQueue = self.requestQueue
+    local cleanUpQueue = self.cleanUpQueue
+    logger:Debug("Destroy all requests", #requestQueue, #cleanUpQueue)
 
-    for i = 1, #self.requestQueue do
-        local request = self.requestQueue[i]
+    for i = #requestQueue, 1, -1 do
+        local request = requestQueue[i]
         if not request:Destroy() then
             logger:Warn("Failed to destroy pending request", request.requestId)
         end
     end
 
-    for i = 1, #self.cleanUpQueue do
-        local request = self.cleanUpQueue[i]
+    for i = #cleanUpQueue, 1, -1 do
+        local request = cleanUpQueue[i]
         if not request:Destroy() then
             logger:Warn("Failed to destroy finished request", request.requestId)
         end
     end
 
-    ZO_ClearTable(self.requestQueue)
-    ZO_ClearTable(self.cleanUpQueue)
+    ZO_ClearTable(requestQueue)
+    ZO_ClearTable(cleanUpQueue)
 end
