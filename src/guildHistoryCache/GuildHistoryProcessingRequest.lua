@@ -34,9 +34,12 @@ function GuildHistoryProcessingRequest:StartProcessing(endId)
     end
 
     endId = endId or self:FindEndId()
-    assert(endId and startId <= endId,
-        "Invalid event range for " ..
-        (listener.GetAddonName and listener:GetAddonName() or "legacy listener") .. " (" .. listener:GetKey() .. ")")
+
+    if not endId or startId >= endId then
+        logger:Debug("startId is greater than endId - are we done?")
+        self:EnsureIterationIsComplete()
+        return
+    end
 
     local startIndex, endIndex = listener.categoryCache:GetIndexRangeForEventIdRange(startId, endId)
     self.currentIndex = startIndex

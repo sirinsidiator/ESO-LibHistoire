@@ -25,6 +25,10 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
         listener:SetStopOnLastEvent(true)
         listener:SetIterationCompletedCallback(function()
             self.iterationCompletedCount = self.iterationCompletedCount + 1
+            if self.iterationCompletedCount > #self.listeners then
+                logger:Warn("iteration completed more often than expected", self.key, self.iterationCompletedCount, #self.listeners)
+                listener:Stop()
+            end
             logger:Debug("iteration completed", self.key, self.iterationCompletedCount, #self.listeners)
             if self.iterationCompletedCount == #self.listeners then
                 self:OnIterationsCompleted()
@@ -44,10 +48,8 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
 
     local function ShouldHandleEvent(event)
         if self.afterEventId and event:GetEventId() <= self.afterEventId then
-            logger:Verbose("event before afterEventId", event:GetEventId(), self.afterEventId)
             return false
         elseif self.afterEventTime and event:GetEventTimestampS() <= self.afterEventTime then
-            logger:Verbose("event before afterEventTime", event:GetEventTimestampS(), self.afterEventTime)
             return false
         end
         return true
@@ -336,7 +338,7 @@ function GuildHistoryLegacyEventListener:Start()
     self.cachedEvents = {}
     for _, listener in ipairs(self.listeners) do
         if not listener:Start() then
-            logger:Warn("Failed to start inner listener")
+            logger:Warn("Failed to start inner listener", listener:GetKey())
         end
     end
 
@@ -352,10 +354,10 @@ end
 function GuildHistoryLegacyEventListener:Stop()
     if not self.running then return false end
 
-    logger:Warn("stop event listener", self.key)
+    logger:Debug("Stopping legacy event listener", self.key)
     for _, listener in ipairs(self.listeners) do
-        if not listener:Stop() then
-            logger:Warn("Failed to stop inner listener")
+        if listener:IsRunning() and not listener:Stop() then
+            logger:Warn("Failed to stop inner listener", listener:GetKey())
         end
     end
 

@@ -11,10 +11,8 @@ internal.class.GuildHistoryEventListener = GuildHistoryEventListener
 
 local function ShouldHandleEvent(listener, event)
     if listener.afterEventId and event:GetEventId() <= listener.afterEventId then
-        logger:Verbose("event before afterEventId", event:GetEventId(), listener.afterEventId)
         return false
     elseif listener.afterEventTime and event:GetEventTimestampS() <= listener.afterEventTime then
-        logger:Verbose("event before afterEventTime", event:GetEventTimestampS(), listener.afterEventTime)
         return false
     end
     return true
@@ -217,6 +215,7 @@ end
 function GuildHistoryEventListener:Stop()
     if not self.running then return false end
 
+    logger:Warn("Stop listener", self:GetKey())
     if self.request then
         self.categoryCache:RemoveProcessingRequest(self.request)
         self.request = nil

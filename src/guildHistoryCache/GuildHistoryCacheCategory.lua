@@ -821,7 +821,7 @@ function GuildHistoryCacheCategory:FindFirstAvailableEventIdForEventTime(eventTi
     local _, oldestIndex = self.adapter:GetGuildHistoryEventIndicesForTimeRange(
         guildId, category, newestTime, eventTime)
     if oldestIndex then
-        logger:Verbose("Found oldestIndex", oldestIndex)
+        logger:Verbose("Found oldestIndex", oldestIndex, GetGuildHistoryEventBasicInfo(guildId, category, oldestIndex))
         return GetGuildHistoryEventId(guildId, category, oldestIndex)
     end
 
@@ -852,7 +852,7 @@ function GuildHistoryCacheCategory:FindLastAvailableEventIdForEventTime(eventTim
     local newestIndex = self.adapter:GetGuildHistoryEventIndicesForTimeRange(
         guildId, category, eventTime, oldestTime)
     if newestIndex then
-        logger:Verbose("Found newestIndex", newestIndex)
+        logger:Verbose("Found newestIndex", newestIndex, GetGuildHistoryEventBasicInfo(guildId, category, newestIndex))
         return GetGuildHistoryEventId(guildId, category, newestIndex)
     end
 
