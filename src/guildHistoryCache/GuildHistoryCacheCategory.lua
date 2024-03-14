@@ -162,8 +162,9 @@ function GuildHistoryCacheCategory:VerifyRequest()
         else
             logger:Debug("Request is valid and queued", self.key)
         end
-    else
-        logger:Debug("No request to verify", self.key)
+    elseif not self:HasLinked() then
+        logger:Debug("No request and not linked", self.key)
+        self:RequestMissingData()
     end
 end
 

@@ -15,14 +15,16 @@ function GuildHistoryServerRequestManager:Initialize(saveData)
     self.cleanUpQueue = {}
 end
 
-function GuildHistoryServerRequestManager:QueueRequest(request)
+function GuildHistoryServerRequestManager:QueueRequest(request, skipRequestSendNext)
     if not request then return end
     logger:Debug("Queue request", request.cache.key, request.request and request.request:GetRequestId() or -1,
         request.newestTime,
         request.oldestTime)
     table.insert(self.requestQueue, request)
     request:SetQueued(true)
-    self:RequestSendNext()
+    if not skipRequestSendNext then
+        self:RequestSendNext()
+    end
 end
 
 function GuildHistoryServerRequestManager:RemoveRequest(request)
@@ -90,7 +92,7 @@ function GuildHistoryServerRequestManager:SendNext()
         return self:SendNext()
     elseif state == GUILD_HISTORY_DATA_READY_STATE_ON_COOLDOWN then
         logger:Warn("Cannot request while on cooldown")
-        self.requestQueue[#self.requestQueue + 1] = request
+        self:QueueRequest(request, true)
         return false
     elseif state == GUILD_HISTORY_DATA_READY_STATE_READY then
         logger:Info("Request already complete")
