@@ -6,6 +6,8 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
+local SHOWN_GUILD_PRIORITY_BONUS = 1000
+
 local GuildHistoryServerRequest = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryServerRequest = GuildHistoryServerRequest
 
@@ -108,5 +110,9 @@ function GuildHistoryServerRequest:Destroy()
 end
 
 function GuildHistoryServerRequest:GetPriority()
-    return 0
+    local priority = self.cache:GetRequestPriority()
+    if internal:IsGuildStatusVisible(self.cache:GetGuildId()) then
+        priority = priority + SHOWN_GUILD_PRIORITY_BONUS
+    end
+    return priority
 end

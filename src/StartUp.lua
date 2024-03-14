@@ -201,3 +201,12 @@ function internal:CreateAsyncTask()
     end)
     return task
 end
+
+function internal:IsGuildStatusVisible(guildId)
+    if not self.historyAdapter or not self.statusWindow or not self.statusWindow:IsShowing() then return false end
+
+    local cache = self.historyAdapter:GetSelectedCategoryCache()
+    if not cache then return false end
+
+    return cache:GetGuildId() == guildId
+end

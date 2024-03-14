@@ -52,10 +52,10 @@ local function RemoveObsoleteAndGetNextRequest(self)
     end
 
     table.sort(requests, function(a, b)
-        return a:GetPriority() > b:GetPriority()
+        return a:GetPriority() < b:GetPriority()
     end)
 
-    local request = table.remove(requests, 1)
+    local request = table.remove(requests)
     if request then
         request:SetQueued(false)
         return request
@@ -87,7 +87,6 @@ function GuildHistoryServerRequestManager:SendNext()
         logger:Debug("No more requests to send")
         return false
     end
-
 
     local state = request:Send()
     if state == GUILD_HISTORY_DATA_READY_STATE_INVALID_REQUEST then

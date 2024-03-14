@@ -9,6 +9,16 @@ local logger = internal.logger
 local MISSING_EVENT_COUNT_THRESHOLD = 2000
 local NO_LISTENER_THRESHOLD = 3 * 24 * 3600            -- 3 days
 local INITIAL_REQUEST_RESEND_THRESHOLD = 7 * 24 * 3600 -- 7 days
+local BASE_PRIORITY = {
+    [GUILD_HISTORY_EVENT_CATEGORY_TRADER] = 40,
+    [GUILD_HISTORY_EVENT_CATEGORY_BANKED_CURRENCY] = 30,
+    [GUILD_HISTORY_EVENT_CATEGORY_BANKED_ITEM] = 20,
+    [GUILD_HISTORY_EVENT_CATEGORY_ROSTER] = 10,
+    [GUILD_HISTORY_EVENT_CATEGORY_ACTIVITY] = 0,
+    [GUILD_HISTORY_EVENT_CATEGORY_AVA_ACTIVITY] = 0,
+    [GUILD_HISTORY_EVENT_CATEGORY_MILESTONE] = 0,
+}
+local LISTENER_PRIORITY_BONUS = 6
 
 local GuildHistoryCacheCategory = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryCacheCategory = GuildHistoryCacheCategory
@@ -86,6 +96,12 @@ function GuildHistoryCacheCategory:GetListenerInfo()
         end
     end
     return names, legacyCount, self.saveData.lastListenerRegisteredTime
+end
+
+function GuildHistoryCacheCategory:GetRequestPriority()
+    local priority = BASE_PRIORITY[self.category] or 0
+    local listenerPriority = LISTENER_PRIORITY_BONUS * NonContiguousCount(self.listeners)
+    return priority + listenerPriority
 end
 
 function GuildHistoryCacheCategory:RequestMissingData()
