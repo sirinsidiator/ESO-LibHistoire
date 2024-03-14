@@ -17,6 +17,10 @@ function GuildHistoryServerRequest:Initialize(cache, newestTime, oldestTime)
     self.queued = false
 end
 
+function GuildHistoryServerRequest:IsInitialRequest()
+    return self.oldestTime == 0
+end
+
 function GuildHistoryServerRequest:IsValid()
     if self.destroyed then
         return false

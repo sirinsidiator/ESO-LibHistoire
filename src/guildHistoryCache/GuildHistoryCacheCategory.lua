@@ -7,7 +7,8 @@ local internal = lib.internal
 local logger = internal.logger
 
 local MISSING_EVENT_COUNT_THRESHOLD = 2000
-local NO_LISTENER_THRESHOLD = 3 * 24 * 3600 -- 3 days
+local NO_LISTENER_THRESHOLD = 3 * 24 * 3600            -- 3 days
+local INITIAL_REQUEST_RESEND_THRESHOLD = 7 * 24 * 3600 -- 7 days
 
 local GuildHistoryCacheCategory = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryCacheCategory = GuildHistoryCacheCategory
@@ -98,7 +99,12 @@ function GuildHistoryCacheCategory:RequestMissingData()
         if oldestGaplessEvent then
             self:OnCategoryUpdated()
         else
-            self.requestManager:QueueRequest(self:CreateRequest())
+            local timeSinceLastInitialRequest = GetTimeStamp() - (self.saveData.initialRequestTime or 0)
+            if not oldestLinkedEventId and timeSinceLastInitialRequest < INITIAL_REQUEST_RESEND_THRESHOLD then
+                logger:Debug("Initial request on cooldown")
+            else
+                self.requestManager:QueueRequest(self:CreateRequest())
+            end
         end
         return
     end
@@ -121,6 +127,10 @@ function GuildHistoryCacheCategory:ContinueExistingRequest()
     local request = self.request
     logger:Debug("Continue existing request", self.key)
     if request then
+        if request:IsInitialRequest() then
+            self.saveData.initialRequestTime = GetTimeStamp()
+        end
+
         if request:ShouldContinue() then
             logger:Debug("Queue existing request", self.key)
             self.requestManager:QueueRequest(request)
