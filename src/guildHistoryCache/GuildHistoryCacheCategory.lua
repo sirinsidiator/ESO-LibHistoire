@@ -104,6 +104,23 @@ function GuildHistoryCacheCategory:GetRequestPriority()
     return priority + listenerPriority
 end
 
+function GuildHistoryCacheCategory:ShouldSendInitialRequest(oldestLinkedEventId)
+    local timeSinceLastInitialRequest = GetTimeStamp() - (self.saveData.initialRequestTime or 0)
+    if not oldestLinkedEventId and timeSinceLastInitialRequest < INITIAL_REQUEST_RESEND_THRESHOLD then
+        logger:Debug("Initial request on cooldown")
+        return false
+    end
+
+    local shouldSend = true
+    if self.category == GUILD_HISTORY_EVENT_CATEGORY_TRADER then
+        shouldSend = DoesGuildHavePrivilege(self.guildId, GUILD_PRIVILEGE_TRADING_HOUSE)
+    elseif self.category == GUILD_HISTORY_EVENT_CATEGORY_BANKED_CURRENCY or self.category == GUILD_HISTORY_EVENT_CATEGORY_BANKED_ITEM then
+        shouldSend = DoesGuildHavePrivilege(self.guildId, GUILD_PRIVILEGE_BANK_DEPOSIT)
+    end
+    logger:Debug("Should send initial request", shouldSend)
+    return shouldSend
+end
+
 function GuildHistoryCacheCategory:RequestMissingData()
     logger:Debug("Request missing data for", self.key)
     if self:ContinueExistingRequest() then return end
@@ -114,13 +131,8 @@ function GuildHistoryCacheCategory:RequestMissingData()
     if not oldestLinkedEventId or not newestLinkedEventId then
         if oldestGaplessEvent then
             self:OnCategoryUpdated()
-        else
-            local timeSinceLastInitialRequest = GetTimeStamp() - (self.saveData.initialRequestTime or 0)
-            if not oldestLinkedEventId and timeSinceLastInitialRequest < INITIAL_REQUEST_RESEND_THRESHOLD then
-                logger:Debug("Initial request on cooldown")
-            else
-                self.requestManager:QueueRequest(self:CreateRequest())
-            end
+        elseif self:ShouldSendInitialRequest(oldestLinkedEventId) then
+            self.requestManager:QueueRequest(self:CreateRequest())
         end
         return
     end
