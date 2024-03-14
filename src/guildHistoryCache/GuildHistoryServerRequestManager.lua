@@ -37,15 +37,17 @@ function GuildHistoryServerRequestManager:RemoveRequest(request)
     end
 end
 
-local function RemoveObsoleteAndGetNextRequest(requests)
+local function RemoveObsoleteAndGetNextRequest(self)
+    local requests = self.requestQueue
     if #requests == 0 then
         return nil
     end
 
     for i = #requests, 1, -1 do
         local request = requests[i]
-        if not request:ShouldSend() and request:Destroy() then
+        if not request:ShouldSend() then
             table.remove(requests, i)
+            self.cleanUpQueue[#self.cleanUpQueue + 1] = request
         end
     end
 
@@ -77,7 +79,9 @@ function GuildHistoryServerRequestManager:SendNext()
         self.handle = nil
     end
 
-    local request = RemoveObsoleteAndGetNextRequest(self.requestQueue)
+    local request = RemoveObsoleteAndGetNextRequest(self)
+
+    self:CleanUp()
 
     if not request then
         logger:Debug("No more requests to send")
