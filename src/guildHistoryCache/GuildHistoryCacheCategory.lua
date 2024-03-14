@@ -655,7 +655,7 @@ end
 function GuildHistoryCacheCategory:GetRequestTimeRange()
     local request = self.request
     if request then
-        return request.oldestTimeS or 0, request.newestTimeS or GetTimeStamp()
+        return request.oldestTime, request.newestTime
     end
 end
 
