@@ -77,7 +77,7 @@ function GuildHistoryServerRequest:ShouldSend()
         return false
     end
 
-    return true
+    return not self.cache:HasLinked()
 end
 
 function GuildHistoryServerRequest:Send()
