@@ -6,6 +6,8 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
+local WATCHDOG_INTERVAL = 30 * 1000
+
 local GuildHistoryServerRequestManager = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryServerRequestManager = GuildHistoryServerRequestManager
 
@@ -15,13 +17,32 @@ function GuildHistoryServerRequestManager:Initialize(saveData)
     self.cleanUpQueue = {}
 end
 
+function GuildHistoryServerRequestManager:StartWatchdog()
+    if self.watchdog then return end
+    logger:Debug("Start Watchdog")
+    self.watchdog = internal.RegisterForUpdate(WATCHDOG_INTERVAL, function()
+        logger:Debug("Request Watchdog")
+        self:RequestSendNext()
+    end)
+end
+
+function GuildHistoryServerRequestManager:StopWatchdog()
+    if not self.watchdog then return end
+    logger:Debug("Stop Watchdog")
+    internal.UnregisterForUpdate(self.watchdog)
+    self.watchdog = nil
+end
+
 function GuildHistoryServerRequestManager:QueueRequest(request, skipRequestSendNext)
     if not request then return end
+
     logger:Debug("Queue request", request.cache.key, request.request and request.request:GetRequestId() or -1,
-        request.newestTime,
-        request.oldestTime)
+        request.newestTime, request.oldestTime)
     table.insert(self.requestQueue, request)
     request:SetQueued(true)
+
+    self:StartWatchdog()
+
     if not skipRequestSendNext then
         self:RequestSendNext()
     end
@@ -85,6 +106,7 @@ function GuildHistoryServerRequestManager:SendNext()
 
     if not request then
         logger:Debug("No more requests to send")
+        self:StopWatchdog()
         return false
     end
 
@@ -94,15 +116,15 @@ function GuildHistoryServerRequestManager:SendNext()
         request:Destroy()
         return self:SendNext()
     elseif state == GUILD_HISTORY_DATA_READY_STATE_ON_COOLDOWN then
-        logger:Warn("Cannot request while on cooldown")
+        logger:Debug("Cannot request while on cooldown")
         self:QueueRequest(request, true)
         return false
     elseif state == GUILD_HISTORY_DATA_READY_STATE_READY then
-        logger:Info("Request already complete")
+        logger:Debug("Request already complete")
         request:Destroy()
         return true
     elseif state == GUILD_HISTORY_DATA_READY_STATE_RESPONSE_PENDING then
-        logger:Warn("Waiting for a response")
+        logger:Debug("Waiting for a response")
         self.cleanUpQueue[#self.cleanUpQueue + 1] = request
         return true
     else
@@ -129,6 +151,8 @@ function GuildHistoryServerRequestManager:CleanUp()
 end
 
 function GuildHistoryServerRequestManager:Shutdown()
+    self:StopWatchdog()
+
     local requestQueue = self.requestQueue
     local cleanUpQueue = self.cleanUpQueue
     logger:Debug("Destroy all requests", #requestQueue, #cleanUpQueue)
