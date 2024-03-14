@@ -59,9 +59,12 @@ function GuildHistoryCache:StartRequests()
 end
 
 function GuildHistoryCache:VerifyRequests()
+    logger:Debug("VerifyRequests")
     self:ForEachActiveGuild(function(guildCache)
         guildCache:VerifyRequests()
     end)
+    logger:Debug("VerifyRequests done")
+    self.requestManager:RequestSendNext()
 end
 
 function GuildHistoryCache:DeleteRequests()
