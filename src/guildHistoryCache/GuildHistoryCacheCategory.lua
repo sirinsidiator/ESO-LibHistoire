@@ -111,7 +111,7 @@ function GuildHistoryCacheCategory:RequestMissingData()
     local oldestLinkedEventId, oldestLinkedEventTime = self:GetOldestLinkedEventInfo()
     local newestLinkedEventId, newestLinkedEventTime = self:GetNewestLinkedEventInfo()
     local oldestGaplessEvent = self.categoryData:GetOldestEventForUpToDateEventsWithoutGaps()
-    if not oldestLinkedEventId or not newestLinkedEventId or not oldestGaplessEvent then
+    if not oldestLinkedEventId or not newestLinkedEventId then
         if oldestGaplessEvent then
             self:OnCategoryUpdated()
         else
@@ -125,11 +125,15 @@ function GuildHistoryCacheCategory:RequestMissingData()
         return
     end
 
-    local oldestGaplessEventId, oldestGaplessEventTime = oldestGaplessEvent:GetEventId(),
-        oldestGaplessEvent:GetEventTimestampS()
-    if oldestLinkedEventId == oldestGaplessEventId then
-        logger:Debug("No missing data for", self.key)
-        return
+    local oldestGaplessEventTime
+    if oldestGaplessEvent then
+        oldestGaplessEventTime = oldestGaplessEvent:GetEventTimestampS()
+        if oldestLinkedEventId == oldestGaplessEvent:GetEventId() then
+            logger:Debug("No missing data for", self.key)
+            return
+        end
+    else
+        oldestGaplessEventTime = GetTimeStamp()
     end
 
     local requestNewestTime, requestOldestTime = self:OptimizeRequestTimeRange(oldestLinkedEventTime,
@@ -141,7 +145,6 @@ end
 
 function GuildHistoryCacheCategory:ContinueExistingRequest()
     local request = self.request
-    logger:Debug("Continue existing request", self.key)
     if request then
         if request:IsInitialRequest() then
             self.saveData.initialRequestTime = GetTimeStamp()
