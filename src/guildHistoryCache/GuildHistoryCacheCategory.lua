@@ -548,16 +548,15 @@ function GuildHistoryCacheCategory:GetCategory()
 end
 
 function GuildHistoryCacheCategory:HasLinked()
-    if self.processingTask or self.request then return false end
-
     local event = self.categoryData:GetOldestEventForUpToDateEventsWithoutGaps()
     if not event then
-        return true
+        return not self:HasCachedEvents()
     end
 
     local newestLinkedEventId = self:GetNewestLinkedEventInfo()
     if newestLinkedEventId then
-        return newestLinkedEventId >= event:GetEventId()
+        local index = GetGuildHistoryEventIndex(self.guildId, self.category, newestLinkedEventId)
+        return index == 1
     end
 
     return false
@@ -949,7 +948,7 @@ end
 
 function GuildHistoryCacheCategory:GetProgress()
     if self.progressDirty then
-        if self:HasLinked() then
+        if self:HasLinked() and not self:IsProcessing() and not self:HasPendingRequest() then
             self.progress = 1
             self.missingTime = 0
         else
