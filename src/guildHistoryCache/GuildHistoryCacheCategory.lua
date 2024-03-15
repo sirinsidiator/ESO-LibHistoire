@@ -23,15 +23,14 @@ local LISTENER_PRIORITY_BONUS = 6
 local GuildHistoryCacheCategory = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryCacheCategory = GuildHistoryCacheCategory
 
-function GuildHistoryCacheCategory:Initialize(adapter, requestManager, saveData, categoryData)
+function GuildHistoryCacheCategory:Initialize(adapter, requestManager, categoryData)
     self.adapter = adapter
     self.requestManager = requestManager
     self.categoryData = categoryData
     self.guildId = categoryData:GetGuildData():GetId()
     self.category = categoryData:GetEventCategory()
     self.key = string.format("%s/%d/%d", internal.WORLD_NAME, self.guildId, self.category)
-    self.saveData = saveData[self.key] or {}
-    saveData[self.key] = self.saveData
+    self.saveData = adapter:GetOrCreateCacheSaveData(self.key)
     self.performanceTracker = internal.class.PerformanceTracker:New()
     self.unprocessedEventsStartTime = self.saveData.newestLinkedEventTime
     self.rangeInfo = {}

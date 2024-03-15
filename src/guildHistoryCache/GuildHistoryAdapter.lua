@@ -27,6 +27,22 @@ MAX_SERVER_TIMERANGE_FOR_CATEGORY[GUILD_HISTORY_EVENT_CATEGORY_ROSTER] = 180 * S
 local GuildHistoryAdapter = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryAdapter = GuildHistoryAdapter
 
+function GuildHistoryAdapter:Initialize(saveData)
+    self.machineWideSaveData = saveData
+    self.accountSaveData = saveData[GetDisplayName()]
+end
+
+function GuildHistoryAdapter:GetOrCreateCacheSaveData(key)
+    if self.machineWideSaveData[key] then
+        logger:Info("Migrating machine wide save data for", key, "to account wide save data")
+        self.accountSaveData[key] = self.machineWideSaveData[key]
+        self.machineWideSaveData[key] = nil
+    end
+    local saveData = self.accountSaveData[key] or {}
+    self.accountSaveData[key] = saveData
+    return saveData
+end
+
 function GuildHistoryAdapter:InitializeDeferred(history, cache)
     self.history = history
     self.cache = cache
