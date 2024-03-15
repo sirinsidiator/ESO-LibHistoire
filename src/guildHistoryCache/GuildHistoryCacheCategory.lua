@@ -63,7 +63,7 @@ function GuildHistoryCacheCategory:RefreshLinkedEventInfo()
     end
 
     if oldestCachedEventId ~= oldestLinkedEventId then
-        oldestLinkedEventTime, oldestLinkedEventId = GetGuildHistoryEventBasicInfo(guildId, category, oldestIndex)
+        oldestLinkedEventId, oldestLinkedEventTime = GetGuildHistoryEventBasicInfo(guildId, category, oldestIndex)
         logger:Info("Data was removed from linked range for guild %d category %d", guildId, category)
         self:SetOldestLinkedEventInfo(oldestLinkedEventId, oldestLinkedEventTime)
     end
