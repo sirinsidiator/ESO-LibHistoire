@@ -371,6 +371,12 @@ function GuildHistoryCacheCategory:Reset()
 
     self:SetNewestLinkedEventInfo()
     self:SetOldestLinkedEventInfo()
+    self.saveData.initialRequestTime = nil
+
+    self.rangeInfoDirty = true
+    self.progressDirty = true
+
+    zo_callLater(function() self:OnCategoryUpdated() end, 0)
 end
 
 function GuildHistoryCacheCategory:SetupFirstLinkedEventId()
