@@ -170,7 +170,7 @@ function CacheStatusBar:Update(cache)
         self:AddSegment(data)
     end
 
-    if oldestLinkedEventTime then
+    if oldestLinkedEventTime and cache:HasLinked() then
         local data = {
             startTime = startTime,
             endTime = endTime,
