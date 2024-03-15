@@ -48,7 +48,7 @@ function GuildHistoryStatusTooltip:SetupForCategory(cache)
             SetTooltipText(tooltip, zo_strformat("Newest linked event: |cffffff<<1>> <<2>>|r", date, time))
         end
     else
-        SetTooltipText(tooltip, "Not automatically requesting missing events", 0, 1, 0)
+        SetTooltipText(tooltip, "Missing events are not requested automatically", 0, 1, 0)
     end
 
     local shouldUnregisterForUpdate = true
@@ -73,17 +73,19 @@ function GuildHistoryStatusTooltip:SetupForCategory(cache)
         shouldUnregisterForUpdate = false
     elseif cache:HasLinked() then
         if cache:HasCachedEvents() then
-            SetTooltipText(tooltip, "History has been linked to stored events", 0, 1, 0)
+            SetTooltipText(tooltip, "History has been linked to newest events", 0, 1, 0)
         end
+    elseif cache:HasPendingRequest() then
+        SetTooltipText(tooltip, "Waiting for request to be sent", 1, 0, 0)
     else
-        SetTooltipText(tooltip, "History has not linked to stored events yet", 1, 0, 0)
+        SetTooltipText(tooltip, "History has not linked to newest events yet", 1, 0, 0)
         SetTooltipText(tooltip,
             zo_strformat("Unlinked events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumUnlinkedEvents())))
 
-        local _, newestLinkedEventTime = cache:GetNewestLinkedEventInfo()
-        if newestLinkedEventTime then
-            local date, time = FormatAchievementLinkTimestamp(newestLinkedEventTime)
-            SetTooltipText(tooltip, zo_strformat("Newest linked event: |cffffff<<1>> <<2>>|r", date, time))
+        local oldestUnlinkedEventTime = cache:GetOldestUnlinkedEventTime()
+        if oldestUnlinkedEventTime then
+            local date, time = FormatAchievementLinkTimestamp(oldestUnlinkedEventTime)
+            SetTooltipText(tooltip, zo_strformat("Oldest unlinked event: |cffffff<<1>> <<2>>|r", date, time))
         end
 
         local progress, missingTime = cache:GetProgress()
@@ -104,9 +106,9 @@ function GuildHistoryStatusTooltip:SetupForCategory(cache)
         end
     else
         SetTooltipText(tooltip, "No registered listeners")
-        if lastSeenTime then
+        if lastSeenTime and lastSeenTime > 0 then
             SetTooltipText(tooltip,
-                string.format("Last listener seen: |cffffff%s|r", ZO_FormatDurationAgo(lastSeenTime)))
+                string.format("Last listener seen: |cffffff%s|r", ZO_FormatDurationAgo(GetTimeStamp() - lastSeenTime)))
         end
     end
 

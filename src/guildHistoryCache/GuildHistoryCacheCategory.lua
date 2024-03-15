@@ -587,13 +587,21 @@ function GuildHistoryCacheCategory:GetNumLinkedEvents()
 end
 
 function GuildHistoryCacheCategory:GetNumUnlinkedEvents()
-    local _, newestEventTime = self:GetNewestLinkedEventInfo()
-    if not newestEventTime then return 0 end
-    local now = GetTimeStamp()
-    local newestIndex, oldestIndex = self.adapter:GetGuildHistoryEventIndicesForTimeRange(
-        self.guildId, self.category, now, newestEventTime + 1)
-    if not newestIndex or not oldestIndex then return 0 end
-    return oldestIndex - newestIndex + 1
+    return self:GetOldestUnlinkedEventIndex() or 0
+end
+
+function GuildHistoryCacheCategory:GetOldestUnlinkedEventTime()
+    local index = self:GetOldestUnlinkedEventIndex()
+    if not index then return end
+    return GetGuildHistoryEventTimestamp(self.guildId, self.category, index)
+end
+
+function GuildHistoryCacheCategory:GetOldestUnlinkedEventIndex()
+    local newestLinkedEventId = self:GetNewestLinkedEventInfo()
+    if not newestLinkedEventId then return end
+    local index = GetGuildHistoryEventIndex(self.guildId, self.category, newestLinkedEventId)
+    if not index or index == 1 then return end
+    return index - 1
 end
 
 function GuildHistoryCacheCategory:HasCachedEvents()
