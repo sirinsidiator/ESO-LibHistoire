@@ -142,6 +142,7 @@ function GuildHistoryCacheCategory:RequestMissingData()
         oldestGaplessEventTime = oldestGaplessEvent:GetEventTimestampS()
         if oldestLinkedEventId == oldestGaplessEvent:GetEventId() then
             logger:Debug("No missing data for", self.key)
+            self:OnCategoryUpdated()
             return
         end
     else
