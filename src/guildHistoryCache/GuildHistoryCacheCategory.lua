@@ -43,8 +43,8 @@ function GuildHistoryCacheCategory:Initialize(adapter, requestManager, saveData,
 end
 
 function GuildHistoryCacheCategory:RefreshLinkedEventInfo()
-    local oldestLinkedEventId = self:GetOldestLinkedEventInfo()
-    local newestLinkedEventId = self:GetNewestLinkedEventInfo()
+    local oldestLinkedEventId, oldestLinkedEventTime = self:GetOldestLinkedEventInfo()
+    local newestLinkedEventId, newestLinkedEventTime = self:GetNewestLinkedEventInfo()
     if not oldestLinkedEventId or not newestLinkedEventId then return end
 
     local guildId, category = self.guildId, self.category
@@ -62,17 +62,17 @@ function GuildHistoryCacheCategory:RefreshLinkedEventInfo()
         return
     end
 
-    local rangeIndex = self:FindRangeIndexForEventId(oldestLinkedEventId)
+    if oldestCachedEventId ~= oldestLinkedEventId then
+        oldestLinkedEventTime, oldestLinkedEventId = GetGuildHistoryEventBasicInfo(guildId, category, oldestIndex)
+        logger:Info("Data was removed from linked range for guild %d category %d", guildId, category)
+        self:SetOldestLinkedEventInfo(oldestLinkedEventId, oldestLinkedEventTime)
+    end
+
+    local rangeIndex = self:FindRangeIndexForEventId(oldestCachedEventId)
     if not rangeIndex then
         logger:Warn("Could not find linked range for guild %d category %d", guildId, category)
         self:Reset()
         return
-    end
-
-    if oldestCachedEventId ~= oldestLinkedEventId then
-        local oldestCachedEventTimestamp = GetGuildHistoryEventTimestamp(guildId, category, oldestIndex)
-        logger:Info("Data was removed from linked range for guild %d category %d", guildId, category)
-        self:SetOldestLinkedEventInfo(oldestCachedEventId, oldestCachedEventTimestamp)
     end
 end
 
@@ -691,10 +691,14 @@ function GuildHistoryCacheCategory:UpdateRangeInfo()
             -- range info includes events that are hidden due to permissions, so we check for actually visible events here
             local newestIndex, oldestIndex = self.adapter:GetGuildHistoryEventIndicesForTimeRange(
                 guildId, category, newestTimeS, oldestTimeS)
-            if newestIndex then
+            if newestIndex and oldestIndex then
                 local newestEventId, newestTimeS = GetGuildHistoryEventBasicInfo(guildId, category, newestIndex)
                 local oldestEventId, oldestTimeS = GetGuildHistoryEventBasicInfo(guildId, category, oldestIndex)
-                ranges[#ranges + 1] = { newestTimeS, oldestTimeS, newestEventId, oldestEventId }
+                if newestEventId and oldestEventId then
+                    ranges[#ranges + 1] = { newestTimeS, oldestTimeS, newestEventId, oldestEventId }
+                else
+                    logger:Warn("Could not get event info for range")
+                end
             end
         end
 
