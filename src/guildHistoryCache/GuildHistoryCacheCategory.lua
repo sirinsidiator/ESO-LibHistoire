@@ -122,7 +122,7 @@ end
 
 function GuildHistoryCacheCategory:RequestMissingData()
     logger:Debug("Request missing data for", self.key)
-    if self:ContinueExistingRequest() then return end
+    if self:ContinueExistingRequest() or not self:IsAutoRequesting() then return end
 
     local oldestLinkedEventId, oldestLinkedEventTime = self:GetOldestLinkedEventInfo()
     local newestLinkedEventId, newestLinkedEventTime = self:GetNewestLinkedEventInfo()
