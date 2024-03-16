@@ -79,6 +79,12 @@
                     <Anchor point="TOPLEFT" offsetX="25" offsetY="10" />
                 </Label>
 
+                <Label name="$(parent)Version" font="ZoFontGameSmall"
+                    text="v@FULL_VERSION_NUMBER@"
+                    color="INTERFACE_COLOR_TYPE_TEXT_COLORS:INTERFACE_TEXT_COLOR_SUBTLE">
+                    <Anchor point="BOTTOMRIGHT" offsetX="-5" offsetY="-5" />
+                </Label>
+
                 <Button name="$(parent)Options" mouseOverBlendMode="ADD"
                     inherits="ZO_ButtonBehaviorClickSound">
                     <Dimensions x="32" y="32" />
