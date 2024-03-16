@@ -125,7 +125,6 @@ function GuildHistoryServerRequestManager:SendNext()
         return true
     elseif state == GUILD_HISTORY_DATA_READY_STATE_RESPONSE_PENDING then
         logger:Debug("Waiting for a response")
-        self.cleanUpQueue[#self.cleanUpQueue + 1] = request
         return true
     else
         logger:Warn("Unknown state", state)

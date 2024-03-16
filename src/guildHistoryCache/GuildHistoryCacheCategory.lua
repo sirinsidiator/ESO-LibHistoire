@@ -126,9 +126,10 @@ function GuildHistoryCacheCategory:RequestMissingData()
 
     local oldestLinkedEventId, oldestLinkedEventTime = self:GetOldestLinkedEventInfo()
     local newestLinkedEventId, newestLinkedEventTime = self:GetNewestLinkedEventInfo()
-    local oldestGaplessEvent = self.categoryData:GetOldestEventForUpToDateEventsWithoutGaps()
+    local oldestGaplessEventIndex = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(self.guild, self
+        .category)
     if not oldestLinkedEventId or not newestLinkedEventId then
-        if oldestGaplessEvent then
+        if oldestGaplessEventIndex then
             self:OnCategoryUpdated()
         elseif self:ShouldSendInitialRequest(oldestLinkedEventId) then
             self.requestManager:QueueRequest(self:CreateRequest())
@@ -137,9 +138,11 @@ function GuildHistoryCacheCategory:RequestMissingData()
     end
 
     local oldestGaplessEventTime
-    if oldestGaplessEvent then
-        oldestGaplessEventTime = oldestGaplessEvent:GetEventTimestampS()
-        if oldestLinkedEventId == oldestGaplessEvent:GetEventId() then
+    if oldestGaplessEventIndex then
+        local oldestGaplessEventId
+        oldestGaplessEventId, oldestGaplessEventTime = GetGuildHistoryEventBasicInfo(self.guild, self.category,
+            oldestGaplessEventIndex)
+        if oldestLinkedEventId == oldestGaplessEventId then
             logger:Debug("No missing data for", self.key)
             self:OnCategoryUpdated()
             return
@@ -225,8 +228,8 @@ function GuildHistoryCacheCategory:OptimizeRequestTimeRange(oldestLinkedEventTim
         return nil, nil
     end
 
-    local requestOldestTime = newestLinkedEventTime
-    local requestNewestTime = oldestGaplessEventTime
+    local requestOldestTime = newestLinkedEventTime - 1
+    local requestNewestTime = oldestGaplessEventTime + 1
     local guildId, category = self.guildId, self.category
     logger:Debug("Optimize request time range for", self.key)
 
@@ -245,12 +248,12 @@ function GuildHistoryCacheCategory:OptimizeRequestTimeRange(oldestLinkedEventTim
     logger:Verbose("estimatedMissingEvents", estimatedMissingEvents, numEvents, requestRangeSeconds, linkedRangeSeconds)
     if estimatedMissingEvents > MISSING_EVENT_COUNT_THRESHOLD then
         logger:Debug("Limit request time range")
-        requestNewestTime = requestOldestTime + (linkedRangeSeconds / numEvents) * MISSING_EVENT_COUNT_THRESHOLD / 2
+        requestNewestTime = requestOldestTime + 1 + (linkedRangeSeconds / numEvents) * MISSING_EVENT_COUNT_THRESHOLD / 2
     end
 
     if requestNewestTime <= requestOldestTime then
         logger:Warn("Time range optimization failed - request range is invalid")
-        requestNewestTime = oldestGaplessEventTime
+        requestNewestTime = oldestGaplessEventTime + 1
     end
     return requestNewestTime, requestOldestTime
 end
