@@ -47,7 +47,10 @@ end
 function internal:ShowResetLinkedRangeDialog(callback)
     local dialog = self:GetWarningDialog()
     dialog.title.text = "Warning"
-    dialog.mainText.text = "Resetting the linked range may produce a hole in your data!"
+    dialog.mainText.text =
+        "Resetting the linked range will make LibHistoire forget from which point to start requesting events and what data has already been sent to addons.\n\n" ..
+        "This action is usually not necessary, but can be used to skip over a large gap of missing data after a prolonged absence.\n\n" ..
+        "Use it with caution, as it means addons may miss out on events to process, which can cause holes in your data!"
 
     local primaryButton = dialog.buttons[1]
     primaryButton.text = SI_DIALOG_CONFIRM
@@ -62,7 +65,12 @@ end
 function internal:ShowClearCacheDialog(callback)
     local dialog = self:GetWarningDialog()
     dialog.title.text = "Warning"
-    dialog.mainText.text = "Clearing the cache is not recommended and should only be used as an absolute last resort when nothing else worked!"
+    dialog.mainText.text =
+        "Clearing the cache will delete locally stored events and force the game to fetch them again from the server.\n\n" ..
+        "This action is not recommended as it will have a negative effect on the server and you will potentially delete data that cannot be requested again.\n\n" ..
+        "It will implicitly also reset the linked range and thus will cause addons to potentially miss out on events, which can cause holes in your data!\n\n" ..
+        "You should only use this as an absolute last resort when nothing else has worked!\n\n" ..
+        "The UI will be reloaded when you confirm this action."
 
     local primaryButton = dialog.buttons[1]
     primaryButton.text = SI_DIALOG_CONFIRM
