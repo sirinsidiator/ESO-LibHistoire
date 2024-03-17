@@ -117,6 +117,7 @@ function GuildHistoryServerRequestManager:SendNext()
         return self:SendNext()
     elseif state == GUILD_HISTORY_DATA_READY_STATE_ON_COOLDOWN then
         logger:Debug("Cannot request while on cooldown")
+        self:LogTimeSinceLastRequest(false)
         self:QueueRequest(request, true)
         return false
     elseif state == GUILD_HISTORY_DATA_READY_STATE_READY then
@@ -125,6 +126,8 @@ function GuildHistoryServerRequestManager:SendNext()
         return true
     elseif state == GUILD_HISTORY_DATA_READY_STATE_RESPONSE_PENDING then
         logger:Debug("Waiting for a response")
+        self:LogTimeSinceLastRequest(true)
+
         if request:ShouldContinue() then
             self:QueueRequest(request, true)
         else
@@ -135,6 +138,17 @@ function GuildHistoryServerRequestManager:SendNext()
         logger:Warn("Unknown state", state)
         request:Destroy()
         return false
+    end
+end
+
+function GuildHistoryServerRequestManager:LogTimeSinceLastRequest(wasSent)
+    local now = GetTimeStamp()
+    if self.lastRequestSendTime then
+        local diff = now - self.lastRequestSendTime
+        logger:Info("Time since last automated request", diff, "seconds", diff > 120 and "- is overdue" or "")
+    end
+    if wasSent then
+        self.lastRequestSendTime = now
     end
 end
 
