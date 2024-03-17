@@ -60,7 +60,7 @@ function GuildHistoryServerRequest:SetQueued(queued)
 end
 
 function GuildHistoryServerRequest:ShouldContinue()
-    if self.oldestTime == 0 or not self.cache:IsAutoRequesting() then
+    if self.oldestTime == 0 or self.cache:IsLinkedRangeConnectedToCurrentEvents() or not self.cache:IsAutoRequesting() then
         return false
     end
 
@@ -77,7 +77,7 @@ function GuildHistoryServerRequest:ShouldSend()
         return false
     end
 
-    return not self.cache:HasLinked()
+    return not self.cache:IsLinkedRangeConnectedToCurrentEvents()
 end
 
 function GuildHistoryServerRequest:Send()

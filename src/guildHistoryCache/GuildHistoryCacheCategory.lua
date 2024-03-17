@@ -557,17 +557,29 @@ function GuildHistoryCacheCategory:GetCategory()
 end
 
 function GuildHistoryCacheCategory:HasLinked()
-    local event = self.categoryData:GetOldestEventForUpToDateEventsWithoutGaps()
-    if not event then
-        return not self:HasCachedEvents()
+    local guildId, category = self.guildId, self.category
+    local gaplessIndex = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(guildId, category)
+    if not gaplessIndex then
+        return GetNumGuildHistoryEvents(guildId, category) == 0
     end
 
     local newestLinkedEventId = self:GetNewestLinkedEventInfo()
     if newestLinkedEventId then
-        local index = GetGuildHistoryEventIndex(self.guildId, self.category, newestLinkedEventId)
+        local index = GetGuildHistoryEventIndex(guildId, category, newestLinkedEventId)
         return index == 1
     end
 
+    return false
+end
+
+function GuildHistoryCacheCategory:IsLinkedRangeConnectedToCurrentEvents()
+    local guildId, category = self.guildId, self.category
+    local gaplessIndex = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(guildId, category)
+    local newestLinkedEventId = self:GetNewestLinkedEventInfo()
+    if gaplessIndex and newestLinkedEventId then
+        local index = GetGuildHistoryEventIndex(guildId, category, newestLinkedEventId)
+        return index and index < gaplessIndex
+    end
     return false
 end
 
