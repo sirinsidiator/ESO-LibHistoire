@@ -84,7 +84,11 @@ function CacheStatusBar:Update(cache)
 
     local zoomMode = self.window:GetZoomMode()
     if not zoomMode or zoomMode == internal.ZOOM_MODE_AUTO then
-        zoomMode = cache:HasLinked() and internal.ZOOM_MODE_FULL_RANGE or internal.ZOOM_MODE_MISSING_RANGE
+        if not cache:GetNewestLinkedEventInfo() or cache:HasLinked() then
+            zoomMode = internal.ZOOM_MODE_FULL_RANGE
+        else
+            zoomMode = internal.ZOOM_MODE_MISSING_RANGE
+        end
     end
 
     local startTime
