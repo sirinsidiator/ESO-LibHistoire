@@ -382,23 +382,24 @@ function GuildHistoryCacheCategory:Reset()
     self.rangeInfoDirty = true
     self.progressDirty = true
 
-    zo_callLater(function() self:OnCategoryUpdated() end, 0)
+    zo_callLater(function() self:SetupFirstLinkedEventId() end, 0)
 end
 
 function GuildHistoryCacheCategory:SetupFirstLinkedEventId()
-    logger:Info("Setting up first linked event for guild %d category %d", self.guildId, self.category)
+    local guildId, category = self.guildId, self.category
+    logger:Info("Setting up first linked event for guild %d category %d", guildId, category)
     local event = self.categoryData:GetOldestEventForUpToDateEventsWithoutGaps()
     if not event then
-        logger:Warn("Could not find any events for guild %d category %d", self.guildId, self.category)
+        logger:Warn("Could not find any linked events for guild %d category %d", guildId, category)
         return
     end
     local eventId = event:GetEventId()
     local eventTime = event:GetEventTimestampS()
     logger:Debug("Send first event %d to listeners", eventId)
-    internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, self.guildId, self.category, event)
+    internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, guildId, category, event)
     self:SetOldestLinkedEventInfo(eventId, eventTime)
     self:SetNewestLinkedEventInfo(eventId, eventTime)
-    internal:FireCallbacks(internal.callback.LINKED_RANGE_FOUND, self.guildId, self.category)
+    internal:FireCallbacks(internal.callback.LINKED_RANGE_FOUND, guildId, category)
     return eventId
 end
 
