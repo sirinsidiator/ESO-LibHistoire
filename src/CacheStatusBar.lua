@@ -219,7 +219,7 @@ function CacheStatusBar:Update(cache)
 
         if processingCurrentTime then
             if processingCurrentTime < 0 then
-                data.segmentStartTime = processingStartTime
+                data.segmentStartTime = -processingCurrentTime
             else
                 data.segmentEndTime = processingCurrentTime
             end
@@ -255,7 +255,7 @@ end
 
 function CacheStatusBar:GetTrimmedTimeRange(data)
     if data.segmentEndTime < data.startTime or data.segmentStartTime > data.endTime then
-        logger:Warn("segment outside display range - skip")
+        logger:Verbose("segment outside display range - skip")
         return nil, nil
     end
 

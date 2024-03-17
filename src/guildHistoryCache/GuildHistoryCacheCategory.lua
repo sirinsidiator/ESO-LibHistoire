@@ -489,7 +489,6 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
             else
                 local eventTime = event:GetEventTimestampS()
                 self:SetNewestLinkedEventInfo(eventId, eventTime)
-                logger:Verbose("Send unlinked event to listeners", guildId, category, eventId)
                 internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, guildId, category, event)
                 self.processingCurrentTime = eventTime
             end
@@ -519,7 +518,6 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
             else
                 local eventTime = event:GetEventTimestampS()
                 self:SetOldestLinkedEventInfo(eventId, eventTime)
-                logger:Verbose("Send missed event to listeners", guildId, category, eventId)
                 internal:FireCallbacks(internal.callback.PROCESS_MISSED_EVENT, guildId, category, event)
                 self.processingCurrentTime = -eventTime
             end
