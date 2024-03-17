@@ -67,8 +67,9 @@ function GuildHistoryCacheCategory:RefreshLinkedEventInfo()
         self:SetOldestLinkedEventInfo(oldestLinkedEventId, oldestLinkedEventTime)
     end
 
-    local rangeIndex = self:FindRangeIndexForEventId(oldestCachedEventId)
-    if not rangeIndex then
+    local oldestRangeIndex = self:FindRangeIndexForEventId(oldestCachedEventId)
+    local newestRangeIndex = self:FindRangeIndexForEventId(newestLinkedEventId)
+    if not oldestRangeIndex or not newestRangeIndex or oldestRangeIndex ~= newestRangeIndex then
         logger:Warn("Could not find linked range for guild %d category %d", guildId, category)
         self:Reset()
         return
