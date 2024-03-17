@@ -580,7 +580,7 @@ function GuildHistoryCacheCategory:IsLinkedRangeConnectedToCurrentEvents()
     local newestLinkedEventId = self:GetNewestLinkedEventInfo()
     if gaplessIndex and newestLinkedEventId then
         local index = GetGuildHistoryEventIndex(guildId, category, newestLinkedEventId)
-        return index and index < gaplessIndex
+        return index and index <= gaplessIndex
     end
     return false
 end
