@@ -14,27 +14,27 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
     self.legacyCategory = legacyCategory
     self.key = string.format("%s/%d/%d", internal.WORLD_NAME, guildId, legacyCategory)
     self.caches = caches
-    self.listeners = {}
+    self.processors = {}
     self.cachedEvents = {}
     self.iterationCompletedCount = 0
     self.eventsLeft = 0
     self.performanceTracker = internal.class.PerformanceTracker:New()
 
     for _, cache in ipairs(caches) do
-        local listener = internal.class.GuildHistoryEventListener:New(cache)
-        listener:SetStopOnLastEvent(true)
-        listener:SetIterationCompletedCallback(function()
+        local processor = internal.class.GuildHistoryEventProcessor:New(cache)
+        processor:SetStopOnLastEvent(true)
+        processor:SetIterationCompletedCallback(function()
             self.iterationCompletedCount = self.iterationCompletedCount + 1
-            if self.iterationCompletedCount > #self.listeners then
-                logger:Warn("iteration completed more often than expected", self.key, self.iterationCompletedCount, #self.listeners)
-                listener:Stop()
+            if self.iterationCompletedCount > #self.processors then
+                logger:Warn("iteration completed more often than expected", self.key, self.iterationCompletedCount, #self.processors)
+                processor:Stop()
             end
-            logger:Debug("iteration completed", self.key, self.iterationCompletedCount, #self.listeners)
-            if self.iterationCompletedCount == #self.listeners then
+            logger:Debug("iteration completed", self.key, self.iterationCompletedCount, #self.processors)
+            if self.iterationCompletedCount == #self.processors then
                 self:OnIterationsCompleted()
             end
         end)
-        self.listeners[#self.listeners + 1] = listener
+        self.processors[#self.processors + 1] = processor
     end
 
     local function IsFor(guildId, category)
@@ -74,7 +74,7 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
         end
     end
 
-    if #self.listeners > 1 then
+    if #self.processors > 1 then
         logger:Debug("register cached event callbacks")
         self.onEvent = function(event)
             local guildId = event:GetGuildId()
@@ -181,18 +181,18 @@ end
 -- number - the processing speed in events per second (rolling average over 5 seconds)
 -- number - the estimated time in seconds it takes to process the remaining events or -1 if it cannot be estimated
 function GuildHistoryLegacyEventListener:GetPendingEventMetrics()
-    local numListeners = #self.listeners
+    local numListeners = #self.processors
     if not self.running or numListeners == 0 then return 0, -1, -1 end
 
     if self.iterationCompletedCount < numListeners then
         if numListeners == 1 then
-            return self.listeners[1]:GetPendingEventMetrics()
+            return self.processors[1]:GetPendingEventMetrics()
         end
 
         local count = 0
         local speed = 0
         local time = 0
-        for _, listener in ipairs(self.listeners) do
+        for _, listener in ipairs(self.processors) do
             local c, s, t = listener:GetPendingEventMetrics()
             count = count + c
             if s > 0 then
@@ -220,7 +220,7 @@ function GuildHistoryLegacyEventListener:SetAfterEventId(eventId)
     local id = internal.ConvertLegacyId64ToEventId(eventId)
     if not id then return false end
 
-    for _, listener in ipairs(self.listeners) do
+    for _, listener in ipairs(self.processors) do
         listener:SetAfterEventId(id)
     end
     self.afterEventId = id
@@ -231,7 +231,7 @@ end
 function GuildHistoryLegacyEventListener:SetAfterEventTime(eventTime)
     if self.running then return false end
 
-    for _, listener in ipairs(self.listeners) do
+    for _, listener in ipairs(self.processors) do
         listener:SetAfterEventTime(eventTime)
     end
     self.afterEventTime = eventTime
@@ -245,7 +245,7 @@ function GuildHistoryLegacyEventListener:SetBeforeEventId(eventId)
     local id = internal.ConvertLegacyId64ToEventId(eventId)
     if not id then return false end
 
-    for _, listener in ipairs(self.listeners) do
+    for _, listener in ipairs(self.processors) do
         listener:SetBeforeEventId(id)
     end
     self.beforeEventId = id
@@ -256,7 +256,7 @@ end
 function GuildHistoryLegacyEventListener:SetBeforeEventTime(eventTime)
     if self.running then return false end
 
-    for _, listener in ipairs(self.listeners) do
+    for _, listener in ipairs(self.processors) do
         listener:SetBeforeEventTime(eventTime)
     end
     self.beforeEventTime = eventTime
@@ -268,7 +268,7 @@ end
 function GuildHistoryLegacyEventListener:SetTimeFrame(startTime, endTime)
     if self.running then return false end
 
-    for _, listener in ipairs(self.listeners) do
+    for _, listener in ipairs(self.processors) do
         listener:SetTimeFrame(startTime, endTime)
     end
     return true
@@ -284,7 +284,7 @@ function GuildHistoryLegacyEventListener:SetNextEventCallback(callback)
     if self.running then return false end
 
     self.nextEventCallback = callback
-    for _, listener in ipairs(self.listeners) do
+    for _, listener in ipairs(self.processors) do
         listener:SetNextEventCallback(self.onEvent)
     end
     return true
@@ -296,7 +296,7 @@ function GuildHistoryLegacyEventListener:SetMissedEventCallback(callback)
     if self.running then return false end
 
     self.missedEventCallback = callback
-    for _, listener in ipairs(self.listeners) do
+    for _, listener in ipairs(self.processors) do
         listener:SetMissedEventCallback(self.onEvent)
     end
     return true
@@ -324,7 +324,7 @@ function GuildHistoryLegacyEventListener:SetStopOnLastEvent(shouldStop)
     if self.running then return false end
 
     self.shouldStop = shouldStop
-    for _, listener in ipairs(self.listeners) do
+    for _, listener in ipairs(self.processors) do
         listener:SetStopOnLastEvent(shouldStop)
     end
     return true
@@ -336,14 +336,14 @@ function GuildHistoryLegacyEventListener:Start()
 
     self.iterationCompletedCount = 0
     self.cachedEvents = {}
-    for _, listener in ipairs(self.listeners) do
-        if not listener:Start() then
-            logger:Warn("Failed to start inner listener", listener:GetKey())
+    for _, processor in ipairs(self.processors) do
+        if not processor:Start() then
+            logger:Warn("Failed to start processor", processor:GetKey())
         end
     end
 
     for _, cache in ipairs(self.caches) do
-        cache:RegisterListener(self)
+        cache:RegisterProcessor(self)
     end
 
     self.running = true
@@ -355,9 +355,9 @@ function GuildHistoryLegacyEventListener:Stop()
     if not self.running then return false end
 
     logger:Debug("Stopping legacy event listener", self.key)
-    for _, listener in ipairs(self.listeners) do
-        if listener:IsRunning() and not listener:Stop() then
-            logger:Warn("Failed to stop inner listener", listener:GetKey())
+    for _, processor in ipairs(self.processors) do
+        if processor:IsRunning() and not processor:Stop() then
+            logger:Warn("Failed to stop processor", processor:GetKey())
         end
     end
 
@@ -372,7 +372,7 @@ function GuildHistoryLegacyEventListener:Stop()
     self.cachedEvents = {}
 
     for _, cache in ipairs(self.caches) do
-        cache:UnregisterListener(self)
+        cache:UnregisterProcessor(self)
     end
 
     self.running = false

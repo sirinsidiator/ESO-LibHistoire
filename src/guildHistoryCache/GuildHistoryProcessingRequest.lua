@@ -9,19 +9,19 @@ local logger = internal.logger
 local GuildHistoryProcessingRequest = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryProcessingRequest = GuildHistoryProcessingRequest
 
-function GuildHistoryProcessingRequest:Initialize(listener, onEvent, onCompleted)
-    self.listener = listener
+function GuildHistoryProcessingRequest:Initialize(processor, onEvent, onCompleted)
+    self.processor = processor
     self.onEvent = onEvent
     self.onCompleted = onCompleted
     self.performanceTracker = internal.class.PerformanceTracker:New()
 end
 
 function GuildHistoryProcessingRequest:StartProcessing(endId)
-    logger:Debug("start processing", self.listener:GetKey())
+    logger:Debug("start processing", self.processor:GetKey())
     self:StopProcessing()
 
-    local listener = self.listener
-    local startId = listener.currentEventId
+    local processor = self.processor
+    local startId = processor.currentEventId
     if not startId then
         logger:Debug("no startId - find one")
         startId = self:FindStartId()
@@ -41,7 +41,7 @@ function GuildHistoryProcessingRequest:StartProcessing(endId)
         return
     end
 
-    local startIndex, endIndex = listener.categoryCache:GetIndexRangeForEventIdRange(startId, endId)
+    local startIndex, endIndex = processor.categoryCache:GetIndexRangeForEventIdRange(startId, endId)
     self.currentIndex = startIndex
     self.endIndex = endIndex
     self.performanceTracker:Reset()
@@ -50,15 +50,15 @@ function GuildHistoryProcessingRequest:StartProcessing(endId)
     self.task:For(startIndex, endIndex, -1):Do(function(i)
         self.currentIndex = i
         self.performanceTracker:Increment()
-        local event = listener.categoryCache:GetEvent(i)
+        local event = processor.categoryCache:GetEvent(i)
         local eventId = event:GetEventId()
         if eventId < startId or eventId > endId then
             logger:Debug("event out of range", eventId, startId, endId)
             return
         end
-        self.onEvent(listener, event)
+        self.onEvent(processor, event)
     end):Then(function()
-        logger:Debug("processing complete", listener:GetKey())
+        logger:Debug("processing complete", processor:GetKey())
         self.task = nil
         self:EnsureIterationIsComplete()
     end)
@@ -77,16 +77,16 @@ end
 
 function GuildHistoryProcessingRequest:FindStartId()
     local startId
-    local listener = self.listener
-    if listener.afterEventId then
-        startId = listener.categoryCache:FindFirstAvailableEventIdForEventId(listener.afterEventId)
-        logger:Debug("afterEventId", listener.afterEventId, startId)
-    elseif listener.afterEventTime then
-        startId = listener.categoryCache:FindFirstAvailableEventIdForEventTime(listener.afterEventTime)
-        logger:Debug("afterEventTime", listener.afterEventTime, startId)
+    local processor = self.processor
+    if processor.afterEventId then
+        startId = processor.categoryCache:FindFirstAvailableEventIdForEventId(processor.afterEventId)
+        logger:Debug("afterEventId", processor.afterEventId, startId)
+    elseif processor.afterEventTime then
+        startId = processor.categoryCache:FindFirstAvailableEventIdForEventTime(processor.afterEventTime)
+        logger:Debug("afterEventTime", processor.afterEventTime, startId)
     end
     if not startId then
-        startId = listener.categoryCache:GetOldestLinkedEventInfo()
+        startId = processor.categoryCache:GetOldestLinkedEventInfo()
         logger:Debug("no startId - use oldest", startId)
     end
     return startId
@@ -94,16 +94,16 @@ end
 
 function GuildHistoryProcessingRequest:FindEndId()
     local endId
-    local listener = self.listener
-    if listener.beforeEventId then
-        endId = listener.categoryCache:FindLastAvailableEventIdForEventId(listener.beforeEventId)
-        logger:Debug("beforeEventId", listener.beforeEventId, endId)
-    elseif listener.beforeEventTime then
-        endId = listener.categoryCache:FindLastAvailableEventIdForEventTime(listener.beforeEventTime)
-        logger:Debug("beforeEventTime", listener.beforeEventTime, endId)
+    local processor = self.processor
+    if processor.beforeEventId then
+        endId = processor.categoryCache:FindLastAvailableEventIdForEventId(processor.beforeEventId)
+        logger:Debug("beforeEventId", processor.beforeEventId, endId)
+    elseif processor.beforeEventTime then
+        endId = processor.categoryCache:FindLastAvailableEventIdForEventTime(processor.beforeEventTime)
+        logger:Debug("beforeEventTime", processor.beforeEventTime, endId)
     end
     if not endId then
-        endId = listener.categoryCache:GetNewestLinkedEventInfo()
+        endId = processor.categoryCache:GetNewestLinkedEventInfo()
         logger:Debug("no endId - use newest", endId)
     end
     return endId
@@ -111,10 +111,10 @@ end
 
 function GuildHistoryProcessingRequest:EnsureIterationIsComplete()
     local endId = self:FindEndId()
-    local listener = self.listener
-    if not listener.currentEventId or listener.currentEventId == endId then
+    local processor = self.processor
+    if not processor.currentEventId or processor.currentEventId == endId then
         logger:Debug("iterated all stored events - register for callback")
-        self.onCompleted(listener)
+        self.onCompleted(processor)
     else
         logger:Debug("has not reached the end yet - go for another round")
         self:StartProcessing(endId)

@@ -33,27 +33,30 @@ function lib:UnregisterCallback(...)
     return internal:UnregisterCallback(...)
 end
 
--- Creates a listener object which can be configured before it starts listening to history events. See guildHistory/GuildHistoryEventListener.lua for details
-function lib:CreateGuildHistoryListener(guildId, category, addonName)
+--- Creates a deprecated legacy listener object which can be configured before it starts listening to history events. See guildHistory/GuildHistoryEventProcessor.lua for details
+--- @deprecated Use CreateGuildHistoryProcessor instead
+function lib:CreateGuildHistoryListener(guildId, category)
     local listener = nil
-    if not addonName then
-        logger:Warn("No addon name provided for guild history listener - creating a legacy listener")
-        local caches = internal.GetCachesForLegacyCategory(guildId, category)
-        if #caches > 0 then
-            listener = internal.class.GuildHistoryLegacyEventListener:New(guildId, category, caches)
-        else
-            logger:Warn("No category caches found for guild", guildId, "and legacy category", category)
-        end
+    logger:Warn("No addon name provided for guild history listener - creating a legacy listener")
+    local caches = internal.GetCachesForLegacyCategory(guildId, category)
+    if #caches > 0 then
+        listener = internal.class.GuildHistoryLegacyEventListener:New(guildId, category, caches)
     else
-        return nil -- TODO: temporarily disabled until the new api is finalized
-        -- local categoryCache = internal.historyCache:GetCategoryCache(guildId, category)
-        -- if categoryCache then
-        --     listener = internal.class.GuildHistoryEventListener:New(categoryCache)
-        -- else
-        --     logger:Warn("No category cache found for guild", guildId, "and category", category)
-        -- end
+        logger:Warn("No category caches found for guild", guildId, "and legacy category", category)
     end
     return listener
+end
+
+-- Creates a processor object which can be configured before it starts sending history events to an addon. See guildHistory/GuildHistoryEventProcessor.lua for details
+function lib:CreateGuildHistoryProcessor(guildId, category, addonName)
+    local processor = nil
+    local categoryCache = internal.historyCache:GetCategoryCache(guildId, category)
+    if categoryCache then
+        processor = internal.class.GuildHistoryEventProcessor:New(categoryCache, addonName)
+    else
+        logger:Warn("No category cache found for guild", guildId, "and category", category)
+    end
+    return processor
 end
 
 -- Function to convert id64s that have been artificially created by a legacy listener to the new id53 equivalent. Returns nil if the id64 cannot be converted.

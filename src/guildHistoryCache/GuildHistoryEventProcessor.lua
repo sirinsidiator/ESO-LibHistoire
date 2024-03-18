@@ -6,47 +6,47 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
-local GuildHistoryEventListener = ZO_InitializingObject:Subclass()
-internal.class.GuildHistoryEventListener = GuildHistoryEventListener
+local GuildHistoryEventProcessor = ZO_InitializingObject:Subclass()
+internal.class.GuildHistoryEventProcessor = GuildHistoryEventProcessor
 
-local function ShouldHandleEvent(listener, event)
-    if listener.afterEventId and event:GetEventId() <= listener.afterEventId then
+local function ShouldHandleEvent(processor, event)
+    if processor.afterEventId and event:GetEventId() <= processor.afterEventId then
         return false
-    elseif listener.afterEventTime and event:GetEventTimestampS() <= listener.afterEventTime then
+    elseif processor.afterEventTime and event:GetEventTimestampS() <= processor.afterEventTime then
         return false
     end
     return true
 end
 
-local function HasIterationCompleted(listener, event)
-    if listener.beforeEventId and event:GetEventId() >= listener.beforeEventId then
-        logger:Verbose("beforeEventId reached", event:GetEventId(), listener.beforeEventId)
+local function HasIterationCompleted(processor, event)
+    if processor.beforeEventId and event:GetEventId() >= processor.beforeEventId then
+        logger:Verbose("beforeEventId reached", event:GetEventId(), processor.beforeEventId)
         return true
-    elseif listener.beforeEventTime and event:GetEventTimestampS() >= listener.beforeEventTime then
-        logger:Verbose("beforeEventTime reached", event:GetEventTimestampS(), listener.beforeEventTime)
+    elseif processor.beforeEventTime and event:GetEventTimestampS() >= processor.beforeEventTime then
+        logger:Verbose("beforeEventTime reached", event:GetEventTimestampS(), processor.beforeEventTime)
         return true
     end
     return false
 end
 
-local function HandleEvent(listener, event)
-    if not ShouldHandleEvent(listener, event) then return end
-    if HasIterationCompleted(listener, event) then
-        listener:Stop()
-        if listener.iterationCompletedCallback then listener.iterationCompletedCallback() end
+local function HandleEvent(processor, event)
+    if not ShouldHandleEvent(processor, event) then return end
+    if HasIterationCompleted(processor, event) then
+        processor:Stop()
+        if processor.iterationCompletedCallback then processor.iterationCompletedCallback() end
         return
     end
 
     local eventId = event:GetEventId()
-    if listener.missedEventCallback and listener.currentEventId and eventId < listener.currentEventId then
-        listener.missedEventCallback(event)
-    elseif listener.nextEventCallback and (not listener.currentEventId or eventId > listener.currentEventId) then
-        listener.nextEventCallback(event)
-        listener.currentEventId = eventId
+    if processor.missedEventCallback and processor.currentEventId and eventId < processor.currentEventId then
+        processor.missedEventCallback(event)
+    elseif processor.nextEventCallback and (not processor.currentEventId or eventId > processor.currentEventId) then
+        processor.nextEventCallback(event)
+        processor.currentEventId = eventId
     end
 end
 
-function GuildHistoryEventListener:Initialize(categoryCache, addonName)
+function GuildHistoryEventProcessor:Initialize(categoryCache, addonName)
     self.categoryCache = categoryCache
     self.addonName = addonName
     self.running = false
@@ -67,58 +67,58 @@ end
 
 --- public api
 
--- returns the name of the addon that created the listener
-function GuildHistoryEventListener:GetAddonName()
+-- returns the name of the addon that created the processor
+function GuildHistoryEventProcessor:GetAddonName()
     return self.addonName
 end
 
 -- returns a key consisting of server, guild id and history category, which can be used to store the last received eventId
-function GuildHistoryEventListener:GetKey()
+function GuildHistoryEventProcessor:GetKey()
     return self.categoryCache:GetKey()
 end
 
 -- returns the guild id
-function GuildHistoryEventListener:GetGuildId()
+function GuildHistoryEventProcessor:GetGuildId()
     return self.categoryCache:GetGuildId()
 end
 
 -- returns the category
-function GuildHistoryEventListener:GetCategory()
+function GuildHistoryEventProcessor:GetCategory()
     return self.categoryCache:GetCategory()
 end
 
--- returns information about history events that need to be sent to the listener
--- number - the amount of queued history events that are currently waiting to be processed by the listener
+-- returns information about history events that need to be sent to the processor
+-- number - the amount of queued history events that are currently waiting to be processed by the processor
 -- number - the processing speed in events per second (rolling average over 5 seconds)
 -- number - the estimated time in seconds it takes to process the remaining events or -1 if it cannot be estimated
-function GuildHistoryEventListener:GetPendingEventMetrics()
+function GuildHistoryEventProcessor:GetPendingEventMetrics()
     if not self.running or not self.request then return 0, -1, -1 end
     return self.request:GetPendingEventMetrics()
 end
 
 -- the last known eventId (id53). The nextEventCallback will only return events which have a higher eventId
-function GuildHistoryEventListener:SetAfterEventId(eventId)
+function GuildHistoryEventProcessor:SetAfterEventId(eventId)
     if self.running then return false end
     self.afterEventId = eventId
     return true
 end
 
 -- if no eventId has been specified, the nextEventCallback will only receive events after the specified timestamp
-function GuildHistoryEventListener:SetAfterEventTime(eventTime)
+function GuildHistoryEventProcessor:SetAfterEventTime(eventTime)
     if self.running then return false end
     self.afterEventTime = eventTime
     return true
 end
 
 -- the highest desired eventId (id53). The nextEventCallback will only return events which have a lower eventId
-function GuildHistoryEventListener:SetBeforeEventId(eventId)
+function GuildHistoryEventProcessor:SetBeforeEventId(eventId)
     if self.running then return false end
     self.beforeEventId = eventId
     return true
 end
 
 -- if no eventId has been specified, the nextEventCallback will only receive events up to (including) the specified timestamp
-function GuildHistoryEventListener:SetBeforeEventTime(eventTime)
+function GuildHistoryEventProcessor:SetBeforeEventTime(eventTime)
     if self.running then return false end
     self.beforeEventTime = eventTime
     return true
@@ -126,7 +126,7 @@ end
 
 -- convenience method to specify a range which includes the startTime and excludes the endTime
 -- which is usually more desirable than the behaviour of SetAfterEventTime and SetBeforeEventTime which excludes the start time and includes the end time
-function GuildHistoryEventListener:SetTimeFrame(startTime, endTime)
+function GuildHistoryEventProcessor:SetTimeFrame(startTime, endTime)
     if self.running then return false end
     self.afterEventTime = startTime - 1
     self.beforeEventTime = endTime - 1
@@ -135,7 +135,7 @@ end
 
 -- set a callback which is passed stored and received events in the correct historic order (sorted by eventId)
 -- the callback will be handed an event object (see guildhistory_data.lua) which must not be stored or modified
-function GuildHistoryEventListener:SetNextEventCallback(callback)
+function GuildHistoryEventProcessor:SetNextEventCallback(callback)
     if self.running then return false end
     self.nextEventCallback = callback
     return true
@@ -143,7 +143,7 @@ end
 
 -- set a callback which is passed events that had not previously been stored (sorted by eventId)
 -- see SetNextEventCallback for information about the callback
-function GuildHistoryEventListener:SetMissedEventCallback(callback)
+function GuildHistoryEventProcessor:SetMissedEventCallback(callback)
     if self.running then return false end
     self.missedEventCallback = callback
     return true
@@ -151,36 +151,36 @@ end
 
 -- convenience method to set both callback types at once
 -- see SetNextEventCallback for information about the callback
-function GuildHistoryEventListener:SetEventCallback(callback)
+function GuildHistoryEventProcessor:SetEventCallback(callback)
     if self.running then return false end
     self.nextEventCallback = callback
     self.missedEventCallback = callback
     return true
 end
 
--- set a callback which is called when beforeEventId or beforeEventTime is reached and the listener is stopped
-function GuildHistoryEventListener:SetIterationCompletedCallback(callback)
+-- set a callback which is called when beforeEventId or beforeEventTime is reached and the processor is stopped
+function GuildHistoryEventProcessor:SetIterationCompletedCallback(callback)
     if self.running then return false end
     self.iterationCompletedCallback = callback
     return true
 end
 
--- sets if the listener should stop instead of listening for future events when it runs out of events before encountering the end criteria
-function GuildHistoryEventListener:SetStopOnLastEvent(shouldStop)
+-- sets if the processor should stop instead of listening for future events when it runs out of events before encountering the end criteria
+function GuildHistoryEventProcessor:SetStopOnLastEvent(shouldStop)
     if self.running then return false end
     self.stopOnLastEvent = shouldStop
     return true
 end
 
--- set a callback which is called when the listener starts waiting for future events
-function GuildHistoryEventListener:SetRegisteredForFutureEventsCallback(callback)
+-- set a callback which is called when the processor starts waiting for future events
+function GuildHistoryEventProcessor:SetRegisteredForFutureEventsCallback(callback)
     if self.running then return false end
     self.futureEventsCallback = callback
     return true
 end
 
--- starts iterating over stored events and afterwards registers a listener for future events internally
-function GuildHistoryEventListener:Start()
+-- starts iterating over stored events and afterwards registers a processor for future events internally
+function GuildHistoryEventProcessor:Start()
     if self.running then return false end
 
     if self.nextEventCallback or self.missedEventCallback then
@@ -200,22 +200,22 @@ function GuildHistoryEventListener:Start()
         end)
         self.categoryCache:QueueProcessingRequest(self.request)
     else
-        logger:Warn("Tried to start a listener without setting an event callback first")
+        logger:Warn("Tried to start a processor without setting an event callback first")
         return false
     end
 
     if self.addonName then
-        self.categoryCache:RegisterListener(self)
+        self.categoryCache:RegisterProcessor(self)
     end
     self.running = true
     return true
 end
 
--- stops iterating over stored events and unregisters the listener for future events
-function GuildHistoryEventListener:Stop()
+-- stops iterating over stored events and unregisters the processor for future events
+function GuildHistoryEventProcessor:Stop()
     if not self.running then return false end
 
-    logger:Warn("Stop listener", self:GetKey())
+    logger:Warn("Stop processor", self:GetKey())
     if self.request then
         self.categoryCache:RemoveProcessingRequest(self.request)
         self.request = nil
@@ -227,7 +227,7 @@ function GuildHistoryEventListener:Stop()
     end
 
     if self.addonName then
-        self.categoryCache:UnregisterListener(self)
+        self.categoryCache:UnregisterProcessor(self)
     end
     self.currentEventId = nil
     self.running = false
@@ -235,6 +235,6 @@ function GuildHistoryEventListener:Stop()
 end
 
 -- returns true while iterating over or listening for events
-function GuildHistoryEventListener:IsRunning()
+function GuildHistoryEventProcessor:IsRunning()
     return self.running
 end

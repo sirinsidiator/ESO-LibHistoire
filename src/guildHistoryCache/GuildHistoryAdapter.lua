@@ -40,6 +40,11 @@ function GuildHistoryAdapter:GetOrCreateCacheSaveData(key)
     end
     local saveData = self.accountSaveData[key] or {}
     self.accountSaveData[key] = saveData
+
+    if saveData.lastListenerRegisteredTime then
+        saveData.lastProcessorRegisteredTime = saveData.lastListenerRegisteredTime
+        saveData.lastListenerRegisteredTime = nil
+    end
     return saveData
 end
 

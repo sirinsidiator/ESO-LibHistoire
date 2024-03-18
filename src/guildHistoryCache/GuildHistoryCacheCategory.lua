@@ -7,7 +7,7 @@ local internal = lib.internal
 local logger = internal.logger
 
 local MISSING_EVENT_COUNT_THRESHOLD = 2000
-local NO_LISTENER_THRESHOLD = 3 * 24 * 3600            -- 3 days
+local NO_PROCESSOR_THRESHOLD = 3 * 24 * 3600            -- 3 days
 local INITIAL_REQUEST_RESEND_THRESHOLD = 7 * 24 * 3600 -- 7 days
 local BASE_PRIORITY = {
     [GUILD_HISTORY_EVENT_CATEGORY_TRADER] = 40,
@@ -18,7 +18,7 @@ local BASE_PRIORITY = {
     [GUILD_HISTORY_EVENT_CATEGORY_AVA_ACTIVITY] = 0,
     [GUILD_HISTORY_EVENT_CATEGORY_MILESTONE] = 0,
 }
-local LISTENER_PRIORITY_BONUS = 6
+local PROCESSOR_PRIORITY_BONUS = 6
 
 local GuildHistoryCacheCategory = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryCacheCategory = GuildHistoryCacheCategory
@@ -37,7 +37,7 @@ function GuildHistoryCacheCategory:Initialize(adapter, requestManager, categoryD
     self.rangeInfoDirty = true
     self.progressDirty = true
     self.processingQueue = {}
-    self.listeners = {}
+    self.processors = {}
     self:RefreshLinkedEventInfo()
 end
 
@@ -76,32 +76,32 @@ function GuildHistoryCacheCategory:RefreshLinkedEventInfo()
     end
 end
 
-function GuildHistoryCacheCategory:RegisterListener(listener)
-    self.saveData.lastListenerRegisteredTime = GetTimeStamp()
-    self.listeners[listener] = true
+function GuildHistoryCacheCategory:RegisterProcessor(processor)
+    self.saveData.lastProcessorRegisteredTime = GetTimeStamp()
+    self.processors[processor] = true
 end
 
-function GuildHistoryCacheCategory:UnregisterListener(listener)
-    self.listeners[listener] = nil
+function GuildHistoryCacheCategory:UnregisterProcessor(processor)
+    self.processors[processor] = nil
 end
 
-function GuildHistoryCacheCategory:GetListenerInfo()
+function GuildHistoryCacheCategory:GetProcessorInfo()
     local names = {}
     local legacyCount = 0
-    for listener in pairs(self.listeners) do
-        if listener.GetAddonName then
-            names[#names + 1] = listener:GetAddonName()
+    for processor in pairs(self.processors) do
+        if processor.GetAddonName then
+            names[#names + 1] = processor:GetAddonName()
         else
             legacyCount = legacyCount + 1
         end
     end
-    return names, legacyCount, self.saveData.lastListenerRegisteredTime
+    return names, legacyCount, self.saveData.lastProcessorRegisteredTime
 end
 
 function GuildHistoryCacheCategory:GetRequestPriority()
     local priority = BASE_PRIORITY[self.category] or 0
-    local listenerPriority = LISTENER_PRIORITY_BONUS * NonContiguousCount(self.listeners)
-    return priority + listenerPriority
+    local processorBonus = PROCESSOR_PRIORITY_BONUS * NonContiguousCount(self.processors)
+    return priority + processorBonus
 end
 
 function GuildHistoryCacheCategory:ShouldSendInitialRequest(oldestLinkedEventId)
@@ -268,8 +268,8 @@ function GuildHistoryCacheCategory:IsAutoRequesting()
     elseif mode == internal.REQUEST_MODE_OFF then
         return false
     else
-        local lastListenerTime = self.saveData.lastListenerRegisteredTime or 0
-        return GetTimeStamp() - lastListenerTime < NO_LISTENER_THRESHOLD
+        local lastProcessorTime = self.saveData.lastProcessorRegisteredTime or 0
+        return GetTimeStamp() - lastProcessorTime < NO_PROCESSOR_THRESHOLD
     end
 end
 
@@ -371,8 +371,8 @@ function GuildHistoryCacheCategory:Reset()
         self.processingRequest = nil
     end
 
-    for listener in pairs(self.listeners) do
-        listener:Stop()
+    for processor in pairs(self.processors) do
+        processor:Stop()
     end
 
     self:SetNewestLinkedEventInfo()
@@ -395,7 +395,7 @@ function GuildHistoryCacheCategory:SetupFirstLinkedEventId()
     end
     local eventId = event:GetEventId()
     local eventTime = event:GetEventTimestampS()
-    logger:Debug("Send first event %d to listeners", eventId)
+    logger:Debug("Send first event %d to processors", eventId)
     internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, guildId, category, event)
     self:SetOldestLinkedEventInfo(eventId, eventTime)
     self:SetNewestLinkedEventInfo(eventId, eventTime)

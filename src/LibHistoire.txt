@@ -29,7 +29,7 @@ guildHistoryCache/GuildHistoryCacheCategory.lua
 guildHistoryCache/GuildHistoryCacheGuild.lua
 guildHistoryCache/GuildHistoryCache.lua
 guildHistoryCache/GuildHistoryProcessingRequest.lua
-guildHistoryCache/GuildHistoryEventListener.lua
+guildHistoryCache/GuildHistoryEventProcessor.lua
 guildHistoryCache/GuildHistoryLegacyEventListener.lua
 guildHistoryCache/GuildHistoryServerRequest.lua
 guildHistoryCache/GuildHistoryServerRequestManager.lua

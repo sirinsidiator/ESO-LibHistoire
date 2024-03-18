@@ -95,20 +95,20 @@ function GuildHistoryStatusTooltip:SetupForCategory(cache)
         end
     end
 
-    local names, count, lastSeenTime = cache:GetListenerInfo()
+    local names, count, lastSeenTime = cache:GetProcessorInfo()
     if count > 0 then
         names[#names + 1] = string.format("%d legacy listener%s", count, count > 1 and "s" or "")
     end
     if #names > 0 then
-        SetTooltipText(tooltip, "Registered Listeners:")
+        SetTooltipText(tooltip, "Active Processors:")
         for i = 1, #names do
             SetTooltipText(tooltip, string.format("|cffffff%s|r", names[i]))
         end
     else
-        SetTooltipText(tooltip, "No registered listeners")
+        SetTooltipText(tooltip, "No active processors")
         if lastSeenTime and lastSeenTime > 0 then
             SetTooltipText(tooltip,
-                string.format("Last listener seen: |cffffff%s|r", ZO_FormatDurationAgo(GetTimeStamp() - lastSeenTime)))
+                string.format("Last processor seen: |cffffff%s|r", ZO_FormatDurationAgo(GetTimeStamp() - lastSeenTime)))
         end
     end
 
