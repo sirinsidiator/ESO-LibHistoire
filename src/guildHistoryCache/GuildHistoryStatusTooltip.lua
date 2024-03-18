@@ -35,17 +35,17 @@ function GuildHistoryStatusTooltip:SetupForCategory(cache)
 
     if cache:IsAutoRequesting() then
         SetTooltipText(tooltip,
-            zo_strformat("Linked events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumLinkedEvents())))
-        local firstLinkedEvent = cache:GetOldestLinkedEvent()
-        if firstLinkedEvent then
-            local date, time = FormatAchievementLinkTimestamp(firstLinkedEvent:GetEventTimestampS())
-            SetTooltipText(tooltip, zo_strformat("Oldest linked event: |cffffff<<1>> <<2>>|r", date, time))
+            zo_strformat("Loaded managed events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumLoadedManagedEvents())))
+        local _, oldestManagedEventTime = cache:GetOldestManagedEventInfo()
+        if oldestManagedEventTime then
+            local date, time = FormatAchievementLinkTimestamp(oldestManagedEventTime)
+            SetTooltipText(tooltip, zo_strformat("Oldest managed event: |cffffff<<1>> <<2>>|r", date, time))
         end
 
-        local lastLinkedEvent = cache:GetNewestLinkedEvent()
-        if lastLinkedEvent then
-            local date, time = FormatAchievementLinkTimestamp(lastLinkedEvent:GetEventTimestampS())
-            SetTooltipText(tooltip, zo_strformat("Newest linked event: |cffffff<<1>> <<2>>|r", date, time))
+        local _, newestManagedEventTime = cache:GetNewestManagedEventInfo()
+        if newestManagedEventTime then
+            local date, time = FormatAchievementLinkTimestamp(newestManagedEventTime)
+            SetTooltipText(tooltip, zo_strformat("Newest managed event: |cffffff<<1>> <<2>>|r", date, time))
         end
     else
         SetTooltipText(tooltip, "Missing events are not requested automatically", 0, 1, 0)
@@ -73,12 +73,12 @@ function GuildHistoryStatusTooltip:SetupForCategory(cache)
         shouldUnregisterForUpdate = false
     elseif cache:HasLinked() then
         if cache:HasCachedEvents() then
-            SetTooltipText(tooltip, "History has been linked to newest events", 0, 1, 0)
+            SetTooltipText(tooltip, "History has been linked to present events", 0, 1, 0)
         end
     elseif cache:HasPendingRequest() then
         SetTooltipText(tooltip, "Waiting for request to be sent", 1, 0, 0)
     else
-        SetTooltipText(tooltip, "History has not linked to newest events yet", 1, 0, 0)
+        SetTooltipText(tooltip, "History has not linked to present events yet", 1, 0, 0)
         SetTooltipText(tooltip,
             zo_strformat("Unlinked events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumUnlinkedEvents())))
 
@@ -121,17 +121,17 @@ function GuildHistoryStatusTooltip:SetupForGuild(cache)
     local tooltip = self.control
 
     SetTooltipText(tooltip,
-        zo_strformat("Linked events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumLinkedEvents())))
-    local firstLinkedEvent = cache:GetOldestLinkedEvent()
-    if firstLinkedEvent then
-        local date, time = FormatAchievementLinkTimestamp(firstLinkedEvent:GetEventTimestampS())
-        SetTooltipText(tooltip, zo_strformat("Oldest linked event: |cffffff<<1>> <<2>>|r", date, time))
+        zo_strformat("Loaded managed events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumLoadedManagedEvents())))
+    local _, oldestManagedEventTime = cache:GetOldestManagedEventInfo()
+    if oldestManagedEventTime then
+        local date, time = FormatAchievementLinkTimestamp(oldestManagedEventTime)
+        SetTooltipText(tooltip, zo_strformat("Oldest managed event: |cffffff<<1>> <<2>>|r", date, time))
     end
 
-    local lastLinkedEvent = cache:GetNewestLinkedEvent()
-    if lastLinkedEvent then
-        local date, time = FormatAchievementLinkTimestamp(lastLinkedEvent:GetEventTimestampS())
-        SetTooltipText(tooltip, zo_strformat("Newest linked event: |cffffff<<1>> <<2>>|r", date, time))
+    local _, newestManagedEventTime = cache:GetNewestManagedEventInfo()
+    if newestManagedEventTime then
+        local date, time = FormatAchievementLinkTimestamp(newestManagedEventTime)
+        SetTooltipText(tooltip, zo_strformat("Newest managed event: |cffffff<<1>> <<2>>|r", date, time))
     end
 
     SetTooltipText(tooltip, "For progress details check each category")

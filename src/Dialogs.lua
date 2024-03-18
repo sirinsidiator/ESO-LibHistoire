@@ -44,11 +44,11 @@ function internal:ShowQuitWarningDialog(message, buttonText, callback)
     ZO_Dialogs_ShowDialog(DIALOG_ID)
 end
 
-function internal:ShowResetLinkedRangeDialog(callback)
+function internal:ShowResetManagedRangeDialog(callback)
     local dialog = self:GetWarningDialog()
     dialog.title.text = "Warning"
     dialog.mainText.text =
-        "Resetting the linked range will make LibHistoire forget from which point to start requesting events and what data has already been sent to addons.\n\n" ..
+        "Resetting the managed range will make LibHistoire forget from which point to start requesting events and what data has already been sent to addons.\n\n" ..
         "This action is usually not necessary, but can be used to skip over a large gap of missing data after a prolonged absence.\n\n" ..
         "Use it with caution, as it means addons may miss out on events to process, which can cause holes in your data!"
 
@@ -68,7 +68,7 @@ function internal:ShowClearCacheDialog(callback)
     dialog.mainText.text =
         "Clearing the cache will delete locally stored events and force the game to fetch them again from the server.\n\n" ..
         "This action is not recommended as it will have a negative effect on the server and you will potentially delete data that cannot be requested again.\n\n" ..
-        "It will implicitly also reset the linked range and thus will cause addons to potentially miss out on events, which can cause holes in your data!\n\n" ..
+        "It will implicitly also reset the managed range and thus will cause addons to potentially miss out on events, which can cause holes in your data!\n\n" ..
         "You should only use this as an absolute last resort when nothing else has worked!\n\n" ..
         "The UI will be reloaded when you confirm this action."
 
@@ -88,11 +88,11 @@ function internal:SetupDialogHook(name)
     primaryButton.callback = function(dialog)
         if self.historyCache:IsProcessing() then
             self:ShowQuitWarningDialog(
-                "LibHistoire is currently processing history! If you close the game now, you may corrupt your save data.",
+                "LibHistoire is currently processing events! If you close the game now, you may corrupt your save data.",
                 primaryButton.text, originalCallback)
         elseif not self.historyCache:HasLinkedAllCaches() then
             self:ShowQuitWarningDialog(
-                "LibHistoire has not linked your history yet! If you close the game now, you will lose any progress and have to start over the next time.",
+                "LibHistoire has not linked your managed range to present events yet.",
                 primaryButton.text, originalCallback)
         else
             originalCallback(dialog)
@@ -109,7 +109,7 @@ function internal:InitializeExitHooks()
         if self.historyCache:IsProcessing() then
             local params = { ... }
             self:ShowQuitWarningDialog(
-                "LibHistoire is currently processing history! If you reload the UI now, you may corrupt your save data.",
+                "LibHistoire is currently processing events! If you reload the UI now, you may corrupt your save data.",
                 "Reload UI", function()
                     self.historyCache:Shutdown()
                     return originalReloadUI(unpack(params))

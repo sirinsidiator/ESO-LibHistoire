@@ -45,6 +45,27 @@ function GuildHistoryAdapter:GetOrCreateCacheSaveData(key)
         saveData.lastProcessorRegisteredTime = saveData.lastListenerRegisteredTime
         saveData.lastListenerRegisteredTime = nil
     end
+
+    if saveData.newestLinkedEventId then
+        saveData.newestManagedEventId = saveData.newestLinkedEventId
+        saveData.newestLinkedEventId = nil
+    end
+
+    if saveData.newestLinkedEventTime then
+        saveData.newestManagedEventTime = saveData.newestLinkedEventTime
+        saveData.newestLinkedEventTime = nil
+    end
+
+    if saveData.oldestLinkedEventId then
+        saveData.oldestManagedEventId = saveData.oldestLinkedEventId
+        saveData.oldestLinkedEventId = nil
+    end
+
+    if saveData.oldestLinkedEventTime then
+        saveData.oldestManagedEventTime = saveData.oldestLinkedEventTime
+        saveData.oldestLinkedEventTime = nil
+    end
+
     return saveData
 end
 

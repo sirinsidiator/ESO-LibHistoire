@@ -90,34 +90,36 @@ function GuildHistoryCacheGuild:UpdateProgressBar(bar)
     bar:SetGradient(gradient)
 end
 
-function GuildHistoryCacheGuild:GetNumLinkedEvents()
+function GuildHistoryCacheGuild:GetNumLoadedManagedEvents()
     local count = 0
     for _, cache in pairs(self.cache) do
-        count = count + cache:GetNumLinkedEvents()
+        count = count + cache:GetNumLoadedManagedEvents()
     end
     return count
 end
 
-function GuildHistoryCacheGuild:GetOldestLinkedEvent()
-    local oldest
+function GuildHistoryCacheGuild:GetOldestManagedEventInfo()
+    local oldestId, oldestTime
     for _, cache in pairs(self.cache) do
-        local event = cache:GetOldestLinkedEvent()
-        if event and (not oldest or event:GetEventId() < oldest:GetEventId()) then
-            oldest = event
+        local eventId, eventTime = cache:GetOldestManagedEventInfo()
+        if eventId and (not oldestId or eventId < oldestId) then
+            oldestId = eventId
+            oldestTime = eventTime
         end
     end
-    return oldest
+    return oldestId, oldestTime
 end
 
-function GuildHistoryCacheGuild:GetNewestLinkedEvent()
-    local newest
+function GuildHistoryCacheGuild:GetNewestManagedEventInfo()
+    local newestId, newestTime
     for _, cache in pairs(self.cache) do
-        local event = cache:GetNewestLinkedEvent()
-        if event and (not newest or event:GetEventId() > newest:GetEventId()) then
-            newest = event
+        local eventId, eventTime = cache:GetNewestManagedEventInfo()
+        if eventId and (not newestId or eventId > newestId) then
+            newestId = eventId
+            newestTime = eventTime
         end
     end
-    return newest
+    return newestId, newestTime
 end
 
 function GuildHistoryCacheGuild:HasLinked()

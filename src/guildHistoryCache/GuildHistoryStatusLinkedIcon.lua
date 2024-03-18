@@ -41,8 +41,8 @@ function GuildHistoryStatusLinkedIcon:Initialize(history, adapter, statusTooltip
     internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENTS_STARTED, RefreshLinkInformation)
     internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENTS_FINISHED, RefreshLinkInformation)
     internal:RegisterCallback(internal.callback.REQUEST_MODE_CHANGED, RefreshLinkInformation)
-    internal:RegisterCallback(internal.callback.LINKED_RANGE_LOST, RefreshLinkInformation)
-    internal:RegisterCallback(internal.callback.LINKED_RANGE_FOUND, RefreshLinkInformation)
+    internal:RegisterCallback(internal.callback.MANAGED_RANGE_LOST, RefreshLinkInformation)
+    internal:RegisterCallback(internal.callback.MANAGED_RANGE_FOUND, RefreshLinkInformation)
 
     self:Update()
 end

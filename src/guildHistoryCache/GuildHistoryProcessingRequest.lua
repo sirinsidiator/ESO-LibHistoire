@@ -86,7 +86,7 @@ function GuildHistoryProcessingRequest:FindStartId()
         logger:Debug("afterEventTime", processor.afterEventTime, startId)
     end
     if not startId then
-        startId = processor.categoryCache:GetOldestLinkedEventInfo()
+        startId = processor.categoryCache:GetOldestManagedEventInfo()
         logger:Debug("no startId - use oldest", startId)
     end
     return startId
@@ -103,7 +103,7 @@ function GuildHistoryProcessingRequest:FindEndId()
         logger:Debug("beforeEventTime", processor.beforeEventTime, endId)
     end
     if not endId then
-        endId = processor.categoryCache:GetNewestLinkedEventInfo()
+        endId = processor.categoryCache:GetNewestManagedEventInfo()
         logger:Debug("no endId - use newest", endId)
     end
     return endId

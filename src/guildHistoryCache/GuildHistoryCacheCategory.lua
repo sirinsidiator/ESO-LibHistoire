@@ -32,19 +32,19 @@ function GuildHistoryCacheCategory:Initialize(adapter, requestManager, categoryD
     self.key = string.format("%s/%d/%d", internal.WORLD_NAME, self.guildId, self.category)
     self.saveData = adapter:GetOrCreateCacheSaveData(self.key)
     self.performanceTracker = internal.class.PerformanceTracker:New()
-    self.unprocessedEventsStartTime = self.saveData.newestLinkedEventTime
+    self.unprocessedEventsStartTime = self.saveData.newestManagedEventTime
     self.rangeInfo = {}
     self.rangeInfoDirty = true
     self.progressDirty = true
     self.processingQueue = {}
     self.processors = {}
-    self:RefreshLinkedEventInfo()
+    self:RefreshManagedRangeInfo()
 end
 
-function GuildHistoryCacheCategory:RefreshLinkedEventInfo()
-    local oldestLinkedEventId, oldestLinkedEventTime = self:GetOldestLinkedEventInfo()
-    local newestLinkedEventId, newestLinkedEventTime = self:GetNewestLinkedEventInfo()
-    if not oldestLinkedEventId or not newestLinkedEventId then return end
+function GuildHistoryCacheCategory:RefreshManagedRangeInfo()
+    local oldestManagedEventId, oldestManagedEventTime = self:GetOldestManagedEventInfo()
+    local newestManagedEventId, newestManagedEventTime = self:GetNewestManagedEventInfo()
+    if not oldestManagedEventId or not newestManagedEventId then return end
 
     local guildId, category = self.guildId, self.category
     local oldestIndex = GetNumGuildHistoryEvents(guildId, category)
@@ -55,22 +55,22 @@ function GuildHistoryCacheCategory:RefreshLinkedEventInfo()
     end
 
     local oldestCachedEventId = GetGuildHistoryEventId(guildId, category, oldestIndex)
-    if newestLinkedEventId < oldestCachedEventId then
-        logger:Warn("Linked range is outside cached range for guild %d category %d", guildId, category)
+    if newestManagedEventId < oldestCachedEventId then
+        logger:Warn("Managed range is outside cached range for guild %d category %d", guildId, category)
         self:Reset()
         return
     end
 
-    if oldestCachedEventId ~= oldestLinkedEventId then
-        oldestLinkedEventId, oldestLinkedEventTime = GetGuildHistoryEventBasicInfo(guildId, category, oldestIndex)
-        logger:Info("Data was removed from linked range for guild %d category %d", guildId, category)
-        self:SetOldestLinkedEventInfo(oldestLinkedEventId, oldestLinkedEventTime)
+    if oldestCachedEventId ~= oldestManagedEventId then
+        oldestManagedEventId, oldestManagedEventTime = GetGuildHistoryEventBasicInfo(guildId, category, oldestIndex)
+        logger:Info("Data was removed from managed range for guild %d category %d", guildId, category)
+        self:SetOldestManagedEventInfo(oldestManagedEventId, oldestManagedEventTime)
     end
 
     local oldestRangeIndex = self:FindRangeIndexForEventId(oldestCachedEventId)
-    local newestRangeIndex = self:FindRangeIndexForEventId(newestLinkedEventId)
+    local newestRangeIndex = self:FindRangeIndexForEventId(newestManagedEventId)
     if not oldestRangeIndex or not newestRangeIndex or oldestRangeIndex ~= newestRangeIndex then
-        logger:Warn("Could not find linked range for guild %d category %d", guildId, category)
+        logger:Warn("Could not find managed range for guild %d category %d", guildId, category)
         self:Reset()
         return
     end
@@ -104,9 +104,9 @@ function GuildHistoryCacheCategory:GetRequestPriority()
     return priority + processorBonus
 end
 
-function GuildHistoryCacheCategory:ShouldSendInitialRequest(oldestLinkedEventId)
+function GuildHistoryCacheCategory:ShouldSendInitialRequest(oldestManagedEventId)
     local timeSinceLastInitialRequest = GetTimeStamp() - (self.saveData.initialRequestTime or 0)
-    if not oldestLinkedEventId and timeSinceLastInitialRequest < INITIAL_REQUEST_RESEND_THRESHOLD then
+    if not oldestManagedEventId and timeSinceLastInitialRequest < INITIAL_REQUEST_RESEND_THRESHOLD then
         logger:Debug("Initial request on cooldown")
         return false
     end
@@ -125,14 +125,14 @@ function GuildHistoryCacheCategory:RequestMissingData()
     logger:Debug("Request missing data for", self.key)
     if self:ContinueExistingRequest() or not self:IsAutoRequesting() then return end
 
-    local oldestLinkedEventId, oldestLinkedEventTime = self:GetOldestLinkedEventInfo()
-    local newestLinkedEventId, newestLinkedEventTime = self:GetNewestLinkedEventInfo()
+    local oldestManagedEventId, oldestManagedEventTime = self:GetOldestManagedEventInfo()
+    local newestManagedEventId, newestManagedEventTime = self:GetNewestManagedEventInfo()
     local oldestGaplessEventIndex = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(self.guild, self
         .category)
-    if not oldestLinkedEventId or not newestLinkedEventId then
+    if not oldestManagedEventId or not newestManagedEventId then
         if oldestGaplessEventIndex then
             self:OnCategoryUpdated()
-        elseif self:ShouldSendInitialRequest(oldestLinkedEventId) then
+        elseif self:ShouldSendInitialRequest(oldestManagedEventId) then
             self.requestManager:QueueRequest(self:CreateRequest())
         end
         return
@@ -143,8 +143,8 @@ function GuildHistoryCacheCategory:RequestMissingData()
         local oldestGaplessEventId
         oldestGaplessEventId, oldestGaplessEventTime = GetGuildHistoryEventBasicInfo(self.guild, self.category,
             oldestGaplessEventIndex)
-        logger:Verbose("oldestGaplessEventId", oldestGaplessEventId, "oldestLinkedEventId", oldestLinkedEventId)
-        if oldestLinkedEventId == oldestGaplessEventId then
+        logger:Verbose("oldestGaplessEventId", oldestGaplessEventId, "oldestManagedEventId", oldestManagedEventId)
+        if oldestManagedEventId == oldestGaplessEventId then
             logger:Debug("No missing data for", self.key)
             self:OnCategoryUpdated()
             return
@@ -154,8 +154,8 @@ function GuildHistoryCacheCategory:RequestMissingData()
         logger:Verbose("no oldestGaplessEventIndex - use current time", oldestGaplessEventTime)
     end
 
-    local requestNewestTime, requestOldestTime = self:OptimizeRequestTimeRange(oldestLinkedEventTime,
-        newestLinkedEventTime, oldestGaplessEventTime)
+    local requestNewestTime, requestOldestTime = self:OptimizeRequestTimeRange(oldestManagedEventTime,
+        newestManagedEventTime, oldestGaplessEventTime)
     if requestNewestTime and requestOldestTime then
         self.requestManager:QueueRequest(self:CreateRequest(requestNewestTime, requestOldestTime))
     end
@@ -224,34 +224,34 @@ function GuildHistoryCacheCategory:DestroyRequest(request)
     internal:FireCallbacks(internal.callback.REQUEST_DESTROYED, request)
 end
 
-function GuildHistoryCacheCategory:OptimizeRequestTimeRange(oldestLinkedEventTime, newestLinkedEventTime,
+function GuildHistoryCacheCategory:OptimizeRequestTimeRange(oldestManagedEventTime, newestManagedEventTime,
                                                             oldestGaplessEventTime)
-    if oldestGaplessEventTime <= newestLinkedEventTime then
+    if oldestGaplessEventTime <= newestManagedEventTime then
         logger:Warn("Time range optimization failed - Invalid time range")
         return nil, nil
     end
 
-    local requestOldestTime = newestLinkedEventTime - 1
+    local requestOldestTime = newestManagedEventTime - 1
     local requestNewestTime = oldestGaplessEventTime + 1
     local guildId, category = self.guildId, self.category
     logger:Debug("Optimize request time range for", self.key)
 
     local newestIndex, oldestIndex = self.adapter:GetGuildHistoryEventIndicesForTimeRange(guildId, category,
-        newestLinkedEventTime, oldestLinkedEventTime)
+        newestManagedEventTime, oldestManagedEventTime)
     if not newestIndex or not oldestIndex then
-        logger:Warn("Time range optimization failed - could not find events in linked range")
+        logger:Warn("Time range optimization failed - could not find events in managed range")
         return requestNewestTime, requestOldestTime
     end
 
     local numEvents = oldestIndex - newestIndex + 1
-    local linkedRangeSeconds = newestLinkedEventTime - oldestLinkedEventTime
+    local managedRangeSeconds = newestManagedEventTime - oldestManagedEventTime
     local requestRangeSeconds = requestNewestTime - requestOldestTime
 
-    local estimatedMissingEvents = numEvents * requestRangeSeconds / linkedRangeSeconds
-    logger:Verbose("estimatedMissingEvents", estimatedMissingEvents, numEvents, requestRangeSeconds, linkedRangeSeconds)
+    local estimatedMissingEvents = numEvents * requestRangeSeconds / managedRangeSeconds
+    logger:Verbose("estimatedMissingEvents", estimatedMissingEvents, numEvents, requestRangeSeconds, managedRangeSeconds)
     if estimatedMissingEvents > MISSING_EVENT_COUNT_THRESHOLD then
         logger:Debug("Limit request time range")
-        requestNewestTime = requestOldestTime + 1 + (linkedRangeSeconds / numEvents) * MISSING_EVENT_COUNT_THRESHOLD / 2
+        requestNewestTime = requestOldestTime + 1 + (managedRangeSeconds / numEvents) * MISSING_EVENT_COUNT_THRESHOLD / 2
     end
 
     if requestNewestTime <= requestOldestTime then
@@ -283,39 +283,39 @@ function GuildHistoryCacheCategory:SetRequestMode(mode)
     internal:FireCallbacks(internal.callback.REQUEST_MODE_CHANGED, self.guildId, self.category, mode)
 end
 
-function GuildHistoryCacheCategory:SetNewestLinkedEventInfo(eventId, eventTime)
+function GuildHistoryCacheCategory:SetNewestManagedEventInfo(eventId, eventTime)
     if eventId ~= 0 then
-        self.saveData.newestLinkedEventId = eventId
-        self.saveData.newestLinkedEventTime = eventTime
+        self.saveData.newestManagedEventId = eventId
+        self.saveData.newestManagedEventTime = eventTime
     else
-        self.saveData.newestLinkedEventId = nil
-        self.saveData.newestLinkedEventTime = nil
+        self.saveData.newestManagedEventId = nil
+        self.saveData.newestManagedEventTime = nil
     end
     self.progressDirty = true
 end
 
-function GuildHistoryCacheCategory:SetOldestLinkedEventInfo(eventId, eventTime)
+function GuildHistoryCacheCategory:SetOldestManagedEventInfo(eventId, eventTime)
     if eventId ~= 0 then
-        self.saveData.oldestLinkedEventId = eventId
-        self.saveData.oldestLinkedEventTime = eventTime
+        self.saveData.oldestManagedEventId = eventId
+        self.saveData.oldestManagedEventTime = eventTime
     else
-        self.saveData.oldestLinkedEventId = nil
-        self.saveData.oldestLinkedEventTime = nil
-        internal:FireCallbacks(internal.callback.LINKED_RANGE_LOST, self.guildId, self.category)
+        self.saveData.oldestManagedEventId = nil
+        self.saveData.oldestManagedEventTime = nil
+        internal:FireCallbacks(internal.callback.MANAGED_RANGE_LOST, self.guildId, self.category)
     end
 end
 
-function GuildHistoryCacheCategory:GetNewestLinkedEventInfo()
-    local eventId = self.saveData.newestLinkedEventId
-    local eventTime = self.saveData.newestLinkedEventTime
+function GuildHistoryCacheCategory:GetNewestManagedEventInfo()
+    local eventId = self.saveData.newestManagedEventId
+    local eventTime = self.saveData.newestManagedEventTime
     if eventId ~= 0 then
         return eventId, eventTime
     end
 end
 
-function GuildHistoryCacheCategory:GetOldestLinkedEventInfo()
-    local eventId = self.saveData.oldestLinkedEventId
-    local eventTime = self.saveData.oldestLinkedEventTime
+function GuildHistoryCacheCategory:GetOldestManagedEventInfo()
+    local eventId = self.saveData.oldestManagedEventId
+    local eventTime = self.saveData.oldestManagedEventTime
     if eventId ~= 0 then
         return eventId, eventTime
     end
@@ -334,24 +334,24 @@ function GuildHistoryCacheCategory:OnCategoryUpdated(flags)
 
     self.progressDirty = true
     local guildId, category = self.guildId, self.category
-    local oldestLinkedEventId = self:GetOldestLinkedEventInfo()
-    local newestLinkedEventId = self:GetNewestLinkedEventInfo()
+    local oldestManagedEventId = self:GetOldestManagedEventInfo()
+    local newestManagedEventId = self:GetNewestManagedEventInfo()
 
-    if not oldestLinkedEventId or not newestLinkedEventId then
-        if oldestLinkedEventId ~= newestLinkedEventId then
+    if not oldestManagedEventId or not newestManagedEventId then
+        if oldestManagedEventId ~= newestManagedEventId then
             logger:Warn("Invalid save data state for guild %d category %d", guildId, category)
             self:Reset()
         else
-            logger:Info("No linked range stored for guild %d category %d", guildId, category)
+            logger:Info("No managed range stored for guild %d category %d", guildId, category)
         end
 
-        newestLinkedEventId = self:SetupFirstLinkedEventId()
-        oldestLinkedEventId = newestLinkedEventId
+        newestManagedEventId = self:SetupFirstManagedEventId()
+        oldestManagedEventId = newestManagedEventId
     end
 
     self:ProcessNextRequest()
-    if newestLinkedEventId and oldestLinkedEventId then
-        self:StartProcessingEvents(newestLinkedEventId, oldestLinkedEventId)
+    if newestManagedEventId and oldestManagedEventId then
+        self:StartProcessingEvents(newestManagedEventId, oldestManagedEventId)
     end
 end
 
@@ -375,31 +375,31 @@ function GuildHistoryCacheCategory:Reset()
         processor:Stop()
     end
 
-    self:SetNewestLinkedEventInfo()
-    self:SetOldestLinkedEventInfo()
+    self:SetNewestManagedEventInfo()
+    self:SetOldestManagedEventInfo()
     self.saveData.initialRequestTime = nil
 
     self.rangeInfoDirty = true
     self.progressDirty = true
 
-    zo_callLater(function() self:SetupFirstLinkedEventId() end, 0)
+    zo_callLater(function() self:SetupFirstManagedEventId() end, 0)
 end
 
-function GuildHistoryCacheCategory:SetupFirstLinkedEventId()
+function GuildHistoryCacheCategory:SetupFirstManagedEventId()
     local guildId, category = self.guildId, self.category
-    logger:Info("Setting up first linked event for guild %d category %d", guildId, category)
+    logger:Info("Setting up first managed event for guild %d category %d", guildId, category)
     local event = self.categoryData:GetOldestEventForUpToDateEventsWithoutGaps()
     if not event then
-        logger:Warn("Could not find any linked events for guild %d category %d", guildId, category)
+        logger:Warn("Could not find any unlinked events for guild %d category %d", guildId, category)
         return
     end
     local eventId = event:GetEventId()
     local eventTime = event:GetEventTimestampS()
     logger:Debug("Send first event %d to processors", eventId)
     internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, guildId, category, event)
-    self:SetOldestLinkedEventInfo(eventId, eventTime)
-    self:SetNewestLinkedEventInfo(eventId, eventTime)
-    internal:FireCallbacks(internal.callback.LINKED_RANGE_FOUND, guildId, category)
+    self:SetOldestManagedEventInfo(eventId, eventTime)
+    self:SetNewestManagedEventInfo(eventId, eventTime)
+    internal:FireCallbacks(internal.callback.MANAGED_RANGE_FOUND, guildId, category)
     return eventId
 end
 
@@ -433,14 +433,14 @@ function GuildHistoryCacheCategory:ProcessNextRequest()
     end
 end
 
-function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, oldestLinkedEventId)
+function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, oldestManagedEventId)
     if self:IsProcessing() or not self:IsAutoRequesting() then return end
 
     local guildId, category = self.guildId, self.category
     logger:Info("Start processing events for guild %d category %d", guildId, category)
-    local rangeIndex = self:FindRangeIndexForEventId(newestLinkedEventId)
+    local rangeIndex = self:FindRangeIndexForEventId(newestManagedEventId)
     if not rangeIndex then
-        logger:Warn("Could not find linked range for guild %d category %d", guildId, category)
+        logger:Warn("Could not find managed range for guild %d category %d", guildId, category)
         self:RequestMissingData()
         return
     end
@@ -449,16 +449,16 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
     local unlinkedEvents, missedEvents = {}, {}
     local categoryData = self.categoryData
 
-    if newestLinkedEventId < newestEventId then
-        local _, newestLinkedEventTime = self:GetNewestLinkedEventInfo()
-        logger:Debug("Found events newer than the linked range for guild %d category %d", guildId, category)
-        unlinkedEvents = categoryData:GetEventsInTimeRange(newestTime, newestLinkedEventTime)
+    if newestManagedEventId < newestEventId then
+        local _, newestManagedEventTime = self:GetNewestManagedEventInfo()
+        logger:Debug("Found events newer than the managed range for guild %d category %d", guildId, category)
+        unlinkedEvents = categoryData:GetEventsInTimeRange(newestTime, newestManagedEventTime)
     end
 
-    if oldestLinkedEventId > oldestEventId then
-        local _, oldestLinkedEventTime = self:GetOldestLinkedEventInfo()
-        logger:Debug("Found events older than the linked range for guild %d category %d", guildId, category)
-        missedEvents = categoryData:GetEventsInTimeRange(oldestLinkedEventTime, oldestTime)
+    if oldestManagedEventId > oldestEventId then
+        local _, oldestManagedEventTime = self:GetOldestManagedEventInfo()
+        logger:Debug("Found events older than the managed range for guild %d category %d", guildId, category)
+        missedEvents = categoryData:GetEventsInTimeRange(oldestManagedEventTime, oldestTime)
     end
 
     local numUnlinkedEvents = #unlinkedEvents
@@ -484,11 +484,11 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
             self:IncrementPendingEventMetrics()
             local event = unlinkedEvents[i]
             local eventId = event:GetEventId()
-            if eventId <= newestLinkedEventId then
-                logger:Warn("skip already linked event", guildId, category, eventId, newestLinkedEventId)
+            if eventId <= newestManagedEventId then
+                logger:Warn("skip already processed event", guildId, category, eventId, newestManagedEventId)
             else
                 local eventTime = event:GetEventTimestampS()
-                self:SetNewestLinkedEventInfo(eventId, eventTime)
+                self:SetNewestManagedEventInfo(eventId, eventTime)
                 internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, guildId, category, event)
                 self.processingCurrentTime = eventTime
             end
@@ -513,11 +513,11 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestLinkedEventId, ol
             self:IncrementPendingEventMetrics()
             local event = missedEvents[i]
             local eventId = event:GetEventId()
-            if eventId >= oldestLinkedEventId then
-                logger:Warn("skip already linked event")
+            if eventId >= oldestManagedEventId then
+                logger:Warn("skip already processed event")
             else
                 local eventTime = event:GetEventTimestampS()
-                self:SetOldestLinkedEventInfo(eventId, eventTime)
+                self:SetOldestManagedEventInfo(eventId, eventTime)
                 internal:FireCallbacks(internal.callback.PROCESS_MISSED_EVENT, guildId, category, event)
                 self.processingCurrentTime = -eventTime
             end
@@ -540,9 +540,9 @@ function GuildHistoryCacheCategory:RestartProcessingTask()
         logger:Info("Restart processing events for guild %d category %d", self.guildId, self.category)
         self.processingTask:Cancel()
         self.processingTask = nil
-        local newestLinkedEventId = self:GetNewestLinkedEventInfo()
-        local oldestLinkedEventId = self:GetOldestLinkedEventInfo()
-        self:StartProcessingEvents(newestLinkedEventId, oldestLinkedEventId)
+        local newestManagedEventId = self:GetNewestManagedEventInfo()
+        local oldestManagedEventId = self:GetOldestManagedEventInfo()
+        self:StartProcessingEvents(newestManagedEventId, oldestManagedEventId)
     end
 end
 
@@ -565,21 +565,21 @@ function GuildHistoryCacheCategory:HasLinked()
         return GetNumGuildHistoryEvents(guildId, category) == 0
     end
 
-    local newestLinkedEventId = self:GetNewestLinkedEventInfo()
-    if newestLinkedEventId then
-        local index = GetGuildHistoryEventIndex(guildId, category, newestLinkedEventId)
+    local newestManagedEventId = self:GetNewestManagedEventInfo()
+    if newestManagedEventId then
+        local index = GetGuildHistoryEventIndex(guildId, category, newestManagedEventId)
         return index == 1
     end
 
     return false
 end
 
-function GuildHistoryCacheCategory:IsLinkedRangeConnectedToCurrentEvents()
+function GuildHistoryCacheCategory:IsManagedRangeConnectedToPresent()
     local guildId, category = self.guildId, self.category
     local gaplessIndex = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(guildId, category)
-    local newestLinkedEventId = self:GetNewestLinkedEventInfo()
-    if gaplessIndex and newestLinkedEventId then
-        local index = GetGuildHistoryEventIndex(guildId, category, newestLinkedEventId)
+    local newestManagedEventId = self:GetNewestManagedEventInfo()
+    if gaplessIndex and newestManagedEventId then
+        local index = GetGuildHistoryEventIndex(guildId, category, newestManagedEventId)
         return index and index <= gaplessIndex
     end
     return false
@@ -593,9 +593,9 @@ function GuildHistoryCacheCategory:IsProcessing()
     return self.processingTask ~= nil or self.processingRequest ~= nil
 end
 
-function GuildHistoryCacheCategory:GetNumLinkedEvents()
-    local _, oldestEventTime = self:GetOldestLinkedEventInfo()
-    local _, newestEventTime = self:GetNewestLinkedEventInfo()
+function GuildHistoryCacheCategory:GetNumLoadedManagedEvents()
+    local _, oldestEventTime = self:GetOldestManagedEventInfo()
+    local _, newestEventTime = self:GetNewestManagedEventInfo()
     if not oldestEventTime or not newestEventTime then return 0 end
     local newestIndex, oldestIndex = self.adapter:GetGuildHistoryEventIndicesForTimeRange(
         self.guildId, self.category, newestEventTime, oldestEventTime)
@@ -614,9 +614,9 @@ function GuildHistoryCacheCategory:GetOldestUnlinkedEventTime()
 end
 
 function GuildHistoryCacheCategory:GetOldestUnlinkedEventIndex()
-    local newestLinkedEventId = self:GetNewestLinkedEventInfo()
-    if not newestLinkedEventId then return end
-    local index = GetGuildHistoryEventIndex(self.guildId, self.category, newestLinkedEventId)
+    local newestManagedEventId = self:GetNewestManagedEventInfo()
+    if not newestManagedEventId then return end
+    local index = GetGuildHistoryEventIndex(self.guildId, self.category, newestManagedEventId)
     if not index or index == 1 then return end
     return index - 1
 end
@@ -634,18 +634,6 @@ function GuildHistoryCacheCategory:GetEventById(eventId)
     local index = GetGuildHistoryEventIndex(self.guildId, self.category, eventId)
     if not index then return end
     return self.categoryData:GetEvent(index)
-end
-
-function GuildHistoryCacheCategory:GetOldestLinkedEvent()
-    local eventId = self:GetOldestLinkedEventInfo()
-    if not eventId then return end
-    return self:GetEventById(eventId)
-end
-
-function GuildHistoryCacheCategory:GetNewestLinkedEvent()
-    local eventId = self:GetNewestLinkedEventInfo()
-    if not eventId then return end
-    return self:GetEventById(eventId)
 end
 
 function GuildHistoryCacheCategory:GetOldestCachedEvent()
@@ -762,27 +750,27 @@ function GuildHistoryCacheCategory:GetIndexRangeForEventIdRange(startId, endId)
 end
 
 function GuildHistoryCacheCategory:FindFirstAvailableEventIdForEventId(eventId)
-    local oldestLinkedEventId = self:GetOldestLinkedEventInfo()
-    if not oldestLinkedEventId then
-        logger:Verbose("No oldestLinkedEventId found")
+    local oldestManagedEventId = self:GetOldestManagedEventInfo()
+    if not oldestManagedEventId then
+        logger:Verbose("No oldestManagedEventId found")
         return nil
-    elseif eventId <= oldestLinkedEventId then
-        logger:Verbose("Event is older than oldestLinkedEventId")
-        return oldestLinkedEventId
+    elseif eventId <= oldestManagedEventId then
+        logger:Verbose("Event is older than oldestManagedEventId")
+        return oldestManagedEventId
     end
 
-    local newestLinkedEventId = self:GetNewestLinkedEventInfo()
-    if not newestLinkedEventId or eventId > newestLinkedEventId then
-        logger:Verbose("No newestLinkedEventId found or event is newer than newestLinkedEventId")
+    local newestManagedEventId = self:GetNewestManagedEventInfo()
+    if not newestManagedEventId or eventId > newestManagedEventId then
+        logger:Verbose("No newestManagedEventId found or event is newer than newestManagedEventId")
         return nil
-    elseif eventId == newestLinkedEventId then
-        logger:Verbose("Event is newestLinkedEventId")
-        return newestLinkedEventId
+    elseif eventId == newestManagedEventId then
+        logger:Verbose("Event is newestManagedEventId")
+        return newestManagedEventId
     end
 
-    local newestIndex, oldestIndex = self:GetLinkedRangeIndices()
+    local newestIndex, oldestIndex = self:GetManagedRangeIndices()
     if not newestIndex or not oldestIndex then
-        logger:Verbose("No linked range found")
+        logger:Verbose("No managed range found")
         return nil
     end
 
@@ -790,17 +778,17 @@ function GuildHistoryCacheCategory:FindFirstAvailableEventIdForEventId(eventId)
     return eventId
 end
 
-function GuildHistoryCacheCategory:GetLinkedRangeIndices()
-    local oldestLinkedEventId = self:GetOldestLinkedEventInfo()
-    if not oldestLinkedEventId then
-        logger:Verbose("No oldestLinkedEventId found")
+function GuildHistoryCacheCategory:GetManagedRangeIndices()
+    local oldestManagedEventId = self:GetOldestManagedEventInfo()
+    if not oldestManagedEventId then
+        logger:Verbose("No oldestManagedEventId found")
         return
     end
 
     local guildId, category = self.guildId, self.category
-    local rangeIndex = self:FindRangeIndexForEventId(oldestLinkedEventId)
+    local rangeIndex = self:FindRangeIndexForEventId(oldestManagedEventId)
     if not rangeIndex then
-        logger:Verbose("No rangeIndex found for oldestLinkedEventId", oldestLinkedEventId)
+        logger:Verbose("No rangeIndex found for oldestManagedEventId", oldestManagedEventId)
         return
     end
 
@@ -857,27 +845,27 @@ function GuildHistoryCacheCategory:SearchEventIdInInterval(eventId, firstIndex, 
 end
 
 function GuildHistoryCacheCategory:FindLastAvailableEventIdForEventId(eventId)
-    local oldestLinkedEventId = self:GetOldestLinkedEventInfo()
-    if not oldestLinkedEventId or eventId < oldestLinkedEventId then
-        logger:Verbose("No oldestLinkedEventId found or event is older than oldestLinkedEventId")
+    local oldestManagedEventId = self:GetOldestManagedEventInfo()
+    if not oldestManagedEventId or eventId < oldestManagedEventId then
+        logger:Verbose("No oldestManagedEventId found or event is older than oldestManagedEventId")
         return nil
-    elseif eventId == oldestLinkedEventId then
-        logger:Verbose("Event is oldestLinkedEventId")
-        return oldestLinkedEventId
+    elseif eventId == oldestManagedEventId then
+        logger:Verbose("Event is oldestManagedEventId")
+        return oldestManagedEventId
     end
 
-    local newestLinkedEventId = self:GetNewestLinkedEventInfo()
-    if not newestLinkedEventId then
-        logger:Verbose("No newestLinkedEventId found")
+    local newestManagedEventId = self:GetNewestManagedEventInfo()
+    if not newestManagedEventId then
+        logger:Verbose("No newestManagedEventId found")
         return nil
-    elseif eventId > newestLinkedEventId then
-        logger:Verbose("Event is newer than newestLinkedEventId")
-        return newestLinkedEventId
+    elseif eventId > newestManagedEventId then
+        logger:Verbose("Event is newer than newestManagedEventId")
+        return newestManagedEventId
     end
 
-    local newestIndex, oldestIndex = self:GetLinkedRangeIndices()
+    local newestIndex, oldestIndex = self:GetManagedRangeIndices()
     if not newestIndex or not oldestIndex then
-        logger:Verbose("No linked range found")
+        logger:Verbose("No managed range found")
         return nil
     end
 
@@ -886,7 +874,7 @@ function GuildHistoryCacheCategory:FindLastAvailableEventIdForEventId(eventId)
 end
 
 function GuildHistoryCacheCategory:FindFirstAvailableEventIdForEventTime(eventTime)
-    local oldestId, oldestTime = self:GetOldestLinkedEventInfo()
+    local oldestId, oldestTime = self:GetOldestManagedEventInfo()
     if not oldestId then
         logger:Verbose("No oldestId found")
         return nil
@@ -895,7 +883,7 @@ function GuildHistoryCacheCategory:FindFirstAvailableEventIdForEventTime(eventTi
         return oldestId
     end
 
-    local newestId, newestTime = self:GetNewestLinkedEventInfo()
+    local newestId, newestTime = self:GetNewestManagedEventInfo()
     if not newestId then
         logger:Verbose("No newestId found")
         return nil
@@ -917,7 +905,7 @@ function GuildHistoryCacheCategory:FindFirstAvailableEventIdForEventTime(eventTi
 end
 
 function GuildHistoryCacheCategory:FindLastAvailableEventIdForEventTime(eventTime)
-    local newestId, newestTime = self:GetNewestLinkedEventInfo()
+    local newestId, newestTime = self:GetNewestManagedEventInfo()
     if not newestId then
         logger:Verbose("No newestId found")
         return nil
@@ -926,7 +914,7 @@ function GuildHistoryCacheCategory:FindLastAvailableEventIdForEventTime(eventTim
         return newestId
     end
 
-    local oldestId, oldestTime = self:GetOldestLinkedEventInfo()
+    local oldestId, oldestTime = self:GetOldestManagedEventInfo()
     if not oldestId then
         logger:Verbose("No oldestId found")
         return nil
@@ -987,7 +975,7 @@ function GuildHistoryCacheCategory:GetProgress()
             self.progress = 1
             self.missingTime = 0
         else
-            local _, newestEventTime = self:GetNewestLinkedEventInfo()
+            local _, newestEventTime = self:GetNewestManagedEventInfo()
             if newestEventTime then
                 local now = GetTimeStamp()
                 local events = self.categoryData:GetEventsInTimeRange(now, newestEventTime + 1) -- TODO optimize by getting the time directly
