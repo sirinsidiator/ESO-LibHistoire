@@ -35,7 +35,7 @@ function GuildHistoryProcessingRequest:StartProcessing(endId)
 
     endId = endId or self:FindEndId()
 
-    if not endId or startId >= endId then
+    if not endId or startId > endId then
         logger:Debug("startId is greater than endId - are we done?")
         self:EnsureIterationIsComplete()
         return
