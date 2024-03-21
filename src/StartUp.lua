@@ -118,6 +118,21 @@ function internal:InitializeCaches()
             LibHistoire_Settings.statusWindow)
         logger:Verbose("User interface initialized")
     end)
+    ZO_PreHook(ZO_GuildHistory_Shared, "ShowPreviousPage", function(history)
+        if IsShiftKeyDown() then
+            history:SetCurrentPage(1)
+            return true
+        end
+    end)
+    local ENTRIES_PER_PAGE = 100
+    ZO_PreHook(ZO_GuildHistory_Shared, "ShowNextPage", function(history)
+        if IsShiftKeyDown() then
+            local numVisibleEvents = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(history.guildId, history.selectedEventCategory)
+            local page = zo_ceil(numVisibleEvents / ENTRIES_PER_PAGE)
+            history:SetCurrentPage(page)
+            return true
+        end
+    end)
     logger:Verbose("Caches initialized")
 end
 
