@@ -2,10 +2,16 @@ local internal = LibHistoire.internal
 
 local DIALOG_ID = "LibHistoire"
 
-function internal:GetWarningDialog()
+local function GetWarningDialog()
     if not ESO_Dialogs[DIALOG_ID] then
         ESO_Dialogs[DIALOG_ID] = {
             canQueue = true,
+            gamepadInfo = {
+                dialogType = GAMEPAD_DIALOGS.CENTERED
+            },
+            setup = function(dialog)
+                dialog:setupFunc()
+            end,
             title = {
                 text = "",
             },
@@ -26,8 +32,16 @@ function internal:GetWarningDialog()
     return ESO_Dialogs[DIALOG_ID]
 end
 
-function internal:ShowQuitWarningDialog(message, buttonText, callback)
-    local dialog = self:GetWarningDialog()
+local function ShowWarningDialog()
+    if IsInGamepadPreferredMode() then
+        ZO_Dialogs_ShowGamepadDialog(DIALOG_ID)
+    else
+        ZO_Dialogs_ShowDialog(DIALOG_ID)
+    end
+end
+
+local function ShowShutdownWarningDialog(message, buttonText, callback)
+    local dialog = GetWarningDialog()
     dialog.title.text = "Warning"
     dialog.mainText.text = message
 
@@ -41,11 +55,12 @@ function internal:ShowQuitWarningDialog(message, buttonText, callback)
     secondaryButton.text = buttonText
     secondaryButton.callback = callback
 
-    ZO_Dialogs_ShowDialog(DIALOG_ID)
+    ZO_Dialogs_ReleaseDialogOnButtonPress("GAMEPAD_LOG_OUT")
+    ShowWarningDialog()
 end
 
-function internal:ShowResetManagedRangeDialog(callback)
-    local dialog = self:GetWarningDialog()
+local function ShowResetManagedRangeDialog(_, callback)
+    local dialog = GetWarningDialog()
     dialog.title.text = "Warning"
     dialog.mainText.text =
         "Resetting the managed range will make LibHistoire forget from which point to start requesting events and what data has already been sent to addons.\n\n" ..
@@ -58,12 +73,13 @@ function internal:ShowResetManagedRangeDialog(callback)
 
     local secondaryButton = dialog.buttons[2]
     secondaryButton.text = SI_DIALOG_CANCEL
+    secondaryButton.callback = nil
 
-    ZO_Dialogs_ShowDialog(DIALOG_ID)
+    ShowWarningDialog()
 end
 
-function internal:ShowClearCacheDialog(callback)
-    local dialog = self:GetWarningDialog()
+local function ShowClearCacheDialog(_, callback)
+    local dialog = GetWarningDialog()
     dialog.title.text = "Warning"
     dialog.mainText.text =
         "Clearing the cache will delete locally stored events and force the game to fetch them again from the server.\n\n" ..
@@ -78,45 +94,68 @@ function internal:ShowClearCacheDialog(callback)
 
     local secondaryButton = dialog.buttons[2]
     secondaryButton.text = SI_DIALOG_CANCEL
+    secondaryButton.callback = nil
 
-    ZO_Dialogs_ShowDialog(DIALOG_ID)
+    ShowWarningDialog()
 end
 
-function internal:SetupDialogHook(name)
-    local primaryButton = ESO_Dialogs[name].buttons[1]
-    local originalCallback = primaryButton.callback
-    primaryButton.callback = function(dialog)
-        if self.historyCache:IsProcessing() then
-            self:ShowQuitWarningDialog(
-                "LibHistoire is currently processing events! If you close the game now, you may corrupt your save data.",
-                primaryButton.text, originalCallback)
-        elseif not self.historyCache:HasLinkedAllCaches() then
-            self:ShowQuitWarningDialog(
-                "LibHistoire has not linked your managed range to present events yet.",
-                primaryButton.text, originalCallback)
-        else
-            originalCallback(dialog)
-        end
+local function ShowShutdownWarningIfNeeded(cache, buttonText, originalCallback, ...)
+    if cache:IsProcessing() then
+        ShowShutdownWarningDialog(
+            "LibHistoire is currently processing events! If you exit now, you may corrupt your save data.\n\n" ..
+            "You are advised to check the status window and wait until all events have been processed before reloading the UI.",
+            buttonText, originalCallback)
+    elseif not cache:HasLinkedAllCachesRecently() then
+        ShowShutdownWarningDialog(
+            "LibHistoire has not been able to link the managed history range of one or more categories to present history for over a week.\n\n" ..
+            "You are advised to check the status window and try to manually request missing data to avoid interruptions in the data flow for dependent addons.",
+            buttonText, originalCallback)
+    else
+        return originalCallback(...)
     end
 end
 
-function internal:InitializeExitHooks()
-    self:SetupDialogHook("LOG_OUT")
-    self:SetupDialogHook("QUIT")
+local function SetupDialogHook(cache, name)
+    local primaryButton = ESO_Dialogs[name].buttons[1]
+    local originalCallback = primaryButton.callback
+    primaryButton.callback = function(...)
+        return ShowShutdownWarningIfNeeded(cache, primaryButton.text, originalCallback, ...)
+    end
+end
+
+local function SetupSlashCommandHook(cache, name, buttonText)
+    local originalSlashCommand = SLASH_COMMANDS[name]
+    SLASH_COMMANDS[name] = function(...)
+        return ShowShutdownWarningIfNeeded(cache, buttonText, originalSlashCommand, ...)
+    end
+end
+
+function internal:InitializeDialogs()
+    local cache = self.historyCache
+    SetupDialogHook(cache, "LOG_OUT")
+    SetupDialogHook(cache, "GAMEPAD_LOG_OUT")
+    SetupDialogHook(cache, "QUIT")
+    SetupSlashCommandHook(cache, GetString(SI_SLASH_LOGOUT), GetString(SI_LOG_OUT_GAME_CONFIRM_KEYBIND))
+    SetupSlashCommandHook(cache, GetString(SI_SLASH_CAMP), GetString(SI_LOG_OUT_GAME_CONFIRM_KEYBIND))
+    SetupSlashCommandHook(cache, GetString(SI_SLASH_QUIT), GetString(SI_QUIT_GAME_CONFIRM_KEYBIND))
+
     local originalReloadUI = ReloadUI
     function ReloadUI(...)
-        internal.logger:Debug("ReloadUI called")
-        if self.historyCache:IsProcessing() then
+        if cache:IsProcessing() then
             local params = { ... }
-            self:ShowQuitWarningDialog(
-                "LibHistoire is currently processing events! If you reload the UI now, you may corrupt your save data.",
+            ShowShutdownWarningDialog(
+                "LibHistoire is currently processing events! If you reload the UI now, you may corrupt your save data.\n\n" ..
+                "You are advised to check the status window and wait until all events have been processed before reloading the UI.",
                 "Reload UI", function()
-                    self.historyCache:Shutdown()
+                    cache:Shutdown()
                     return originalReloadUI(unpack(params))
                 end)
         else
-            self.historyCache:Shutdown()
+            cache:Shutdown()
             return originalReloadUI(...)
         end
     end
+
+    internal.ShowClearCacheDialog = ShowClearCacheDialog
+    internal.ShowResetManagedRangeDialog = ShowResetManagedRangeDialog
 end

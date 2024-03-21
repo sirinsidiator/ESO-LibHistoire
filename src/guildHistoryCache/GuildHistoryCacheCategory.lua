@@ -7,7 +7,7 @@ local internal = lib.internal
 local logger = internal.logger
 
 local MISSING_EVENT_COUNT_THRESHOLD = 2000
-local NO_PROCESSOR_THRESHOLD = 3 * 24 * 3600            -- 3 days
+local NO_PROCESSOR_THRESHOLD = 3 * 24 * 3600           -- 3 days
 local INITIAL_REQUEST_RESEND_THRESHOLD = 7 * 24 * 3600 -- 7 days
 local BASE_PRIORITY = {
     [GUILD_HISTORY_EVENT_CATEGORY_TRADER] = 40,
@@ -378,6 +378,7 @@ function GuildHistoryCacheCategory:Reset()
     self:SetNewestManagedEventInfo()
     self:SetOldestManagedEventInfo()
     self.saveData.initialRequestTime = nil
+    self.saveData.lastLinkedTime = nil
 
     self.rangeInfoDirty = true
     self.progressDirty = true
@@ -399,6 +400,7 @@ function GuildHistoryCacheCategory:SetupFirstManagedEventId()
     internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, guildId, category, event)
     self:SetOldestManagedEventInfo(eventId, eventTime)
     self:SetNewestManagedEventInfo(eventId, eventTime)
+    self:UpdateLastLinkedTime()
     internal:FireCallbacks(internal.callback.MANAGED_RANGE_FOUND, guildId, category)
     return eventId
 end
@@ -495,6 +497,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
         end):Then(function()
             self.progressDirty = true
             logger:Debug("Finished processing unlinked events", guildId, category)
+            self:UpdateLastLinkedTime()
             internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENTS_FINISHED, guildId, category)
             self.processingCurrentTime = nil
             if numMissedEvents > 0 then
@@ -532,6 +535,8 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
             internal:FireCallbacks(internal.callback.PROCESS_MISSED_EVENTS_FINISHED, guildId, category)
             self:ProcessNextRequest()
         end)
+    else
+        self:UpdateLastLinkedTime()
     end
 end
 
@@ -572,6 +577,17 @@ function GuildHistoryCacheCategory:HasLinked()
     end
 
     return false
+end
+
+function GuildHistoryCacheCategory:UpdateLastLinkedTime()
+    if self:HasLinked() then
+        logger:Debug("Update last linked time for", self.key)
+        self.saveData.lastLinkedTime = GetTimeStamp()
+    end
+end
+
+function GuildHistoryCacheCategory:GetLastLinkedTime()
+    return self.saveData.lastLinkedTime or 0
 end
 
 function GuildHistoryCacheCategory:IsManagedRangeConnectedToPresent()

@@ -6,6 +6,8 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
+local LINK_TIMOUT_THRESHOLD = 60 * 60 * 24 * 7 -- 1 week
+
 local GuildHistoryCacheGuild = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryCacheGuild = GuildHistoryCacheGuild
 
@@ -126,6 +128,15 @@ function GuildHistoryCacheGuild:HasLinked()
     if not next(self.cache) then return false end
     for _, cache in pairs(self.cache) do
         if cache:IsAutoRequesting() and not cache:HasLinked() then return false end
+    end
+    return true
+end
+
+function GuildHistoryCacheGuild:HasLinkedRecently()
+    if not next(self.cache) then return false end
+    for _, cache in pairs(self.cache) do
+        local linkTimeout = GetTimeStamp() - cache:GetLastLinkedTime()
+        if cache:IsAutoRequesting() and linkTimeout > LINK_TIMOUT_THRESHOLD then return false end
     end
     return true
 end

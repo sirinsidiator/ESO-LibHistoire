@@ -82,6 +82,17 @@ function GuildHistoryCache:HasLinkedAllCaches()
     return allLinked
 end
 
+function GuildHistoryCache:HasLinkedAllCachesRecently()
+    local allLinked = true
+    self:ForEachActiveGuild(function(guildCache)
+        if not guildCache:HasLinkedRecently() then
+            allLinked = false
+            return true -- break
+        end
+    end)
+    return allLinked
+end
+
 function GuildHistoryCache:IsProcessing()
     local isProcessing = false
     self:ForEachActiveGuild(function(guildCache)
