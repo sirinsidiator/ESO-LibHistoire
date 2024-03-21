@@ -481,6 +481,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
             internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENTS_STARTED, guildId, category, numUnlinkedEvents)
         end
 
+        local previousTime = 0
         task:For(numUnlinkedEvents, 1, -1):Do(function(i)
             self.progressDirty = true
             self:IncrementPendingEventMetrics()
@@ -490,6 +491,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
                 logger:Warn("skip already processed event", guildId, category, eventId, newestManagedEventId)
             else
                 local eventTime = event:GetEventTimestampS()
+                assert(eventTime >= oldestTime and eventTime >= previousTime, "Received event with invalid timestamp")
                 self:SetNewestManagedEventInfo(eventId, eventTime)
                 internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, guildId, category, event)
                 self.processingCurrentTime = eventTime
@@ -511,6 +513,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
                 self.processingStartTime = nil
                 self.processingEndTime = nil
             end
+            previousTime = newestTime
         end):For(1, numMissedEvents):Do(function(i)
             self.progressDirty = true
             self:IncrementPendingEventMetrics()
@@ -520,6 +523,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
                 logger:Warn("skip already processed event")
             else
                 local eventTime = event:GetEventTimestampS()
+                assert(eventTime >= oldestTime and eventTime <= previousTime, "Received event with invalid timestamp")
                 self:SetOldestManagedEventInfo(eventId, eventTime)
                 internal:FireCallbacks(internal.callback.PROCESS_MISSED_EVENT, guildId, category, event)
                 self.processingCurrentTime = -eventTime
