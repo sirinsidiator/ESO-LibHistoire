@@ -57,10 +57,20 @@ function GuildHistoryEventProcessor:Initialize(categoryCache, addonName)
     self.missedEventCallback = nil
     self.onStopCallback = nil
     self.stopOnLastCachedEvent = false
+    self.receiveMissedEventsOutsideIterationRange = false
 
     self.nextEventProcessor = function(guildId, category, event)
         if not categoryCache:IsFor(guildId, category) then return end
         HandleEvent(self, event)
+    end
+
+    self.missedEventProcessor = function(guildId, category, event)
+        if not categoryCache:IsFor(guildId, category) then return end
+        if self.receiveMissedEventsOutsideIterationRange and self.missedEventCallback then
+            self.missedEventCallback(event)
+        else
+            HandleEvent(self, event)
+        end
     end
 end
 
@@ -179,6 +189,13 @@ function GuildHistoryEventProcessor:SetRegisteredForFutureEventsCallback(callbac
     return true
 end
 
+-- sets if the processor should forward missed events outside of the specified iteration range to the missedEventCallback
+function GuildHistoryEventProcessor:SetReceiveMissedEventsOutsideIterationRange(shouldReceive)
+    if self.running then return false end
+    self.receiveMissedEventsOutsideIterationRange = shouldReceive
+    return true
+end
+
 -- starts iterating over stored events and afterwards registers a processor for future events internally
 function GuildHistoryEventProcessor:Start()
     if self.running then return false end
@@ -193,7 +210,7 @@ function GuildHistoryEventProcessor:Start()
             else
                 logger:Verbose("RegisterForFutureEvents")
                 internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.nextEventProcessor)
-                internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.nextEventProcessor)
+                internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.missedEventProcessor)
                 if self.futureEventsCallback then self.futureEventsCallback() end
             end
         end)
