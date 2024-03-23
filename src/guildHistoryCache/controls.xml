@@ -82,7 +82,8 @@
                 <Label name="$(parent)Version" font="ZoFontGameSmall"
                     text="v@FULL_VERSION_NUMBER@"
                     color="INTERFACE_COLOR_TYPE_TEXT_COLORS:INTERFACE_TEXT_COLOR_SUBTLE">
-                    <Anchor point="BOTTOMRIGHT" offsetX="-5" offsetY="-5" />
+                    <Anchor point="LEFT" relativeTo="$(parent)Label" relativePoint="RIGHT"
+                        offsetX="10" />
                 </Label>
 
                 <Button name="$(parent)Options" mouseOverBlendMode="ADD"
