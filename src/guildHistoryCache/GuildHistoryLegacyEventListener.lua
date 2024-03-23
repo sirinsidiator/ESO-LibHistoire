@@ -20,12 +20,16 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
     self.iterationCompletedCount = 0
     self.eventsLeft = 0
     self.performanceTracker = internal.class.PerformanceTracker:New()
+    self.hasReachedEndCriteria = false
 
     for _, cache in ipairs(caches) do
         local processor = internal.class.GuildHistoryEventProcessor:New(cache)
         processor:SetStopOnLastEvent(true)
         processor:SetOnStopCallback(function(reason)
             if reason == internal.STOP_REASON_ITERATION_COMPLETED or reason == internal.STOP_REASON_LAST_CACHED_EVENT_REACHED then
+                if reason == internal.STOP_REASON_ITERATION_COMPLETED then
+                    self.hasReachedEndCriteria = true
+                end
                 self.iterationCompletedCount = self.iterationCompletedCount + 1
                 logger:Debug("iteration completed", self.key, self.iterationCompletedCount, #self.processors)
                 if self.iterationCompletedCount == #self.processors then
@@ -144,17 +148,20 @@ function GuildHistoryLegacyEventListener:OnProcessingCachedEventsCompleted()
         end
     end
 
-    if self.iterationCompletedCallback then
-        self.iterationCompletedCallback()
-    end
-
+    local shouldFireIterationCompleted = false
     if self.shouldStop then
         logger:Debug("stop after iteration")
         self:Stop()
+        shouldFireIterationCompleted = true
     else
         logger:Debug("register uncached event callbacks")
         internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.uncachedNextEventCallback)
         internal:RegisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.uncachedNextEventCallback)
+        shouldFireIterationCompleted = self.hasReachedEndCriteria
+    end
+
+    if self.iterationCompletedCallback and shouldFireIterationCompleted then
+        self.iterationCompletedCallback()
     end
 end
 
@@ -369,6 +376,7 @@ function GuildHistoryLegacyEventListener:Stop()
         self.task = nil
     end
     self.cachedEvents = {}
+    self.hasReachedEndCriteria = false
 
     for _, cache in ipairs(self.caches) do
         cache:UnregisterProcessor(self)
