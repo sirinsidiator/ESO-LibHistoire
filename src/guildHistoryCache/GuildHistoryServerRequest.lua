@@ -13,14 +13,26 @@ internal.class.GuildHistoryServerRequest = GuildHistoryServerRequest
 
 function GuildHistoryServerRequest:Initialize(cache, newestTime, oldestTime)
     self.cache = cache
-    self.newestTime = newestTime or GetTimeStamp()
-    self.oldestTime = oldestTime or 0
+    self.newestTime = newestTime
+    self.oldestTime = oldestTime
     self.destroyed = false
     self.queued = false
 end
 
+function GuildHistoryServerRequest:GetNewestTime()
+    return self.newestTime or GetTimeStamp() + 3600
+end
+
+function GuildHistoryServerRequest:GetOldestTime()
+    return self.oldestTime or 0
+end
+
+function GuildHistoryServerRequest:GetRequestId()
+    return self.request and self.request:GetRequestId() or -1
+end
+
 function GuildHistoryServerRequest:IsInitialRequest()
-    return self.oldestTime == 0
+    return not self.oldestTime or self.oldestTime == 0
 end
 
 function GuildHistoryServerRequest:IsValid()
@@ -84,6 +96,8 @@ function GuildHistoryServerRequest:Send()
     if not self.request then
         local guildId = self.cache:GetGuildId()
         local category = self.cache:GetCategory()
+        self.newestTime = self:GetNewestTime()
+        self.oldestTime = self:GetOldestTime()
         self.request = ZO_GuildHistoryRequest:New(guildId, category, self.newestTime, self.oldestTime)
     end
 
