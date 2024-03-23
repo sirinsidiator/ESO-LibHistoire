@@ -73,7 +73,7 @@
 
         <TopLevelControl name="LibHistoireGuildHistoryStatusWindow" hidden="true"
             mouseEnabled="true" clampedToScreen="true">
-            <Dimensions x="540" y="545" />
+            <Dimensions x="540" y="440" />
             <Controls>
                 <Label name="$(parent)Label" font="ZoFontWinH3" wrapMode="ELLIPSIS">
                     <Anchor point="TOPLEFT" offsetX="25" offsetY="10" />
@@ -95,25 +95,11 @@
                         mouseOver="EsoUI/Art/ChatWindow/chat_options_over.dds" />
                 </Button>
 
-                <Control name="$(parent)Status">
-                    <Dimensions y="100" />
-                    <Anchor point="BOTTOMLEFT" />
-                    <Anchor point="BOTTOMRIGHT" />
-                    <Controls>
-                        <Texture name="$(parent)Icon"
-                            textureFile="LibHistoire/image/unlinked_down.dds" mouseEnabled="true">
-                            <Anchor point="CENTER" offsetY="-10" />
-                            <Dimensions x="64" y="64" />
-                        </Texture>
-                    </Controls>
-                </Control>
-
                 <Control name="$(parent)GuildList" inherits="ZO_ScrollList">
                     <Dimensions x="250" />
                     <Anchor point="TOPLEFT" relativeTo="$(parent)Label" relativePoint="BOTTOMLEFT"
                         offsetY="5" />
-                    <Anchor point="BOTTOMLEFT" relativeTo="$(parent)Status" relativePoint="TOPLEFT"
-                        offsetY="-10" constrains="Y" />
+                    <Anchor point="BOTTOMLEFT" offsetY="-10" constrains="Y" />
                 </Control>
 
                 <Control name="$(parent)CategoryList" inherits="ZO_ScrollList">
@@ -122,6 +108,19 @@
                         offsetX="5" />
                     <Anchor point="BOTTOMLEFT" relativeTo="$(parent)GuildList"
                         relativePoint="BOTTOMRIGHT" constrains="Y" />
+                </Control>
+
+                <Control name="$(parent)Status" tier="MEDIUM">
+                    <Dimensions y="100" />
+                    <Anchor point="BOTTOMLEFT" />
+                    <Anchor point="BOTTOMRIGHT" relativeTo="$(parent)GuildList" />
+                    <Controls>
+                        <Texture name="$(parent)Icon"
+                            textureFile="LibHistoire/image/unlinked_down.dds" mouseEnabled="true">
+                            <Anchor point="CENTER" offsetY="-10" />
+                            <Dimensions x="64" y="64" />
+                        </Texture>
+                    </Controls>
                 </Control>
 
                 <Control name="$(parent)SelectionWidget">
