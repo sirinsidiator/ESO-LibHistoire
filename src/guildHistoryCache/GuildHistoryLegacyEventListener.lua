@@ -15,6 +15,7 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
     self.key = string.format("%s/%d/%d", internal.WORLD_NAME, guildId, legacyCategory)
     self.caches = caches
     self.processors = {}
+    self.listeners = self.processors -- TODO remove once ATT is updated
     self.cachedEvents = {}
     self.iterationCompletedCount = 0
     self.eventsLeft = 0
