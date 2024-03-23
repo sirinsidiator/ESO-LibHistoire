@@ -136,7 +136,7 @@ function GuildHistoryCacheGuild:HasLinkedRecently()
     if not next(self.cache) then return false end
     for _, cache in pairs(self.cache) do
         local linkTimeout = GetTimeStamp() - cache:GetLastLinkedTime()
-        if cache:IsAutoRequesting() and linkTimeout > LINK_TIMOUT_THRESHOLD then return false end
+        if cache:IsAutoRequesting() and cache:HasCachedEvents() and linkTimeout > LINK_TIMOUT_THRESHOLD then return false end
     end
     return true
 end
