@@ -66,4 +66,12 @@ end
 -- Function to convert id64s that have been artificially created by a legacy listener to the new id53 equivalent. Returns nil if the id64 cannot be converted.
 lib.ConvertArtificialLegacyId64ToEventId = internal.ConvertLegacyId64ToEventId
 
+-- Enumeration of the possible stop reasons passed to the onStopCallback of a GuildHistoryEventProcessor
+lib.StopReason = {
+    MANUAL_STOP = internal.STOP_REASON_MANUAL_STOP,                             -- when Stop is called by the addon
+    LAST_CACHED_EVENT_REACHED = internal.STOP_REASON_LAST_CACHED_EVENT_REACHED, -- when SetStopOnLastCachedEvent is set and the last cached event was reached
+    ITERATION_COMPLETED = internal.STOP_REASON_ITERATION_COMPLETED,             -- when a beforeEventId or beforeEventTime was set and an event outside of the specified range was encountered
+    MANAGED_RANGE_LOST = internal.STOP_REASON_MANAGED_RANGE_LOST,               -- when the managed range was lost (fires right after MANAGED_RANGE_LOST callback)
+}
+
 internal:Initialize()

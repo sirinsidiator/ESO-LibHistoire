@@ -73,6 +73,11 @@ internal.ZOOM_MODE_AUTO = 'auto'
 internal.ZOOM_MODE_FULL_RANGE = 'full'
 internal.ZOOM_MODE_MISSING_RANGE = 'missing'
 
+internal.STOP_REASON_MANUAL_STOP = "manualStop"
+internal.STOP_REASON_LAST_CACHED_EVENT_REACHED = "lastCachedEventReached"
+internal.STOP_REASON_ITERATION_COMPLETED = "iterationCompleted"
+internal.STOP_REASON_MANAGED_RANGE_LOST = "managedRangeLost"
+
 function internal:FireCallbacks(...)
     return callbackObject:FireCallbacks(...)
 end

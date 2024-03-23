@@ -24,15 +24,13 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
     for _, cache in ipairs(caches) do
         local processor = internal.class.GuildHistoryEventProcessor:New(cache)
         processor:SetStopOnLastEvent(true)
-        processor:SetIterationCompletedCallback(function()
-            self.iterationCompletedCount = self.iterationCompletedCount + 1
-            if self.iterationCompletedCount > #self.processors then
-                logger:Warn("iteration completed more often than expected", self.key, self.iterationCompletedCount, #self.processors)
-                processor:Stop()
-            end
-            logger:Debug("iteration completed", self.key, self.iterationCompletedCount, #self.processors)
-            if self.iterationCompletedCount == #self.processors then
-                self:OnIterationsCompleted()
+        processor:SetOnStopCallback(function(reason)
+            if reason == internal.STOP_REASON_ITERATION_COMPLETED or reason == internal.STOP_REASON_LAST_CACHED_EVENT_REACHED then
+                self.iterationCompletedCount = self.iterationCompletedCount + 1
+                logger:Debug("iteration completed", self.key, self.iterationCompletedCount, #self.processors)
+                if self.iterationCompletedCount == #self.processors then
+                    self:OnIterationsCompleted()
+                end
             end
         end)
         self.processors[#self.processors + 1] = processor

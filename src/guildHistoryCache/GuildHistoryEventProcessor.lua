@@ -32,8 +32,7 @@ end
 local function HandleEvent(processor, event)
     if not ShouldHandleEvent(processor, event) then return end
     if HasIterationCompleted(processor, event) then
-        processor:Stop()
-        if processor.iterationCompletedCallback then processor.iterationCompletedCallback() end
+        processor:Stop(internal.STOP_REASON_ITERATION_COMPLETED)
         return
     end
 
@@ -56,7 +55,7 @@ function GuildHistoryEventProcessor:Initialize(categoryCache, addonName)
     self.beforeEventTime = nil
     self.nextEventCallback = nil
     self.missedEventCallback = nil
-    self.iterationCompletedCallback = nil
+    self.onStopCallback = nil
     self.stopOnLastEvent = false
 
     self.nextEventProcessor = function(guildId, category, event)
@@ -158,10 +157,11 @@ function GuildHistoryEventProcessor:SetEventCallback(callback)
     return true
 end
 
--- set a callback which is called when beforeEventId or beforeEventTime is reached and the processor is stopped
-function GuildHistoryEventProcessor:SetIterationCompletedCallback(callback)
+-- set a callback which is called after the listener has stopped
+-- receives a reason (see lib.StopReason) why the processor has stopped
+function GuildHistoryEventProcessor:SetOnStopCallback(callback)
     if self.running then return false end
-    self.iterationCompletedCallback = callback
+    self.onStopCallback = callback
     return true
 end
 
@@ -189,8 +189,7 @@ function GuildHistoryEventProcessor:Start()
             self.request = nil
             if self.stopOnLastEvent then
                 logger:Verbose("stopOnLastEvent")
-                self:Stop()
-                if self.iterationCompletedCallback then self.iterationCompletedCallback() end
+                self:Stop(internal.STOP_REASON_LAST_CACHED_EVENT_REACHED)
             else
                 logger:Verbose("RegisterForFutureEvents")
                 internal:RegisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.nextEventProcessor)
@@ -212,10 +211,11 @@ function GuildHistoryEventProcessor:Start()
 end
 
 -- stops iterating over stored events and unregisters the processor for future events
-function GuildHistoryEventProcessor:Stop()
+function GuildHistoryEventProcessor:Stop(reason)
     if not self.running then return false end
 
-    logger:Warn("Stop processor", self:GetKey())
+    reason = reason or internal.STOP_REASON_MANUAL_STOP
+    logger:Warn("Stop processor", self:GetKey(), reason)
     if self.request then
         self.categoryCache:RemoveProcessingRequest(self.request)
         self.request = nil
@@ -231,6 +231,10 @@ function GuildHistoryEventProcessor:Stop()
     end
     self.currentEventId = nil
     self.running = false
+
+    if self.onStopCallback then
+        self.onStopCallback(reason)
+    end
     return true
 end
 

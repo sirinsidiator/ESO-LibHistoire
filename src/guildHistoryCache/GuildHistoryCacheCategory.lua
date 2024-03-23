@@ -371,17 +371,18 @@ function GuildHistoryCacheCategory:Reset()
         self.processingRequest = nil
     end
 
-    for processor in pairs(self.processors) do
-        processor:Stop()
-    end
-
-    self:SetNewestManagedEventInfo()
-    self:SetOldestManagedEventInfo()
     self.saveData.initialRequestTime = nil
     self.saveData.lastLinkedTime = nil
 
     self.rangeInfoDirty = true
     self.progressDirty = true
+
+    self:SetNewestManagedEventInfo()
+    self:SetOldestManagedEventInfo()
+
+    for processor in pairs(self.processors) do
+        processor:Stop(internal.STOP_REASON_MANAGED_RANGE_LOST)
+    end
 
     zo_callLater(function() self:SetupFirstManagedEventId() end, 0)
 end
