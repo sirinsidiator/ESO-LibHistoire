@@ -107,28 +107,44 @@ end
 
 -- the last known eventId (id53). The nextEventCallback will only return events which have a higher eventId
 function GuildHistoryEventProcessor:SetAfterEventId(eventId)
-    if self.running then return false end
+    if self.running then
+        logger:Warn("Tried to call SetAfterEventId while processor is running")
+        return false
+    end
+
     self.afterEventId = eventId
     return true
 end
 
 -- if no eventId has been specified, the nextEventCallback will only receive events after the specified timestamp
 function GuildHistoryEventProcessor:SetAfterEventTime(eventTime)
-    if self.running then return false end
+    if self.running then
+        logger:Warn("Tried to call SetAfterEventTime while processor is running")
+        return false
+    end
+
     self.afterEventTime = eventTime
     return true
 end
 
 -- the highest desired eventId (id53). The nextEventCallback will only return events which have a lower eventId
 function GuildHistoryEventProcessor:SetBeforeEventId(eventId)
-    if self.running then return false end
+    if self.running then
+        logger:Warn("Tried to call SetBeforeEventId while processor is running")
+        return false
+    end
+
     self.beforeEventId = eventId
     return true
 end
 
 -- if no eventId has been specified, the nextEventCallback will only receive events up to (including) the specified timestamp
 function GuildHistoryEventProcessor:SetBeforeEventTime(eventTime)
-    if self.running then return false end
+    if self.running then
+        logger:Warn("Tried to call SetBeforeEventTime while processor is running")
+        return false
+    end
+
     self.beforeEventTime = eventTime
     return true
 end
@@ -136,7 +152,11 @@ end
 -- convenience method to specify a range which includes the startTime and excludes the endTime
 -- which is usually more desirable than the behaviour of SetAfterEventTime and SetBeforeEventTime which excludes the start time and includes the end time
 function GuildHistoryEventProcessor:SetTimeFrame(startTime, endTime)
-    if self.running then return false end
+    if self.running then
+        logger:Warn("Tried to call SetTimeFrame while processor is running")
+        return false
+    end
+
     self.afterEventTime = startTime - 1
     self.beforeEventTime = endTime - 1
     return true
@@ -145,7 +165,11 @@ end
 -- set a callback which is passed stored and received events in the correct historic order (sorted by eventId)
 -- the callback will be handed an event object (see guildhistory_data.lua) which must not be stored or modified
 function GuildHistoryEventProcessor:SetNextEventCallback(callback)
-    if self.running then return false end
+    if self.running then
+        logger:Warn("Tried to call SetNextEventCallback while processor is running")
+        return false
+    end
+
     self.nextEventCallback = callback
     return true
 end
@@ -153,7 +177,11 @@ end
 -- set a callback which is passed events that had not previously been stored (sorted by eventId)
 -- see SetNextEventCallback for information about the callback
 function GuildHistoryEventProcessor:SetMissedEventCallback(callback)
-    if self.running then return false end
+    if self.running then
+        logger:Warn("Tried to call SetMissedEventCallback while processor is running")
+        return false
+    end
+
     self.missedEventCallback = callback
     return true
 end
@@ -161,7 +189,11 @@ end
 -- convenience method to set both callback types at once
 -- see SetNextEventCallback for information about the callback
 function GuildHistoryEventProcessor:SetEventCallback(callback)
-    if self.running then return false end
+    if self.running then
+        logger:Warn("Tried to call SetEventCallback while processor is running")
+        return false
+    end
+
     self.nextEventCallback = callback
     self.missedEventCallback = callback
     return true
@@ -170,28 +202,44 @@ end
 -- set a callback which is called after the listener has stopped
 -- receives a reason (see lib.StopReason) why the processor has stopped
 function GuildHistoryEventProcessor:SetOnStopCallback(callback)
-    if self.running then return false end
+    if self.running then
+        logger:Warn("Tried to call SetOnStopCallback while processor is running")
+        return false
+    end
+
     self.onStopCallback = callback
     return true
 end
 
 -- sets if the processor should stop instead of listening for future events when it runs out of events before encountering the end criteria
 function GuildHistoryEventProcessor:SetStopOnLastCachedEvent(shouldStop)
-    if self.running then return false end
+    if self.running then
+        logger:Warn("Tried to call SetStopOnLastCachedEvent while processor is running")
+        return false
+    end
+
     self.stopOnLastCachedEvent = shouldStop
     return true
 end
 
 -- set a callback which is called when the processor starts waiting for future events
 function GuildHistoryEventProcessor:SetRegisteredForFutureEventsCallback(callback)
-    if self.running then return false end
+    if self.running then
+        logger:Warn("Tried to call SetRegisteredForFutureEventsCallback while processor is running")
+        return false
+    end
+
     self.futureEventsCallback = callback
     return true
 end
 
 -- sets if the processor should forward missed events outside of the specified iteration range to the missedEventCallback
 function GuildHistoryEventProcessor:SetReceiveMissedEventsOutsideIterationRange(shouldReceive)
-    if self.running then return false end
+    if self.running then
+        logger:Warn("Tried to call SetReceiveMissedEventsOutsideIterationRange while processor is running")
+        return false
+    end
+
     self.receiveMissedEventsOutsideIterationRange = shouldReceive
     return true
 end
