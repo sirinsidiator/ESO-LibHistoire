@@ -187,19 +187,19 @@ end
 -- number - the processing speed in events per second (rolling average over 5 seconds)
 -- number - the estimated time in seconds it takes to process the remaining events or -1 if it cannot be estimated
 function GuildHistoryLegacyEventListener:GetPendingEventMetrics()
-    local numListeners = #self.processors
-    if not self.running or numListeners == 0 then return 0, -1, -1 end
+    local numProcessors = #self.processors
+    if not self.running or numProcessors == 0 then return 0, -1, -1 end
 
-    if self.iterationCompletedCount < numListeners then
-        if numListeners == 1 then
+    if self.iterationCompletedCount < numProcessors then
+        if numProcessors == 1 then
             return self.processors[1]:GetPendingEventMetrics()
         end
 
         local count = 0
         local speed = 0
         local time = 0
-        for _, listener in ipairs(self.processors) do
-            local c, s, t = listener:GetPendingEventMetrics()
+        for _, processor in ipairs(self.processors) do
+            local c, s, t = processor:GetPendingEventMetrics()
             count = count + c
             if s > 0 then
                 speed = speed + s
@@ -208,8 +208,8 @@ function GuildHistoryLegacyEventListener:GetPendingEventMetrics()
                 time = time + t
             end
         end
-        speed = speed / numListeners
-        time = time / numListeners
+        speed = speed / numProcessors
+        time = time / numProcessors
 
         return count, speed, time
     else
@@ -226,8 +226,8 @@ function GuildHistoryLegacyEventListener:SetAfterEventId(eventId)
     local id = internal.ConvertLegacyId64ToEventId(eventId)
     if not id then return false end
 
-    for _, listener in ipairs(self.processors) do
-        listener:SetAfterEventId(id)
+    for _, processor in ipairs(self.processors) do
+        processor:SetAfterEventId(id)
     end
     self.afterEventId = id
     return true
@@ -237,8 +237,8 @@ end
 function GuildHistoryLegacyEventListener:SetAfterEventTime(eventTime)
     if self.running then return false end
 
-    for _, listener in ipairs(self.processors) do
-        listener:SetAfterEventTime(eventTime)
+    for _, processor in ipairs(self.processors) do
+        processor:SetAfterEventTime(eventTime)
     end
     self.afterEventTime = eventTime
     return true
@@ -251,8 +251,8 @@ function GuildHistoryLegacyEventListener:SetBeforeEventId(eventId)
     local id = internal.ConvertLegacyId64ToEventId(eventId)
     if not id then return false end
 
-    for _, listener in ipairs(self.processors) do
-        listener:SetBeforeEventId(id)
+    for _, processor in ipairs(self.processors) do
+        processor:SetBeforeEventId(id)
     end
     self.beforeEventId = id
     return true
@@ -262,8 +262,8 @@ end
 function GuildHistoryLegacyEventListener:SetBeforeEventTime(eventTime)
     if self.running then return false end
 
-    for _, listener in ipairs(self.processors) do
-        listener:SetBeforeEventTime(eventTime)
+    for _, processor in ipairs(self.processors) do
+        processor:SetBeforeEventTime(eventTime + 1)
     end
     self.beforeEventTime = eventTime
     return true
@@ -274,8 +274,9 @@ end
 function GuildHistoryLegacyEventListener:SetTimeFrame(startTime, endTime)
     if self.running then return false end
 
-    for _, listener in ipairs(self.processors) do
-        listener:SetTimeFrame(startTime, endTime)
+    for _, processor in ipairs(self.processors) do
+        processor:SetAfterEventTime(startTime - 1)
+        processor:SetBeforeEventTime(endTime)
     end
     return true
 end
@@ -290,8 +291,8 @@ function GuildHistoryLegacyEventListener:SetNextEventCallback(callback)
     if self.running then return false end
 
     self.nextEventCallback = callback
-    for _, listener in ipairs(self.processors) do
-        listener:SetNextEventCallback(self.onEvent)
+    for _, processor in ipairs(self.processors) do
+        processor:SetNextEventCallback(self.onEvent)
     end
     return true
 end
@@ -302,8 +303,8 @@ function GuildHistoryLegacyEventListener:SetMissedEventCallback(callback)
     if self.running then return false end
 
     self.missedEventCallback = callback
-    for _, listener in ipairs(self.processors) do
-        listener:SetMissedEventCallback(self.onEvent)
+    for _, processor in ipairs(self.processors) do
+        processor:SetMissedEventCallback(self.onEvent)
     end
     return true
 end
