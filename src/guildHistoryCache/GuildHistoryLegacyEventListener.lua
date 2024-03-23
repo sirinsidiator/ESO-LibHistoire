@@ -24,7 +24,7 @@ function GuildHistoryLegacyEventListener:Initialize(guildId, legacyCategory, cac
 
     for _, cache in ipairs(caches) do
         local processor = internal.class.GuildHistoryEventProcessor:New(cache)
-        processor:SetStopOnLastEvent(true)
+        processor:SetStopOnLastCachedEvent(true)
         processor:SetOnStopCallback(function(reason)
             if reason == internal.STOP_REASON_ITERATION_COMPLETED or reason == internal.STOP_REASON_LAST_CACHED_EVENT_REACHED then
                 if reason == internal.STOP_REASON_ITERATION_COMPLETED then
@@ -330,9 +330,6 @@ function GuildHistoryLegacyEventListener:SetStopOnLastEvent(shouldStop)
     if self.running then return false end
 
     self.shouldStop = shouldStop
-    for _, listener in ipairs(self.processors) do
-        listener:SetStopOnLastEvent(shouldStop)
-    end
     return true
 end
 

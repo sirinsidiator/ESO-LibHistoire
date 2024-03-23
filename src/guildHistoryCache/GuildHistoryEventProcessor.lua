@@ -56,7 +56,7 @@ function GuildHistoryEventProcessor:Initialize(categoryCache, addonName)
     self.nextEventCallback = nil
     self.missedEventCallback = nil
     self.onStopCallback = nil
-    self.stopOnLastEvent = false
+    self.stopOnLastCachedEvent = false
 
     self.nextEventProcessor = function(guildId, category, event)
         if not categoryCache:IsFor(guildId, category) then return end
@@ -166,9 +166,9 @@ function GuildHistoryEventProcessor:SetOnStopCallback(callback)
 end
 
 -- sets if the processor should stop instead of listening for future events when it runs out of events before encountering the end criteria
-function GuildHistoryEventProcessor:SetStopOnLastEvent(shouldStop)
+function GuildHistoryEventProcessor:SetStopOnLastCachedEvent(shouldStop)
     if self.running then return false end
-    self.stopOnLastEvent = shouldStop
+    self.stopOnLastCachedEvent = shouldStop
     return true
 end
 
@@ -187,7 +187,7 @@ function GuildHistoryEventProcessor:Start()
         self.request = internal.class.GuildHistoryProcessingRequest:New(self, HandleEvent, function()
             self.categoryCache:RemoveProcessingRequest(self.request)
             self.request = nil
-            if self.stopOnLastEvent then
+            if self.stopOnLastCachedEvent then
                 logger:Verbose("stopOnLastEvent")
                 self:Stop(internal.STOP_REASON_LAST_CACHED_EVENT_REACHED)
             else
