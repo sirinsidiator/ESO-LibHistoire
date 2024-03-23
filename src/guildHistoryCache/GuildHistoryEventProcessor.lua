@@ -138,7 +138,7 @@ function GuildHistoryEventProcessor:SetBeforeEventId(eventId)
     return true
 end
 
--- if no eventId has been specified, the nextEventCallback will only receive events up to (including) the specified timestamp
+-- if no eventId has been specified, the nextEventCallback will only receive events before the specified timestamp
 function GuildHistoryEventProcessor:SetBeforeEventTime(eventTime)
     if self.running then
         logger:Warn("Tried to call SetBeforeEventTime while processor is running")
@@ -146,19 +146,6 @@ function GuildHistoryEventProcessor:SetBeforeEventTime(eventTime)
     end
 
     self.beforeEventTime = eventTime
-    return true
-end
-
--- convenience method to specify a range which includes the startTime and excludes the endTime
--- which is usually more desirable than the behaviour of SetAfterEventTime and SetBeforeEventTime which excludes the start time and includes the end time
-function GuildHistoryEventProcessor:SetTimeFrame(startTime, endTime)
-    if self.running then
-        logger:Warn("Tried to call SetTimeFrame while processor is running")
-        return false
-    end
-
-    self.afterEventTime = startTime - 1
-    self.beforeEventTime = endTime - 1
     return true
 end
 
@@ -273,6 +260,44 @@ function GuildHistoryEventProcessor:Start()
     end
     self.running = true
     return true
+end
+
+-- convenience method to specify a time range and directly start the processor
+-- this range will include the start time and exclude the end time
+-- optionally takes the nextEvent callback in case it has not been set before
+function GuildHistoryEventProcessor:StartIteratingTimeRange(startTime, endTime, callback)
+    if self.running then return false end
+
+    self.afterEventTime = startTime - 1
+    self.beforeEventTime = endTime
+    if callback ~= nil then
+        self.nextEventCallback = callback
+    end
+
+    return self:Start()
+end
+
+-- convenience method to specify an id range and directly start the processor
+-- this range will include both the start id and the end id
+-- optionally takes the nextEvent callback in case it has not been set before
+function GuildHistoryEventProcessor:StartIteratingIdRange(startId, endId, callback)
+    if self.running then return false end
+
+    self.afterEventId = startId - 1
+    self.beforeEventId = endId + 1
+    if callback ~= nil then
+        self.nextEventCallback = callback
+    end
+    return self:Start()
+end
+
+-- convenience method to start the processor with a callback and optionally only receive events after the specified eventId
+function GuildHistoryEventProcessor:StartStreaming(callback, fromId)
+    if self.running then return false end
+
+    self.nextEventCallback = callback
+    self.afterEventId = fromId
+    return self:Start()
 end
 
 -- stops iterating over stored events and unregisters the processor for future events
