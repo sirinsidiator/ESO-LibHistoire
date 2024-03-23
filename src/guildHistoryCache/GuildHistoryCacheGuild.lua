@@ -160,3 +160,41 @@ end
 function GuildHistoryCacheGuild:IsAggregated()
     return true
 end
+
+function GuildHistoryCacheGuild:GetDebugInfo()
+    local debugInfo = {
+        guildId = self.guildId,
+        name = GetGuildName(self.guildId),
+        hasLinked = self:HasLinked(),
+        hasLinkedRecently = self:HasLinkedRecently(),
+        isProcessing = self:IsProcessing(),
+        hasPendingRequests = self:HasPendingRequests(),
+        numLoadedManagedEvents = self:GetNumLoadedManagedEvents(),
+    }
+
+    local oldestId, oldestTime = self:GetOldestManagedEventInfo()
+    if oldestId then
+        debugInfo.oldestManagedEvent = {
+            id = oldestId,
+            time = oldestTime,
+        }
+    end
+
+    local newestId, newestTime = self:GetNewestManagedEventInfo()
+    if newestId then
+        debugInfo.newestManagedEvent = {
+            id = newestId,
+            time = newestTime,
+        }
+    end
+
+    debugInfo.categories = {}
+    for eventCategory = GUILD_HISTORY_EVENT_CATEGORY_ITERATION_BEGIN, GUILD_HISTORY_EVENT_CATEGORY_ITERATION_END do
+        local cache = self.cache[eventCategory]
+        if cache then
+            debugInfo.categories[eventCategory] = cache:GetDebugInfo()
+        end
+    end
+
+    return debugInfo
+end

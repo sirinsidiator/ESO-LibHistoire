@@ -130,3 +130,16 @@ function GuildHistoryServerRequest:GetPriority()
     end
     return priority
 end
+
+function GuildHistoryServerRequest:GetDebugInfo()
+    return {
+        id = self:GetRequestId(),
+        oldestTime = self.oldestTime,
+        newestTime = self.newestTime,
+        valid = self:IsValid(),
+        complete = self:IsComplete(),
+        queued = self:IsRequestQueued(),
+        shouldContinue = self:ShouldContinue(),
+        priority = self:GetPriority(),
+    }
+end

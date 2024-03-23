@@ -120,3 +120,21 @@ end
 function GuildHistoryCache:Shutdown()
     self.requestManager:Shutdown()
 end
+
+function GuildHistoryCache:GetDebugInfo()
+    local debugInfo = {}
+    debugInfo.hasLinkedAllCaches = self:HasLinkedAllCaches()
+    debugInfo.hasLinkedAllCachesRecently = self:HasLinkedAllCachesRecently()
+    debugInfo.isProcessing = self:IsProcessing()
+    debugInfo.guildCount = GetNumGuilds()
+    debugInfo.guildCacheCount = NonContiguousCount(self.cache)
+
+    debugInfo.activeGuilds = {}
+    self:ForEachActiveGuild(function(guildCache)
+        debugInfo.activeGuilds[#debugInfo.activeGuilds + 1] = guildCache:GetDebugInfo()
+    end)
+
+    debugInfo.requestManager = self.requestManager:GetDebugInfo()
+
+    return debugInfo
+end

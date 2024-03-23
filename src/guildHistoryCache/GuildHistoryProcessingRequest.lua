@@ -127,3 +127,32 @@ function GuildHistoryProcessingRequest:GetPendingEventMetrics()
     local speed, timeLeft = self.performanceTracker:GetProcessingSpeedAndEstimatedTimeLeft(count)
     return count, speed, timeLeft
 end
+
+function GuildHistoryProcessingRequest:GetDebugInfo()
+    local debugInfo = {
+        pendingEventMetrics = { self:GetPendingEventMetrics() },
+        hasAsyncTask = self.task ~= nil,
+    }
+
+    local currentIndex = self.currentIndex
+    if currentIndex then
+        local currentEventTime, currentEventId = self.processor.categoryCache:GetEventInfo(currentIndex)
+        debugInfo.currentEvent = {
+            id = currentEventId,
+            time = currentEventTime,
+            index = currentIndex,
+        }
+    end
+
+    local endIndex = self.endIndex
+    if endIndex then
+        local endEventTime, endEventId = self.processor.categoryCache:GetEventInfo(endIndex)
+        debugInfo.endEvent = {
+            id = endEventId,
+            time = endEventTime,
+            index = endIndex,
+        }
+    end
+
+    return debugInfo
+end

@@ -159,6 +159,7 @@ function GuildHistoryStatusWindow:InitializeButtons()
         })
 
         AddCustomMenuItem("Hide Window", function() self:Disable() end)
+        AddCustomMenuItem("Show Debug Info", function() self:ShowDebugInfo() end)
 
         ShowMenu(optionsButton)
     end)
@@ -515,4 +516,54 @@ end
 function GuildHistoryStatusWindow:SetZoomMode(zoomMode)
     self.saveData.zoomMode = zoomMode
     internal:FireCallbacks(internal.callback.ZOOM_MODE_CHANGED, zoomMode)
+end
+
+local function ToJSON(value, level)
+    local output = {}
+    local indent = string.rep("    ", level)
+
+    if type(value) == "table" then
+        local keys = {}
+        for k, v in pairs(value) do
+            keys[#keys + 1] = k
+        end
+        table.sort(keys)
+
+        local fields = {}
+        for i = 1, #keys do
+            local k = keys[i]
+            fields[#fields + 1] = string.format("%s    \"%s\": %s", indent, k, ToJSON(value[k], level + 1))
+        end
+
+        if #fields == 0 then
+            output[#output + 1] = "{}"
+        else
+            output[#output + 1] = "{"
+            output[#output + 1] = table.concat(fields, ",\n")
+            output[#output + 1] = indent .. "}"
+        end
+    elseif type(value) == "string" then
+        output[#output + 1] = string.format("\"%s\"", value)
+    else
+        output[#output + 1] = tostring(value)
+    end
+
+    return table.concat(output, "\n")
+end
+
+function GuildHistoryStatusWindow:ShowDebugInfo()
+    local debugInfo = internal.historyCache:GetDebugInfo()
+    debugInfo.zoomMode = self:GetZoomMode()
+    debugInfo.version = "v@FULL_VERSION_NUMBER@"
+    debugInfo.created = GetTimeStamp()
+    debugInfo = ToJSON(debugInfo, 0)
+    logger:Info(debugInfo)
+
+    ZO_ERROR_FRAME.suppressErrorDialog = false
+    ZO_ERROR_FRAME:HideAllErrors()
+    ZO_ERROR_FRAME:OnUIError(debugInfo)
+    ZO_ERROR_FRAME.titleControl:SetText("LibHistoire Debug Info")
+    ZO_ERROR_FRAME.suppressKeybind:SetHidden(true)
+    ZO_ERROR_FRAME.copyErrorCodeButton:SetHidden(true)
+    ZO_ERROR_FRAME.copyKeybind:SetHidden(false)
 end

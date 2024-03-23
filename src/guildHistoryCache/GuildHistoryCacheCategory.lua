@@ -1019,3 +1019,105 @@ end
 function GuildHistoryCacheCategory:IsAggregated()
     return false
 end
+
+function GuildHistoryCacheCategory:GetDebugInfo()
+    local guildId, category = self.guildId, self.category
+    local debugInfo = {}
+    debugInfo.key = self.key
+
+    debugInfo.saveData = self.saveData
+    debugInfo.requestMode = self:GetRequestMode()
+    debugInfo.isAutoRequesting = self:IsAutoRequesting()
+    debugInfo.unprocessedEventsStartTime = self:GetUnprocessedEventsStartTime()
+    debugInfo.numCachedEvents = self.categoryData:GetNumEvents()
+    debugInfo.numLoadedManagedEvents = self:GetNumLoadedManagedEvents()
+    debugInfo.numUnlinkedEvents = self:GetNumUnlinkedEvents()
+
+    local oldestManagedEventId, oldestManagedEventTime = self:GetOldestManagedEventInfo()
+    local oldestManagedEventIndex = GetGuildHistoryEventIndex(guildId, category, oldestManagedEventId)
+    debugInfo.oldestManagedEvent = {
+        id = oldestManagedEventId,
+        time = oldestManagedEventTime,
+        index = oldestManagedEventIndex
+    }
+
+    local newestManagedEventId, newestManagedEventTime = self:GetNewestManagedEventInfo()
+    local newestManagedEventIndex = GetGuildHistoryEventIndex(guildId, category, newestManagedEventId)
+    debugInfo.newestManagedEvent = {
+        id = newestManagedEventId,
+        time = newestManagedEventTime,
+        index = newestManagedEventIndex
+    }
+
+    local oldestGaplessEventIndex = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(guildId, category)
+    local oldestGaplessEventTime, oldestGaplessEventId = GetGuildHistoryEventBasicInfo(guildId, category,
+        oldestGaplessEventIndex)
+    debugInfo.oldestGaplessEvent = {
+        id = oldestGaplessEventId,
+        time = oldestGaplessEventTime,
+        index = oldestGaplessEventIndex
+    }
+
+    debugInfo.numRanges = self:GetNumRanges()
+    debugInfo.ranges = {}
+    for i = 1, debugInfo.numRanges do
+        local newestTime, oldestTime, newestEventId, oldestEventId = self:GetRangeInfo(i)
+        local newestIndex = GetGuildHistoryEventIndex(guildId, category, newestEventId)
+        local oldestIndex = GetGuildHistoryEventIndex(guildId, category, oldestEventId)
+        debugInfo.ranges[i] = {
+            numEvents = oldestIndex - newestIndex + 1,
+            oldestEvent = {
+                id = oldestEventId,
+                time = oldestTime,
+                index = oldestIndex
+            },
+            newestEvent = {
+                id = newestEventId,
+                time = newestTime,
+                index = newestIndex
+            }
+        }
+    end
+
+    debugInfo.numRawRanges = GetNumGuildHistoryEventRanges(guildId, category)
+    debugInfo.rawRanges = {}
+    for i = 1, debugInfo.numRawRanges do
+        local newestTime, oldestTime, newestEventId, oldestEventId = GetGuildHistoryEventRangeInfo(guildId, category, i)
+        local newestIndex = GetGuildHistoryEventIndex(guildId, category, newestEventId)
+        local oldestIndex = GetGuildHistoryEventIndex(guildId, category, oldestEventId)
+
+        debugInfo.rawRanges[i] = {
+            numEvents = oldestIndex and newestIndex and oldestIndex - newestIndex + 1 or -1,
+            oldestEvent = {
+                id = oldestEventId,
+                time = oldestTime,
+                index = oldestIndex
+            },
+            newestEvent = {
+                id = newestEventId,
+                time = newestTime,
+                index = newestIndex
+            }
+        }
+    end
+
+    if self.request then
+        debugInfo.request = self.request:GetDebugInfo()
+    end
+
+    local processingStartTime, processingEndTime, processingCurrentTime = self:GetProcessingTimeRange()
+    debugInfo.processing = {
+        isProcessing = self:IsProcessing(),
+        startTime = processingStartTime,
+        currentTime = processingCurrentTime,
+        endTime = processingEndTime,
+        task = self.processingTask and self.processingTask:GetDebugInfo()
+    }
+
+    debugInfo.processingQueue = {}
+    for i = 1, #self.processingQueue do
+        debugInfo.processingQueue[i] = self.processingQueue[i]:GetDebugInfo()
+    end
+
+    return debugInfo
+end

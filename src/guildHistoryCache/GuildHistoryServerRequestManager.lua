@@ -192,3 +192,25 @@ function GuildHistoryServerRequestManager:Shutdown()
     ZO_ClearTable(requestQueue)
     ZO_ClearTable(cleanUpQueue)
 end
+
+function GuildHistoryServerRequestManager:GetDebugInfo()
+    local debugInfo = {}
+    debugInfo.timeSinceLastRequest = self.lastRequestSendTime and GetTimeStamp() - self.lastRequestSendTime or nil
+
+    local requests = self.requestQueue
+    debugInfo.numRequests = #requests
+    debugInfo.requests = {}
+    table.sort(requests, function(a, b)
+        return a:GetPriority() < b:GetPriority()
+    end)
+    for i = #requests, 1, -1 do
+        debugInfo.requests[#debugInfo.requests + 1] = requests[i]:GetDebugInfo()
+    end
+
+    debugInfo.numCleanUp = #self.cleanUpQueue
+    debugInfo.cleanUp = {}
+    for i = 1, #self.cleanUpQueue do
+        debugInfo.cleanUp[i] = self.cleanUpQueue[i]:GetDebugInfo()
+    end
+    return debugInfo
+end
