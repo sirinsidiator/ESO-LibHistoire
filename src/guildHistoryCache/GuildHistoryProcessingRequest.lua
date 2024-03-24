@@ -22,6 +22,7 @@ function GuildHistoryProcessingRequest:StartProcessing(endId)
         string.format("Processor %s should be running (%s)", self.processor:GetKey(), self.processor.addonName or "-"))
     self:StopProcessing()
 
+    local hasProcessedEvents = false
     local processor = self.processor
     local startId = processor.currentEventId
     if not startId then
@@ -31,7 +32,7 @@ function GuildHistoryProcessingRequest:StartProcessing(endId)
 
     if not startId then
         logger:Debug("still no startId - are we done?")
-        self:EnsureIterationIsComplete()
+        self:EnsureIterationIsComplete(hasProcessedEvents)
         return
     end
 
@@ -39,7 +40,7 @@ function GuildHistoryProcessingRequest:StartProcessing(endId)
 
     if not endId or startId > endId then
         logger:Debug("startId is greater than endId - are we done?")
-        self:EnsureIterationIsComplete()
+        self:EnsureIterationIsComplete(hasProcessedEvents)
         return
     end
 
@@ -59,10 +60,11 @@ function GuildHistoryProcessingRequest:StartProcessing(endId)
             return
         end
         self.onEvent(processor, event)
+        hasProcessedEvents = true
     end):Then(function()
-        logger:Debug("processing complete", processor:GetKey())
+        logger:Debug("processing complete", processor:GetKey(), self.currentIndex, startIndex, endIndex)
         self.task = nil
-        self:EnsureIterationIsComplete()
+        self:EnsureIterationIsComplete(hasProcessedEvents)
     end)
 end
 
@@ -111,15 +113,17 @@ function GuildHistoryProcessingRequest:FindEndId()
     return endId
 end
 
-function GuildHistoryProcessingRequest:EnsureIterationIsComplete()
+function GuildHistoryProcessingRequest:EnsureIterationIsComplete(hasProcessedEvents)
     local endId = self:FindEndId()
     local processor = self.processor
     if not processor.currentEventId or processor.currentEventId == endId then
         logger:Debug("iterated all stored events - register for callback")
         self.onCompleted(processor)
-    else
+    elseif hasProcessedEvents then
         logger:Debug("has not reached the end yet - go for another round")
         self:StartProcessing(endId)
+    else
+        error("no events processed and not at the end - something went wrong")
     end
 end
 
