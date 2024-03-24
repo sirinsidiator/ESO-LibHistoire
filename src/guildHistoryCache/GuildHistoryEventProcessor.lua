@@ -240,7 +240,9 @@ function GuildHistoryEventProcessor:Start()
             self.categoryCache:RemoveProcessingRequest(self.request)
             self.request = nil
             if self.stopOnLastCachedEvent then
-                logger:Verbose("stopOnLastEvent")
+                logger:Verbose("stopOnLastEvent", self:GetKey(), self.addonName)
+                assert(self.running,
+                    string.format("Processor %s should be running (%s)", self:GetKey(), self.addonName or "-"))
                 self:Stop(internal.STOP_REASON_LAST_CACHED_EVENT_REACHED)
             else
                 logger:Verbose("RegisterForFutureEvents")
@@ -305,7 +307,7 @@ function GuildHistoryEventProcessor:Stop(reason)
     if not self.running then return false end
 
     reason = reason or internal.STOP_REASON_MANUAL_STOP
-    logger:Warn("Stop processor", self:GetKey(), reason)
+    logger:Info("Stop processor", self:GetKey(), reason)
     if self.request then
         self.categoryCache:RemoveProcessingRequest(self.request)
         self.request = nil

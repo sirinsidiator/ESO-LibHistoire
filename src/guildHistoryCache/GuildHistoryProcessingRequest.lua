@@ -18,6 +18,8 @@ end
 
 function GuildHistoryProcessingRequest:StartProcessing(endId)
     logger:Debug("start processing", self.processor:GetKey())
+    assert(self.processor:IsRunning(),
+        string.format("Processor %s should be running (%s)", self.processor:GetKey(), self.processor.addonName or "-"))
     self:StopProcessing()
 
     local processor = self.processor

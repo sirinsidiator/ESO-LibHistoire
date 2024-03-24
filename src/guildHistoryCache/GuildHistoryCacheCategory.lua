@@ -408,7 +408,7 @@ end
 
 function GuildHistoryCacheCategory:QueueProcessingRequest(request)
     self.processingQueue[#self.processingQueue + 1] = request
-    self:ProcessNextRequest()
+    zo_callLater(function() self:ProcessNextRequest() end, 0)
 end
 
 function GuildHistoryCacheCategory:RemoveProcessingRequest(request)
@@ -432,6 +432,7 @@ function GuildHistoryCacheCategory:ProcessNextRequest()
     if self:IsProcessing() then return end
     local request = self.processingQueue[1]
     if request then
+        self.processingRequest = request
         request:StartProcessing()
     end
 end
