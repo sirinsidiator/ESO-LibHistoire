@@ -25,6 +25,8 @@ lib.callback = {
     -- fired when a new managed range has been found
     -- this happens when the managed range is established initially or after the managed range was lost
     MANAGED_RANGE_FOUND = internal.callback.MANAGED_RANGE_FOUND,
+    -- fired when a category has linked the managed range to present events
+    CATEGORY_LINKED = internal.callback.CATEGORY_LINKED,
 }
 
 -- Register to a callback fired by the library. Usage is the same as with CALLBACK_MANAGER:RegisterCallback. You can find the list of exposed callbacks in api.lua

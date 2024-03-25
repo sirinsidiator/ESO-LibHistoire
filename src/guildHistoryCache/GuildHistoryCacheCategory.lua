@@ -36,6 +36,7 @@ function GuildHistoryCacheCategory:Initialize(adapter, requestManager, categoryD
     self.rangeInfo = {}
     self.rangeInfoDirty = true
     self.progressDirty = true
+    self.wasLinked = false
     self.processingQueue = {}
     self.processors = {}
     self:RefreshManagedRangeInfo()
@@ -74,6 +75,8 @@ function GuildHistoryCacheCategory:RefreshManagedRangeInfo()
         self:Reset()
         return
     end
+
+    self:CheckHasLinked()
 end
 
 function GuildHistoryCacheCategory:RegisterProcessor(processor)
@@ -376,6 +379,7 @@ function GuildHistoryCacheCategory:Reset()
 
     self.rangeInfoDirty = true
     self.progressDirty = true
+    self.wasLinked = false
 
     self:SetNewestManagedEventInfo()
     self:SetOldestManagedEventInfo()
@@ -401,7 +405,7 @@ function GuildHistoryCacheCategory:SetupFirstManagedEventId()
     internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, guildId, category, event)
     self:SetOldestManagedEventInfo(eventId, eventTime)
     self:SetNewestManagedEventInfo(eventId, eventTime)
-    self:UpdateLastLinkedTime()
+    self:CheckHasLinked()
     internal:FireCallbacks(internal.callback.MANAGED_RANGE_FOUND, guildId, category)
     return eventId
 end
@@ -501,7 +505,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
         end):Then(function()
             self.progressDirty = true
             logger:Debug("Finished processing unlinked events", guildId, category)
-            self:UpdateLastLinkedTime()
+            self:CheckHasLinked()
             internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENTS_FINISHED, guildId, category)
             self.processingCurrentTime = nil
             if numMissedEvents > 0 then
@@ -542,7 +546,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
             self:ProcessNextRequest()
         end)
     else
-        self:UpdateLastLinkedTime()
+        self:CheckHasLinked()
     end
 end
 
@@ -585,10 +589,14 @@ function GuildHistoryCacheCategory:HasLinked()
     return false
 end
 
-function GuildHistoryCacheCategory:UpdateLastLinkedTime()
+function GuildHistoryCacheCategory:CheckHasLinked()
     if self:HasLinked() then
-        logger:Debug("Update last linked time for", self.key)
+        logger:Debug("Category is linked", self.key)
         self.saveData.lastLinkedTime = GetTimeStamp()
+        if not self.wasLinked then
+            self.wasLinked = true
+            internal:FireCallbacks(internal.callback.CATEGORY_LINKED, self.guildId, self.category)
+        end
     end
 end
 
