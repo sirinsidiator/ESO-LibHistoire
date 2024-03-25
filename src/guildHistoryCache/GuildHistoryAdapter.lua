@@ -112,15 +112,50 @@ function GuildHistoryAdapter:InitializeDeferred(history, cache)
     end
 end
 
+do
+    local PERMANENTLY_COMPLETED_REQUEST = { IsComplete = function() return true end }
+
+    local originalGetRequestForSelection, originalUpdateKeybinds
+
+    local function fakeGetRequestForSelection(self)
+        return setmetatable(PERMANENTLY_COMPLETED_REQUEST, { __index = originalGetRequestForSelection(self) })
+    end
+
+    local function CleanUp()
+        ZO_GuildHistory_Shared.GetRequestForSelection = originalGetRequestForSelection
+        ZO_GuildHistory_Shared.UpdateKeybinds = originalUpdateKeybinds
+    end
+
+    local function fakeUpdateKeybinds(self, ...)
+        CleanUp()
+        return self:UpdateKeybinds(...)
+    end
+
+    local function SuppressNextIngameRequest()
+        if ZO_GuildHistory_Shared.GetRequestForSelection == fakeGetRequestForSelection then return end
+        originalGetRequestForSelection = ZO_GuildHistory_Shared.GetRequestForSelection
+        originalUpdateKeybinds = ZO_GuildHistory_Shared.UpdateKeybinds
+        ZO_GuildHistory_Shared.GetRequestForSelection = fakeGetRequestForSelection
+        ZO_GuildHistory_Shared.UpdateKeybinds = fakeUpdateKeybinds
+    end
+
+    GuildHistoryAdapter.SuppressNextIngameRequest = SuppressNextIngameRequest
+    GuildHistoryAdapter.SuppressNextIngameRequestCleanUp = CleanUp
+end
+
 function GuildHistoryAdapter:SelectGuildByIndex(guildIndex)
-    -- GUILD_SELECTOR:SelectGuildByIndex(guildIndex)
+    self:SuppressNextIngameRequest()
+    GUILD_SELECTOR:SelectGuildByIndex(guildIndex)
+    self:SuppressNextIngameRequestCleanUp()
 end
 
 function GuildHistoryAdapter:SelectCategory(category)
-    -- local node = self.nodesByCategory[category]
-    -- if node then
-    --     self.history.categoryTree:SelectNode(node)
-    -- end
+    local node = self.nodesByCategory[category]
+    if node then
+        self:SuppressNextIngameRequest()
+        self.history.categoryTree:SelectNode(node)
+        self:SuppressNextIngameRequestCleanUp()
+    end
 end
 
 function GuildHistoryAdapter:GetSelectedCategoryCache()
