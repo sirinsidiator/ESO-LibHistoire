@@ -459,7 +459,7 @@ function GuildHistoryStatusWindow:LoadPosition()
     local control, saveData = self.control, self.saveData
     control:ClearAnchors()
     if not saveData.x or not saveData.y then
-        control:SetAnchor(BOTTOMRIGHT, ZO_GuildHistory, BOTTOMLEFT, -30, 30)
+        control:SetAnchor(BOTTOMRIGHT, ZO_GuildHistory_Keyboard_TL, BOTTOMLEFT, -30, 30)
     else
         control:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, saveData.x, saveData.y)
     end
