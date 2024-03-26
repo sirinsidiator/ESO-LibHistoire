@@ -6,6 +6,7 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
+--- @class GuildHistoryLegacyEventListener
 local GuildHistoryLegacyEventListener = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryLegacyEventListener = GuildHistoryLegacyEventListener
 

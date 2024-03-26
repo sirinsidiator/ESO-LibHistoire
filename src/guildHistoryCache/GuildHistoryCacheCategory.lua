@@ -385,7 +385,7 @@ function GuildHistoryCacheCategory:Reset()
     self:SetOldestManagedEventInfo()
 
     for processor in pairs(self.processors) do
-        processor:Stop(internal.STOP_REASON_MANAGED_RANGE_LOST)
+        processor:StopInternal(internal.STOP_REASON_MANAGED_RANGE_LOST)
     end
 
     zo_callLater(function() self:SetupFirstManagedEventId() end, 0)
