@@ -30,37 +30,53 @@ function lib:OnReady(callback)
     end
 end
 
---- @enum Callbacks The exposed callbacks
+--- @enum Callbacks
 local Callbacks = {
-    --- @type string Fired when the library has finished setting everything up.
+    --- Fired when the library has finished setting everything up.
     --- Any calls to the api (aside of registering for the event) should happen after this has fired.
+    --- It will receive the LibHistoire object as an argument.
+    ---
+    --- Keep in mind that this may fire before EVENT_ADD_ON_LOADED, so make sure to check if the library is ready before listening to the callback.
+    --- @see LibHistoire.IsReady
+    --- @type string
     INITIALIZED = internal.callback.INITIALIZED,
 
-    --- @type string deprecated - rescan no longer exists.
-    HISTORY_RESCAN_STARTED = "deprecated",
+    --- @deprecated Rescan no longer exists.
+    --- @type string
+    HISTORY_RESCAN_STARTED = internal.callback.DEPRECATED,
 
-    --- @type string deprecated - rescan no longer exists.
-    HISTORY_RESCAN_ENDED = "deprecated",
+    --- @deprecated Rescan no longer exists.
+    --- @type string
+    HISTORY_RESCAN_ENDED = internal.callback.DEPRECATED,
 
+    --- @deprecated Use MANAGED_RANGE_LOST instead.
     --- @see Callbacks.MANAGED_RANGE_LOST
-    --- @type string deprecated - use MANAGED_RANGE_LOST instead.
+    --- @type string
     LINKED_RANGE_LOST = internal.callback.MANAGED_RANGE_LOST,
 
+    --- @deprecated Use MANAGED_RANGE_FOUND instead.
     --- @see Callbacks.MANAGED_RANGE_FOUND
-    --- @type string deprecated - use MANAGED_RANGE_FOUND instead.
+    --- @type string
     LINKED_RANGE_FOUND = internal.callback.MANAGED_RANGE_FOUND,
 
-    --- @type string Fired when the managed range has been lost. The guildId and category are passed as arguments.
+    --- Fired when the managed range has been lost. The guildId and category are passed as arguments.
     --- This could be due to the cache being deleted, the library detecting inconsistencies in its own save data or the user manually resetting the range.
+    --- @type string
     MANAGED_RANGE_LOST = internal.callback.MANAGED_RANGE_LOST,
 
-    --- @type string Fired when a new managed range has been found. The guildId and category are passed as arguments.
+    --- Fired when a new managed range has been found. The guildId and category are passed as arguments.
     --- This happens when the managed range is established initially or after the managed range was lost.
+    --- @type string
     MANAGED_RANGE_FOUND = internal.callback.MANAGED_RANGE_FOUND,
 
     --- @type string Fired when a category has linked the managed range to present events. The guildId and category are passed as arguments.
     CATEGORY_LINKED = internal.callback.CATEGORY_LINKED,
 }
+
+--- The exposed callbacks that can be used with RegisterCallback and UnregisterCallback.
+--- @see Callbacks
+--- @see LibHistoire.RegisterCallback
+--- @see LibHistoire.UnregisterCallback
 lib.callback = Callbacks
 
 --- Register to a callback fired by the library. Usage is the same as with ZO_CallbackObject.RegisterCallback. You can find the list of exposed callbacks in api.lua
@@ -81,8 +97,7 @@ end
 
 --- Creates a legacy listener object which emulates the old guild history api. See guildHistoryCache/GuildHistoryLegacyEventListener.lua for details.
 --- It's highly recommended to transition to CreateGuildHistoryProcessor instead, to take better advantage of the new history api.
----
---- This method is deprecated and will be removed in a future version. Use CreateGuildHistoryProcessor instead.
+--- @deprecated This method will be removed in a future version. Use CreateGuildHistoryProcessor instead.
 --- @see GuildHistoryLegacyEventListener
 --- @see LibHistoire.CreateGuildHistoryProcessor
 --- @param guildId integer The id of the guild to listen to.
@@ -121,12 +136,10 @@ end
 --- Should be used one time only to convert all id64s that have been stored by the addon when switching to the new event processor api, since it's not the fastest operation.
 --- @param id64 string The id64 to convert.
 --- @return integer53|nil id53 The converted id53 or nil if the id64 cannot be converted.
-local function ConvertArtificialLegacyId64ToEventId(id64)
+function lib:ConvertArtificialLegacyId64ToEventId(id64)
     return internal.ConvertLegacyId64ToEventId(id64)
 end
-lib.ConvertArtificialLegacyId64ToEventId = ConvertArtificialLegacyId64ToEventId
 
---- Enumeration of the possible stop reasons passed to the onStopCallback of a GuildHistoryEventProcessor
 --- @enum StopReason
 local StopReason = {
     --- Stop has been called by the addon
@@ -150,6 +163,10 @@ local StopReason = {
     --- @type string
     MANAGED_RANGE_LOST = internal.STOP_REASON_MANAGED_RANGE_LOST,
 }
+
+--- Enumeration of the possible stop reasons passed to the onStopCallback of a GuildHistoryEventProcessor
+--- @see StopReason
+--- @see GuildHistoryEventProcessor.SetOnStopCallback
 lib.StopReason = StopReason
 
 internal:Initialize()

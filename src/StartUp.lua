@@ -53,6 +53,7 @@ lib.internal = {
         MANAGED_RANGE_LOST = "HistyDetectedTheManagedRangeHasBeenLost",
         MANAGED_RANGE_FOUND = "HistyDetectedTheManagedRangeHasBeenFound",
         CATEGORY_LINKED = "HistyDetectedACategoryHasBeenLinked",
+        DEPRECATED = "deprecated"
     },
     class = {},
     logger = LibDebugLogger(LIB_IDENTIFIER),
