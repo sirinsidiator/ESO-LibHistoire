@@ -10,6 +10,26 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
+--- This function can be used to check if the library is ready to be used. It will return true after the INITIALIZED callback has been fired.
+--- When the library is not ready yet, make sure to register to the INITIALIZED callback to know when it is.
+--- @see Callbacks.INITIALIZED
+--- @return boolean isReady True if the library is ready to be used, false otherwise.
+function lib:IsReady()
+    return internal.initialized
+end
+
+--- A convenience function to execute a callback when the library is ready. When the library is already initialized, the callback will be executed immediately.
+--- @param callback fun(lib: LibHistoire) The function to call when the library is ready. It will receive the LibHistoire object as an argument.
+--- @see Callbacks.INITIALIZED
+--- @see LibHistoire.IsReady
+function lib:OnReady(callback)
+    if internal.initialized then
+        callback(self)
+    else
+        internal:RegisterCallback(internal.callback.INITIALIZED, callback)
+    end
+end
+
 --- @enum Callbacks The exposed callbacks
 local Callbacks = {
     --- @type string Fired when the library has finished setting everything up.

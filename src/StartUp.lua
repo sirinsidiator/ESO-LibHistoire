@@ -133,7 +133,8 @@ function internal:InitializeCaches()
     local ENTRIES_PER_PAGE = 100
     ZO_PreHook(ZO_GuildHistory_Shared, "ShowNextPage", function(history)
         if IsShiftKeyDown() then
-            local numVisibleEvents = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(history.guildId, history.selectedEventCategory)
+            local numVisibleEvents = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(history.guildId,
+                history.selectedEventCategory)
             local page = zo_ceil(numVisibleEvents / ENTRIES_PER_PAGE)
             history:SetCurrentPage(page)
             return true
@@ -189,7 +190,6 @@ end
 function internal:Initialize()
     local logger = self.logger
     logger:Info("Begin pre-initialization")
-
     local namespace
     namespace = RegisterForEvent(EVENT_ADD_ON_LOADED, function(event, name)
         if (name ~= LIB_IDENTIFIER) then return end
@@ -198,8 +198,10 @@ function internal:Initialize()
         self:InitializeSaveData()
         self:InitializeCaches()
         self:InitializeDialogs()
+        self.initialized = true
         logger:Info("Initialization complete")
-        self:FireCallbacks(self.callback.INITIALIZED)
+        self:FireCallbacks(self.callback.INITIALIZED, LibHistoire)
+        logger:Debug("INITIALIZED callback fired")
     end)
 
     local eventHandle
