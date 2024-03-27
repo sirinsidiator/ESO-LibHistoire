@@ -10,6 +10,8 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
+--- public api
+
 --- This function can be used to check if the library is ready to be used. It will return true after the INITIALIZED callback has been fired.
 --- When the library is not ready yet, make sure to register to the INITIALIZED callback to know when it is.
 --- @see Callbacks.INITIALIZED
