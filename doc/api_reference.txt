@@ -14,45 +14,6 @@
 [/INDENT]
 [/INDENT]
 [INDENT]
-[SIZE="2"]ConvertArtificialLegacyId64ToEventId[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) LibHistoire:ConvertArtificialLegacyId64ToEventId(id64: string)
-  -> id53: integer53|nil
-[/highlight]
- Utility function to convert id64s that have been artificially created by a legacy listener to the new id53 equivalent.
- Should be used one time only to convert all id64s that have been stored by the addon when switching to the new event processor api, since it's not the fastest operation.
-
-[I]@param[/I] [B]id64[/B] — The id64 to convert.
-[I]@return[/I] [B]id53[/B] — The converted id53 or nil if the id64 cannot be converted.
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"][STRIKE]CreateGuildHistoryListener[/STRIKE] [COLOR="DarkOrange"](deprecated)[/COLOR][/SIZE]
-[INDENT]
-[COLOR="DarkOrange"]
-This method will be removed in a future version. Use CreateGuildHistoryProcessor instead.
-[/COLOR]
-[highlight="Lua"]
-(method) LibHistoire:CreateGuildHistoryListener(guildId: integer, category: integer)
-  -> listener: GuildHistoryLegacyEventListener|nil
-[/highlight]
- Creates a legacy listener object which emulates the old guild history api. See guildHistoryCache/GuildHistoryLegacyEventListener.lua for details.
- It's highly recommended to transition to CreateGuildHistoryProcessor instead, to take better advantage of the new history api.
-
-[I]@param[/I] [B]guildId[/B] — The id of the guild to listen to.
-[I]@param[/I] [B]category[/B] — The legacy category to listen to. One of the GUILD_HISTORY_* constants. See guildHistoryCache/compatibility.lua for details.
-[I]@return[/I] [B]listener[/B] — The created listener object or nil if no caches were found for the provided guildId and category.
-
-See:
-[LIST]
-[*]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/guildHistoryCache/GuildHistoryLegacyEventListener.lua#L9']GuildHistoryLegacyEventListener[/URL]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L126']LibHistoire.CreateGuildHistoryProcessor[/URL]
-[/LIST]
-[/INDENT]
-[/INDENT]
-[INDENT]
 [SIZE="2"][STRIKE]CreateGuildHistoryListener[/STRIKE] [COLOR="DarkOrange"](deprecated)[/COLOR][/SIZE]
 [INDENT]
 [COLOR="DarkOrange"]
@@ -98,44 +59,6 @@ See:
 [/INDENT]
 [/INDENT]
 [INDENT]
-[SIZE="2"]CreateGuildHistoryProcessor[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) LibHistoire:CreateGuildHistoryProcessor(guildId: integer, category: GuildHistoryEventCategory, addonName: string)
-  -> processor: GuildHistoryEventProcessor|nil
-[/highlight]
- Creates a processor object which can be configured before it starts sending history events to an addon. See guildHistoryCache/GuildHistoryEventProcessor.lua for details.
-
-[I]@param[/I] [B]guildId[/B] — The id of the guild to process history events for.
-[I]@param[/I] [B]category[/B] — The category to process history events for.
-[I]@param[/I] [B]addonName[/B] — The name of the addon that is processing the events. This is used to allow users to identify addons that are registered to a category, as well as to provide better logging.
-[I]@return[/I] [B]processor[/B] — The created processor object or nil if no caches were found for the provided guildId and category.
-
-See:
-[LIST]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/guildHistoryCache/GuildHistoryEventProcessor.lua#L9']GuildHistoryEventProcessor[/URL]
-[/LIST]
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]IsReady[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) LibHistoire:IsReady()
-  -> isReady: boolean
-[/highlight]
- This function can be used to check if the library is ready to be used. It will return true after the INITIALIZED callback has been fired.
- When the library is not ready yet, make sure to register to the INITIALIZED callback to know when it is.
-
-[I]@return[/I] [B]isReady[/B] — True if the library is ready to be used, false otherwise.
-
-See:
-[LIST]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L44']Callbacks.INITIALIZED[/URL]
-[/LIST]
-[/INDENT]
-[/INDENT]
-[INDENT]
 [SIZE="2"]IsReady[/SIZE]
 [INDENT]
 [highlight="Lua"]
@@ -172,24 +95,6 @@ See:
 [/INDENT]
 [/INDENT]
 [INDENT]
-[SIZE="2"]OnReady[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) LibHistoire:OnReady(callback: fun(lib: LibHistoire))
-[/highlight]
- A convenience function to execute a callback when the library is ready. When the library is already initialized, the callback will be executed immediately.
-
-[I]@param[/I] [B]callback[/B] — The function to call when the library is ready. It will receive the LibHistoire object as an argument.
-
-See:
-[LIST]
-[*]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L44']Callbacks.INITIALIZED[/URL]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L19']LibHistoire.IsReady[/URL]
-[/LIST]
-[/INDENT]
-[/INDENT]
-[INDENT]
 [SIZE="2"]RegisterCallback[/SIZE]
 [INDENT]
 [highlight="Lua"]
@@ -199,40 +104,6 @@ See:
 
 [I]@param[/I] [B]callbackName[/B] — One of the exposed callbacks.
 [I]@param[/I] [B]callback[/B] — The function to call when the callback is fired.
-
-See:
-[LIST]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L35']Callbacks[/URL]
-[/LIST]
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]RegisterCallback[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) LibHistoire:RegisterCallback(callbackName: Callbacks, callback: function, ...any)
-[/highlight]
- Register to a callback fired by the library. Usage is the same as with ZO_CallbackObject.RegisterCallback. You can find the list of exposed callbacks in api.lua
-
-[I]@param[/I] [B]callbackName[/B] — One of the exposed callbacks.
-[I]@param[/I] [B]callback[/B] — The function to call when the callback is fired.
-
-See:
-[LIST]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L35']Callbacks[/URL]
-[/LIST]
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]UnregisterCallback[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) LibHistoire:UnregisterCallback(callbackName: Callbacks, callback: function, ...any)
-[/highlight]
- Unregister from a callback fired by the library. Usage is the same as with ZO_CallbackObject.UnregisterCallback.
-
-[I]@param[/I] [B]callbackName[/B] — One of the exposed callbacks.
-[I]@param[/I] [B]callback[/B] — The function to unregister.
 
 See:
 [LIST]
@@ -271,30 +142,6 @@ See:
 [/INDENT]
 [/INDENT]
 [INDENT]
-[SIZE="2"]GetAddonName[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:GetAddonName()
-  -> addonName: string
-[/highlight]
- Returns the name of the addon that created the processor.
-
-[I]@return[/I] [B]addonName[/B] — The name of the addon that created the processor.
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]GetCategory[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:GetCategory()
-  -> category: GuildHistoryEventCategory
-[/highlight]
- Returns the category.
-
-[I]@return[/I] [B]category[/B] — The event category the processor is listening to.
-[/INDENT]
-[/INDENT]
-[INDENT]
 [SIZE="2"]GetCategory[/SIZE]
 [INDENT]
 [highlight="Lua"]
@@ -316,30 +163,6 @@ See:
  Returns the guild id.
 
 [I]@return[/I] [B]guildId[/B] — The id of the guild the processor is listening to.
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]GetGuildId[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:GetGuildId()
-  -> guildId: integer
-[/highlight]
- Returns the guild id.
-
-[I]@return[/I] [B]guildId[/B] — The id of the guild the processor is listening to.
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]GetKey[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:GetKey()
-  -> key: string
-[/highlight]
- Returns a key consisting of server, guild id and history category, which can be used to store the last received eventId.
-
-[I]@return[/I] [B]key[/B] — The key that identifies the processor.
 [/INDENT]
 [/INDENT]
 [INDENT]
@@ -371,34 +194,6 @@ See:
 [/INDENT]
 [/INDENT]
 [INDENT]
-[SIZE="2"]GetPendingEventMetrics[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:GetPendingEventMetrics()
-  -> numEventsRemaining: integer
-  2. processingSpeed: integer
-  3. timeLeft: integer
-[/highlight]
- Returns information about history events that need to be sent to the processor.
-
-[I]@return[/I] [B]numEventsRemaining[/B] — The amount of queued history events that are currently waiting to be processed by the processor.
-[I]@return[/I] [B]processingSpeed[/B] — The processing speed in events per second (rolling average over 5 seconds).
-[I]@return[/I] [B]timeLeft[/B] — The estimated time in seconds it takes to process the remaining events or -1 if it cannot be estimated.
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]IsRunning[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:IsRunning()
-  -> running: boolean
-[/highlight]
- Returns true while iterating over or listening for events.
-
-[I]@return[/I] [B]running[/B] — true if the processor is currently running.
-[/INDENT]
-[/INDENT]
-[INDENT]
 [SIZE="2"]IsRunning[/SIZE]
 [INDENT]
 [highlight="Lua"]
@@ -420,32 +215,6 @@ See:
  Allows to specify a start condition. The nextEventCallback will only return events which have a higher eventId.
 
 [I]@param[/I] [B]eventId[/B] — An eventId to start after.
-[I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]SetAfterEventId[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:SetAfterEventId(eventId: integer53)
-  -> success: boolean
-[/highlight]
- Allows to specify a start condition. The nextEventCallback will only return events which have a higher eventId.
-
-[I]@param[/I] [B]eventId[/B] — An eventId to start after.
-[I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]SetAfterEventTime[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:SetAfterEventTime(eventTime: integer53)
-  -> success: boolean
-[/highlight]
- Allows to specify a start condition. The nextEventCallback will only receive events after the specified timestamp. Only is considered if no afterEventId has been specified.
-
-[I]@param[/I] [B]eventTime[/B] — A timestamp to start after.
 [I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
 [/INDENT]
 [/INDENT]
@@ -476,19 +245,6 @@ See:
 [/INDENT]
 [/INDENT]
 [INDENT]
-[SIZE="2"]SetBeforeEventId[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:SetBeforeEventId(eventId: integer53)
-  -> success: boolean
-[/highlight]
- Allows to specify an end condition. The nextEventCallback will only return events which have a lower eventId.
-
-[I]@param[/I] [B]eventId[/B] — An eventId to end before.
-[I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
-[/INDENT]
-[/INDENT]
-[INDENT]
 [SIZE="2"]SetBeforeEventTime[/SIZE]
 [INDENT]
 [highlight="Lua"]
@@ -499,39 +255,6 @@ See:
 
 [I]@param[/I] [B]eventTime[/B] — A timestamp to end before.
 [I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]SetBeforeEventTime[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:SetBeforeEventTime(eventTime: integer53)
-  -> success: boolean
-[/highlight]
- Allows to specify an end condition. The nextEventCallback will only return events which have a lower timestamp. Only is considered if no beforeEventId has been specified.
-
-[I]@param[/I] [B]eventTime[/B] — A timestamp to end before.
-[I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]SetEventCallback[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:SetEventCallback(callback: fun(event: ZO_GuildHistoryEventData_Base))
-  -> success: boolean
-[/highlight]
- Convenience method to set both callback types at once.
-
-[I]@param[/I] [B]callback[/B] — The function that will be called for each missed event that was found.
-[I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
-
-See:
-[LIST]
-[*]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/guildHistoryCache/GuildHistoryEventProcessor.lua#L199']GuildHistoryEventProcessor.SetNextEventCallback[/URL]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/guildHistoryCache/GuildHistoryEventProcessor.lua#L216']GuildHistoryEventProcessor.SetMissedEventCallback[/URL]
-[/LIST]
 [/INDENT]
 [/INDENT]
 [INDENT]
@@ -577,28 +300,6 @@ See:
 [/INDENT]
 [/INDENT]
 [INDENT]
-[SIZE="2"]SetMissedEventCallback[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:SetMissedEventCallback(callback: fun(event: ZO_GuildHistoryEventData_Base))
-  -> success: boolean
-[/highlight]
- Sets a callback which will get passed events that had not previously been included in the managed range, but are inside the start and end criteria. The order of the events is not guaranteed.
- If SetReceiveMissedEventsOutsideIterationRange is set to true, this callback will also receive events that are outside of the specified iteration range.
- The callback will be handed an event object (see guildhistory_data.lua) which must not be stored or modified, as it can change after the function returns.
-
-[I]@param[/I] [B]callback[/B] — The function that will be called for each missed event that was found.
-[I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
-
-See:
-[LIST]
-[*]
-[*][URL='https://github.com/esoui/esoui/blob/master/esoui/ingame/guildhistory/guildhistory_data.lua#L49']ZO_GuildHistoryEventData_Base[/URL]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/guildHistoryCache/GuildHistoryEventProcessor.lua#L287']GuildHistoryEventProcessor.SetReceiveMissedEventsOutsideIterationRange[/URL]
-[/LIST]
-[/INDENT]
-[/INDENT]
-[INDENT]
 [SIZE="2"]SetNextEventCallback[/SIZE]
 [INDENT]
 [highlight="Lua"]
@@ -614,44 +315,6 @@ See:
 See:
 [LIST]
 [*][URL='https://github.com/esoui/esoui/blob/master/esoui/ingame/guildhistory/guildhistory_data.lua#L49']ZO_GuildHistoryEventData_Base[/URL]
-[/LIST]
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]SetNextEventCallback[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:SetNextEventCallback(callback: fun(event: ZO_GuildHistoryEventData_Base))
-  -> success: boolean
-[/highlight]
- Sets a callback which will get passed all events in the specified range in the correct historic order (sorted by eventId).
- The callback will be handed an event object (see guildhistory_data.lua) which must not be stored or modified, as it can change after the function returns.
-
-[I]@param[/I] [B]callback[/B] — The function that will be called for each event that is processed.
-[I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
-
-See:
-[LIST]
-[*][URL='https://github.com/esoui/esoui/blob/master/esoui/ingame/guildhistory/guildhistory_data.lua#L49']ZO_GuildHistoryEventData_Base[/URL]
-[/LIST]
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]SetOnStopCallback[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:SetOnStopCallback(callback: fun(reason: StopReason))
-  -> success: boolean
-[/highlight]
- Set a callback which is called after the listener has stopped.
- Receives a reason (see lib.StopReason) why the processor has stopped.
-
-[I]@param[/I] [B]callback[/B] — The function that will be called when the processor stops.
-[I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
-
-See:
-[LIST]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L172']LibHistoire.StopReason[/URL]
 [/LIST]
 [/INDENT]
 [/INDENT]
@@ -693,37 +356,6 @@ See:
 [/INDENT]
 [/INDENT]
 [INDENT]
-[SIZE="2"]SetReceiveMissedEventsOutsideIterationRange[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:SetReceiveMissedEventsOutsideIterationRange(shouldReceive: boolean)
-  -> success: boolean
-[/highlight]
- Controls if the processor should forward missed events outside of the specified iteration range to the missedEventCallback.
-
-[I]@param[/I] [B]shouldReceive[/B] — true if missed events outside of the specified iteration range should be forwarded, false if they should be ignored.
-[I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
-
-See:
-[LIST]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/guildHistoryCache/GuildHistoryEventProcessor.lua#L216']GuildHistoryEventProcessor.SetMissedEventCallback[/URL]
-[/LIST]
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]SetRegisteredForFutureEventsCallback[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:SetRegisteredForFutureEventsCallback(callback: function)
-  -> success: boolean
-[/highlight]
- Sets a callback which is called when the processor starts waiting for future events.
-
-[I]@param[/I] [B]callback[/B] — The function that will be called when the processor starts waiting for future events.
-[I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
-[/INDENT]
-[/INDENT]
-[INDENT]
 [SIZE="2"]SetRegisteredForFutureEventsCallback[/SIZE]
 [INDENT]
 [highlight="Lua"]
@@ -747,31 +379,6 @@ See:
 
 [I]@param[/I] [B]shouldStop[/B] — true if the processor should stop when it runs out of events, false if it should wait for future events.
 [I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]SetStopOnLastCachedEvent[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:SetStopOnLastCachedEvent(shouldStop: boolean)
-  -> success: boolean
-[/highlight]
- Controls if the processor should stop instead of listening for future events when it runs out of events before encountering an end criteria.
-
-[I]@param[/I] [B]shouldStop[/B] — true if the processor should stop when it runs out of events, false if it should wait for future events.
-[I]@return[/I] [B]success[/B] — true if the condition was set successfully, false if the processor is already running.
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]Start[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:Start()
-  -> started: boolean
-[/highlight]
- Starts the processor and passes events to the specified callbacks asyncronously. The exact behavior depends on the set conditions and callbacks.
-
-[I]@return[/I] [B]started[/B] — true if the processor was started successfully, false if it is already running.
 [/INDENT]
 [/INDENT]
 [INDENT]
@@ -813,32 +420,6 @@ See:
 [/INDENT]
 [/INDENT]
 [INDENT]
-[SIZE="2"]StartIteratingTimeRange[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:StartIteratingTimeRange(startTime: integer53, endTime: integer53, eventCallback: fun(event: ZO_GuildHistoryEventData_Base), finishedCallback: fun(reason: StopReason))
-  -> started: boolean
-[/highlight]
- Convenience method to configure and start the processor to iterate over a specific time range and stop after it has passed all available events.
-
-[I]@param[/I] [B]startTime[/B] — The start time of the range (inclusive).
-[I]@param[/I] [B]endTime[/B] — The end time of the range (exclusive).
-[I]@param[/I] [B]eventCallback[/B] — The function that will be called for each event that is processed.
-[I]@param[/I] [B]finishedCallback[/B] — The function that will be called when the processor stops. Only when StopReason.ITERATION_COMPLETED is passed, all events in the range have been processed.
-[I]@return[/I] [B]started[/B] — true if the processor was started successfully, false if it is already running.
-
-See:
-[LIST]
-[*]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/guildHistoryCache/GuildHistoryEventProcessor.lua#L158']GuildHistoryEventProcessor.SetAfterEventTime[/URL]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/guildHistoryCache/GuildHistoryEventProcessor.lua#L184']GuildHistoryEventProcessor.SetBeforeEventTime[/URL]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/guildHistoryCache/GuildHistoryEventProcessor.lua#L260']GuildHistoryEventProcessor.SetStopOnLastCachedEvent[/URL]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/guildHistoryCache/GuildHistoryEventProcessor.lua#L199']GuildHistoryEventProcessor.SetNextEventCallback[/URL]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/guildHistoryCache/GuildHistoryEventProcessor.lua#L247']GuildHistoryEventProcessor.SetOnStopCallback[/URL]
-[/LIST]
-[/INDENT]
-[/INDENT]
-[INDENT]
 [SIZE="2"]StartStreaming[/SIZE]
 [INDENT]
 [highlight="Lua"]
@@ -850,32 +431,6 @@ See:
 [I]@param[/I] [B]lastProcessedId[/B] — The last eventId that was processed by the addon or nil to start with the oldest managed event.
 [I]@param[/I] [B]eventCallback[/B] — The function that will be called for each event that is processed. If not provided here, it has to be set with SetNextEventCallback beforehand, or the processor won't start.
 [I]@return[/I] [B]started[/B] — true if the processor was started successfully, false if it is already running.
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]StartStreaming[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:StartStreaming(lastProcessedId: integer53|nil, eventCallback: fun(event: ZO_GuildHistoryEventData_Base))
-  -> started: boolean
-[/highlight]
- Convenience method to start the processor with a callback and optionally only receive events after the specified eventId.
-
-[I]@param[/I] [B]lastProcessedId[/B] — The last eventId that was processed by the addon or nil to start with the oldest managed event.
-[I]@param[/I] [B]eventCallback[/B] — The function that will be called for each event that is processed. If not provided here, it has to be set with SetNextEventCallback beforehand, or the processor won't start.
-[I]@return[/I] [B]started[/B] — true if the processor was started successfully, false if it is already running.
-[/INDENT]
-[/INDENT]
-[INDENT]
-[SIZE="2"]Stop[/SIZE]
-[INDENT]
-[highlight="Lua"]
-(method) GuildHistoryEventProcessor:Stop()
-  -> stopped: boolean
-[/highlight]
- Stops iterating over stored events and unregisters the processor for future events.
-
-[I]@return[/I] [B]stopped[/B] — true if the processor was stopped successfully, false if it is not running.
 [/INDENT]
 [/INDENT]
 [INDENT]

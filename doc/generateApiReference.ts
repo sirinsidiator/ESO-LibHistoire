@@ -90,6 +90,7 @@ exec(cmd, (error, stdout, stderr) => {
     );
 
     const output = [];
+    const processedSymbols = new Set<string>();
     entries.forEach((entry) => {
         if (entry.defines[0].type === "tablefield") {
             return;
@@ -101,8 +102,9 @@ exec(cmd, (error, stdout, stderr) => {
                 return;
             }
             if (
-                entry.name !== "GuildHistoryEventProcessor" ||
-                (field.type !== "setfield" && field.desc !== " @internal")
+                !processedSymbols.has(field.name) &&
+                (entry.name !== "GuildHistoryEventProcessor" ||
+                    (field.type !== "setfield" && field.desc !== " @internal"))
             ) {
                 output.push("[INDENT]");
                 if (DEPRECATED_FIELDS.has(field.name)) {
@@ -128,6 +130,7 @@ exec(cmd, (error, stdout, stderr) => {
                 }
                 output.push("[/INDENT]");
                 output.push("[/INDENT]");
+                processedSymbols.add(field.name);
             }
         });
     });
