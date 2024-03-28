@@ -166,6 +166,35 @@ function GuildHistoryLegacyEventListener:OnProcessingCachedEventsCompleted()
     end
 end
 
+function GuildHistoryLegacyEventListener:StopInternal()
+    if not self.running then return false end
+
+    logger:Debug("Stopping legacy event listener", self.key)
+    for _, processor in ipairs(self.processors) do
+        if processor:IsRunning() and not processor:Stop() then
+            logger:Warn("Failed to stop processor", processor:GetKey())
+        end
+    end
+
+    internal:UnregisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.cachedNextEventCallback)
+    internal:UnregisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.cachedNextEventCallback)
+    internal:UnregisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.uncachedNextEventCallback)
+    internal:UnregisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.uncachedNextEventCallback)
+    if self.task then
+        self.task:Cancel()
+        self.task = nil
+    end
+    self.cachedEvents = {}
+    self.hasReachedEndCriteria = false
+
+    for _, cache in ipairs(self.caches) do
+        cache:UnregisterProcessor(self)
+    end
+
+    self.running = false
+    return true
+end
+
 --- public api
 
 -- returns a key consisting of server, guild id and history category, which can be used to store the last received eventId
@@ -357,32 +386,7 @@ end
 
 -- stops iterating over stored events and unregisters the listener for future events
 function GuildHistoryLegacyEventListener:Stop()
-    if not self.running then return false end
-
-    logger:Debug("Stopping legacy event listener", self.key)
-    for _, processor in ipairs(self.processors) do
-        if processor:IsRunning() and not processor:Stop() then
-            logger:Warn("Failed to stop processor", processor:GetKey())
-        end
-    end
-
-    internal:UnregisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.cachedNextEventCallback)
-    internal:UnregisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.cachedNextEventCallback)
-    internal:UnregisterCallback(internal.callback.PROCESS_LINKED_EVENT, self.uncachedNextEventCallback)
-    internal:UnregisterCallback(internal.callback.PROCESS_MISSED_EVENT, self.uncachedNextEventCallback)
-    if self.task then
-        self.task:Cancel()
-        self.task = nil
-    end
-    self.cachedEvents = {}
-    self.hasReachedEndCriteria = false
-
-    for _, cache in ipairs(self.caches) do
-        cache:UnregisterProcessor(self)
-    end
-
-    self.running = false
-    return true
+    return self:StopInternal()
 end
 
 -- returns true while iterating over or listening for events
