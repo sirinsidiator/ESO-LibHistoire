@@ -336,6 +336,7 @@ function GuildHistoryCacheCategory:OnCategoryUpdated(flags)
     end
 
     self.progressDirty = true
+    local isNewManagedRange = false
     local guildId, category = self.guildId, self.category
     local oldestManagedEventId = self:GetOldestManagedEventInfo()
     local newestManagedEventId = self:GetNewestManagedEventInfo()
@@ -348,13 +349,20 @@ function GuildHistoryCacheCategory:OnCategoryUpdated(flags)
             logger:Info("No managed range stored for guild %d category %d", guildId, category)
         end
 
-        newestManagedEventId = self:SetupFirstManagedEventId()
-        oldestManagedEventId = newestManagedEventId
+        local index = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(guildId, category)
+        if index then
+            local eventId = GetGuildHistoryEventId(guildId, category, index)
+            newestManagedEventId = eventId
+            oldestManagedEventId = eventId
+            isNewManagedRange = true
+        else
+            logger:Warn("Could not find any unlinked events for", key)
+        end
     end
 
     self:ProcessNextRequest()
     if newestManagedEventId and oldestManagedEventId then
-        self:StartProcessingEvents(newestManagedEventId, oldestManagedEventId)
+        self:StartProcessingEvents(newestManagedEventId, oldestManagedEventId, isNewManagedRange)
     end
 end
 
@@ -388,26 +396,7 @@ function GuildHistoryCacheCategory:Reset()
         processor:StopInternal(internal.STOP_REASON_MANAGED_RANGE_LOST)
     end
 
-    zo_callLater(function() self:SetupFirstManagedEventId() end, 0)
-end
-
-function GuildHistoryCacheCategory:SetupFirstManagedEventId()
-    local guildId, category = self.guildId, self.category
-    logger:Info("Setting up first managed event for guild %d category %d", guildId, category)
-    local event = self.categoryData:GetOldestEventForUpToDateEventsWithoutGaps()
-    if not event then
-        logger:Warn("Could not find any unlinked events for guild %d category %d", guildId, category)
-        return
-    end
-    local eventId = event:GetEventId()
-    local eventTime = event:GetEventTimestampS()
-    logger:Debug("Send first event %d to processors", eventId)
-    internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, guildId, category, event)
-    self:SetOldestManagedEventInfo(eventId, eventTime)
-    self:SetNewestManagedEventInfo(eventId, eventTime)
-    self:CheckHasLinked()
-    internal:FireCallbacks(internal.callback.MANAGED_RANGE_FOUND, guildId, category)
-    return eventId
+    zo_callLater(function() self:OnCategoryUpdated() end, 0)
 end
 
 function GuildHistoryCacheCategory:QueueProcessingRequest(request)
@@ -441,7 +430,7 @@ function GuildHistoryCacheCategory:ProcessNextRequest()
     end
 end
 
-function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, oldestManagedEventId)
+function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, oldestManagedEventId, isNewManagedRange)
     if self:IsProcessing() or not self:IsAutoRequesting() then return end
 
     local guildId, category = self.guildId, self.category
@@ -457,22 +446,27 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
     local unlinkedEvents, missedEvents = {}, {}
     local categoryData = self.categoryData
 
-    if newestManagedEventId < newestEventId then
-        local _, newestManagedEventTime = self:GetNewestManagedEventInfo()
-        logger:Debug("Found events newer than the managed range for guild %d category %d", guildId, category)
+    if isNewManagedRange or newestManagedEventId < newestEventId then
+        local _, newestManagedEventTime
+        if isNewManagedRange then
+            local index = GetGuildHistoryEventIndex(guildId, category, newestManagedEventId)
+            newestManagedEventTime = GetGuildHistoryEventTimestamp(guildId, category, index)
+        else
+            _, newestManagedEventTime = self:GetNewestManagedEventInfo()
+        end
+        logger:Debug("Found events newer than the managed range", self.key)
         unlinkedEvents = categoryData:GetEventsInTimeRange(newestTime, newestManagedEventTime)
     end
 
     if oldestManagedEventId > oldestEventId then
         local _, oldestManagedEventTime = self:GetOldestManagedEventInfo()
-        logger:Debug("Found events older than the managed range for guild %d category %d", guildId, category)
+        logger:Debug("Found events older than the managed range", self.key)
         missedEvents = categoryData:GetEventsInTimeRange(oldestManagedEventTime, oldestTime)
     end
 
     local numUnlinkedEvents = #unlinkedEvents
     local numMissedEvents = #missedEvents
-    logger:Info("Found %d unlinked events and %d missed events for guild %d category %d", numUnlinkedEvents,
-        numMissedEvents, guildId, category)
+    logger:Info("Found %d unlinked events and %d missed events for %s", numUnlinkedEvents, numMissedEvents, self.key)
 
     if numUnlinkedEvents > 0 or numMissedEvents > 0 then
         local task = internal:CreateAsyncTask()
@@ -488,16 +482,21 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
         end
 
         local previousTime = 0
+        local shouldSetOldestEventInfo = isNewManagedRange
         task:For(numUnlinkedEvents, 1, -1):Do(function(i)
             self.progressDirty = true
             self:IncrementPendingEventMetrics()
             local event = unlinkedEvents[i]
             local eventId = event:GetEventId()
-            if eventId <= newestManagedEventId then
+            if (isNewManagedRange and eventId < newestManagedEventId) or (not isNewManagedRange and eventId <= newestManagedEventId) then
                 logger:Warn("skip already processed event", guildId, category, eventId, newestManagedEventId)
             else
                 local eventTime = event:GetEventTimestampS()
                 assert(eventTime >= oldestTime and eventTime >= previousTime, "Received event with invalid timestamp")
+                if shouldSetOldestEventInfo then
+                    self:SetOldestManagedEventInfo(eventId, eventTime)
+                    shouldSetOldestEventInfo = false
+                end
                 self:SetNewestManagedEventInfo(eventId, eventTime)
                 internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, guildId, category, event)
                 self.processingCurrentTime = eventTime
@@ -505,8 +504,12 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
         end):Then(function()
             self.progressDirty = true
             logger:Debug("Finished processing unlinked events", guildId, category)
+            if isNewManagedRange then
+                internal:FireCallbacks(internal.callback.MANAGED_RANGE_FOUND, guildId, category)
+            end
             self:CheckHasLinked()
             internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENTS_FINISHED, guildId, category)
+
             self.processingCurrentTime = nil
             if numMissedEvents > 0 then
                 self.processingStartTime = missedEvents[numMissedEvents]:GetEventTimestampS()
