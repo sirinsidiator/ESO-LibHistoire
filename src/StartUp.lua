@@ -222,9 +222,6 @@ function internal:CreateAsyncTask()
     local taskId = self.nextTaskId or 1
     self.nextTaskId = taskId + 1
     local task = LibAsync:Create(LIB_IDENTIFIER .. taskId)
-    task:OnError(function()
-        self.logger:Error(task.Error)
-    end)
     return task
 end
 
