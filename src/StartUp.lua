@@ -92,24 +92,6 @@ function internal:UnregisterCallback(...)
     return callbackObject:UnregisterCallback(...)
 end
 
-function internal:InitializeSaveData()
-    self.logger:Verbose("Initializing save data")
-
-    LibHistoire_Settings = LibHistoire_Settings or {
-        version = 1,
-        statusWindow = {
-            enabled = true,
-            locked = true
-        }
-    }
-
-    LibHistoire_GuildHistoryCache = LibHistoire_GuildHistoryCache or {}
-    local account = GetDisplayName()
-    LibHistoire_GuildHistoryCache[account] = LibHistoire_GuildHistoryCache[account] or {}
-
-    self.logger:Verbose("Save data initialized")
-end
-
 function internal:InitializeCaches()
     local logger = self.logger
     logger:Verbose("Initializing Caches")
@@ -199,6 +181,7 @@ function internal:Initialize()
         self:InitializeSaveData()
         self:InitializeCaches()
         self:InitializeDialogs()
+        self:InitializeSettingsMenu()
         self.initialized = true
         logger:Info("Initialization complete")
         self:FireCallbacks(self.callback.INITIALIZED, LibHistoire)

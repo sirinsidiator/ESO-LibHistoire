@@ -160,6 +160,7 @@ function GuildHistoryStatusWindow:InitializeButtons()
 
         AddCustomMenuItem("Hide Window", function() self:Disable() end)
         AddCustomMenuItem("Show Debug Info", function() self:ShowDebugInfo() end)
+        AddCustomMenuItem("Open Settings Menu", function() internal.OpenSettingsPanel() end)
 
         ShowMenu(optionsButton)
     end)

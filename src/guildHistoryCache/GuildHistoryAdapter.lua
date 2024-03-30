@@ -16,13 +16,13 @@ local MAX_NUMBER_OF_DAYS_CVAR_SUFFIX = {
     [GUILD_HISTORY_EVENT_CATEGORY_TRADER] = "trader"
 }
 local SECONDS_PER_DAY = 60 * 60 * 24
-local DEFAULT_MAX_CACHE_TIMERANGE = 30 * SECONDS_PER_DAY
-local MAX_SERVER_TIMERANGE_FOR_CATEGORY = {}
+local DEFAULT_MAX_CACHE_DAYS = 30
+local MAX_SERVER_DAYS_FOR_CATEGORY = {}
 for eventCategory = GUILD_HISTORY_EVENT_CATEGORY_ITERATION_BEGIN, GUILD_HISTORY_EVENT_CATEGORY_ITERATION_END do
-    MAX_SERVER_TIMERANGE_FOR_CATEGORY[eventCategory] = DEFAULT_MAX_CACHE_TIMERANGE
+    MAX_SERVER_DAYS_FOR_CATEGORY[eventCategory] = DEFAULT_MAX_CACHE_DAYS
 end
-MAX_SERVER_TIMERANGE_FOR_CATEGORY[GUILD_HISTORY_EVENT_CATEGORY_MILESTONE] = 180 * SECONDS_PER_DAY
-MAX_SERVER_TIMERANGE_FOR_CATEGORY[GUILD_HISTORY_EVENT_CATEGORY_ROSTER] = 180 * SECONDS_PER_DAY
+MAX_SERVER_DAYS_FOR_CATEGORY[GUILD_HISTORY_EVENT_CATEGORY_MILESTONE] = 180
+MAX_SERVER_DAYS_FOR_CATEGORY[GUILD_HISTORY_EVENT_CATEGORY_ROSTER] = 180
 
 local GuildHistoryAdapter = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryAdapter = GuildHistoryAdapter
@@ -167,11 +167,23 @@ function GuildHistoryAdapter:GetGuildHistoryEventIndicesForTimeRange(guildId, ca
     return GetGuildHistoryEventIndicesForTimeRange(guildId, category, newestTime, oldestTime)
 end
 
-function GuildHistoryAdapter:GetGuildHistoryCacheMaxTime(category)
+function GuildHistoryAdapter:GetGuildHistoryCacheMaxDays(category)
     local days = GetCVar("GuildHistoryCacheMaxNumberOfDays_" .. MAX_NUMBER_OF_DAYS_CVAR_SUFFIX[category])
-    return days and tonumber(days) * SECONDS_PER_DAY or DEFAULT_MAX_CACHE_TIMERANGE
+    return days and tonumber(days) or DEFAULT_MAX_CACHE_DAYS
+end
+
+function GuildHistoryAdapter:SetGuildHistoryCacheMaxDays(category, days)
+    SetCVar("GuildHistoryCacheMaxNumberOfDays_" .. MAX_NUMBER_OF_DAYS_CVAR_SUFFIX[category], days)
+end
+
+function GuildHistoryAdapter:GetGuildHistoryCacheMaxTime(category)
+    return self:GetGuildHistoryCacheMaxDays(category) * SECONDS_PER_DAY
+end
+
+function GuildHistoryAdapter:GetGuildHistoryServerMaxDays(category)
+    return MAX_SERVER_DAYS_FOR_CATEGORY[category] or DEFAULT_MAX_CACHE_DAYS
 end
 
 function GuildHistoryAdapter:GetGuildHistoryServerMaxTime(category)
-    return MAX_SERVER_TIMERANGE_FOR_CATEGORY[category] or DEFAULT_MAX_CACHE_TIMERANGE
+    return self:GetGuildHistoryServerMaxDays(category) * SECONDS_PER_DAY
 end

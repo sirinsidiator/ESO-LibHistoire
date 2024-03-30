@@ -4,7 +4,7 @@
 ## AddOnVersion: @BUILD_NUMBER@
 ## APIVersion: @API_VERSION@
 ## IsLibrary: true
-## DependsOn: LibDebugLogger LibAsync LibCustomMenu
+## DependsOn: LibDebugLogger LibAsync LibCustomMenu LibAddonMenu-2.0
 ## SavedVariables: LibHistoire_Settings LibHistoire_GuildNames LibHistoire_NameDictionary LibHistoire_GuildHistory LibHistoire_GuildHistoryCache
 ## Description: |c000000|u1:800::|u|u1:800::.|u|u1:800::.|u|u1:800::|u|t256:256:LibHistoire/histoire.dds|t|u1:800::.|u|u1:800::.|u|u1:800::.|u|u1:800::.|u|u1:800::.|u|rHisty takes good care of all your data, so others don't have to.
 ##
@@ -16,6 +16,7 @@
 
 StartUp.lua
 Dialogs.lua
+Settings.lua
 PerformanceTracker.lua
 CacheStatusBar.lua
 guildHistoryCache/compatibility.lua
