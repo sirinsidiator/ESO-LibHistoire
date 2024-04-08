@@ -110,6 +110,10 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
     guildHistoryScene:RegisterCallback("StateChange", RequestImmediateUpdate)
 
     self:LoadPosition()
+
+    local selectedCache = self.historyAdapter:GetSelectedCategoryCache()
+    self:SetGuildId(selectedCache:GetGuildId())
+    self:SetCategory(selectedCache:GetCategory())
 end
 
 function GuildHistoryStatusWindow:InitializeButtons()
