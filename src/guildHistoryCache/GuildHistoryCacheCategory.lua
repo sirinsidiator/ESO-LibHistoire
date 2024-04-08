@@ -1041,6 +1041,9 @@ function GuildHistoryCacheCategory:GetDebugInfo()
     debugInfo.saveData = self.saveData
     debugInfo.requestMode = self:GetRequestMode()
     debugInfo.isAutoRequesting = self:IsAutoRequesting()
+    debugInfo.hasLinked = self:HasLinked()
+    debugInfo.isManagedRangeConnectedToPresent = self:IsManagedRangeConnectedToPresent()
+    debugInfo.isProcessing = self:IsProcessing()
     debugInfo.unprocessedEventsStartTime = self:GetUnprocessedEventsStartTime()
     debugInfo.numCachedEvents = self.categoryData:GetNumEvents()
     debugInfo.numLoadedManagedEvents = self:GetNumLoadedManagedEvents()
@@ -1063,13 +1066,17 @@ function GuildHistoryCacheCategory:GetDebugInfo()
     }
 
     local oldestGaplessEventIndex = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(guildId, category)
-    local oldestGaplessEventTime, oldestGaplessEventId = GetGuildHistoryEventBasicInfo(guildId, category,
-        oldestGaplessEventIndex)
-    debugInfo.oldestGaplessEvent = {
-        id = oldestGaplessEventId,
-        time = oldestGaplessEventTime,
-        index = oldestGaplessEventIndex
-    }
+    if oldestGaplessEventIndex then
+        local oldestGaplessEventTime, oldestGaplessEventId = GetGuildHistoryEventBasicInfo(guildId, category,
+            oldestGaplessEventIndex)
+        debugInfo.oldestGaplessEvent = {
+            id = oldestGaplessEventId,
+            time = oldestGaplessEventTime,
+            index = oldestGaplessEventIndex
+        }
+    else
+        debugInfo.oldestGaplessEvent = false
+    end
 
     debugInfo.numRanges = self:GetNumRanges()
     debugInfo.ranges = {}
