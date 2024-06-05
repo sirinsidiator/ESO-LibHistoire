@@ -45,6 +45,25 @@ function internal:InitializeSettingsMenu()
 
     optionsData[#optionsData + 1] = {
         type = "header",
+        name = "General",
+    }
+
+    optionsData[#optionsData + 1] = {
+        type = "checkbox",
+        name = "Enable guild history logging",
+        tooltip =
+        "When enabled, the game will log additional information about the guild history cache to the Logs directory in the user folder.",
+        warning = "Changes to this setting are only applied when the game is restarted.",
+        getFunc = function()
+            return adapter:IsGuildHistoryLoggingEnabled()
+        end,
+        setFunc = function(value)
+            adapter:SetGuildHistoryLoggingEnabled(value)
+        end,
+    }
+
+    optionsData[#optionsData + 1] = {
+        type = "header",
         name = "Cache Retention Time",
     }
 

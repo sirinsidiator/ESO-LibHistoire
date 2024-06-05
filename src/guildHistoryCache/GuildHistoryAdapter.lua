@@ -214,3 +214,10 @@ function GuildHistoryAdapter:SetAutoDeleteLeftGuildsEnabled(enabled)
     SetCVar("GuildHistoryCacheAutoDeleteLeftGuilds", enabled and "1" or "0")
 end
 
+function GuildHistoryAdapter:IsGuildHistoryLoggingEnabled()
+    return GetCVar("EnableGuildHistoryLogging") == "1"
+end
+
+function GuildHistoryAdapter:SetGuildHistoryLoggingEnabled(enabled)
+    SetCVar("EnableGuildHistoryLogging", enabled and "1" or "0")
+end
