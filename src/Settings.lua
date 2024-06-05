@@ -119,7 +119,7 @@ function internal:InitializeSettingsMenu()
             if IsMacUI() then
                 return "~/Documents/Elder Scrolls Online/live/CachedData/GuildHistory"
             else
-                return "%AppData%/../Local/Elder Scrolls Online/live/CachedData/GuildHistory"
+                return "%UserProfile%\\Documents\\Elder Scrolls Online\\live\\GuildHistory"
             end
         end,
         setFunc = function(value)
