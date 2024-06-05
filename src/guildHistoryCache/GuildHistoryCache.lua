@@ -25,11 +25,13 @@ function GuildHistoryCache:Initialize(adapter, manager)
         CreateGuildCache(guildId)
     end
 
+    if adapter:IsAutoDeleteLeftGuildsEnabled() then
+        adapter:DeleteInactiveCacheSaveData()
+    end
+
     internal.RegisterForEvent(EVENT_GUILD_SELF_JOINED_GUILD, function(_, guildId)
         CreateGuildCache(guildId)
     end)
-
-    -- TODO get a list of all guilds in the cache that we are not currently in if the setting to keep history for all guilds is enabled
 
     manager:RegisterCallback("CategoryUpdated", function(categoryData, flags)
         local guildId = categoryData:GetGuildData():GetId()

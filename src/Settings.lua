@@ -77,6 +77,21 @@ function internal:InitializeSettingsMenu()
     end
 
     optionsData[#optionsData + 1] = {
+        type = "checkbox",
+        name = "Keep cache data after leaving a guild",
+        tooltip =
+            "When enabled, the game won't automatically delete the cached data when leaving a guild. " ..
+            "This is only useful if you plan to rejoin the guild later, " ..
+            "as the information cannot be accessed while you are not a member of that guild.",
+        getFunc = function()
+            return not adapter:IsAutoDeleteLeftGuildsEnabled()
+        end,
+        setFunc = function(value)
+            adapter:SetAutoDeleteLeftGuildsEnabled(not value)
+        end,
+    }
+
+    optionsData[#optionsData + 1] = {
         type = "button",
         name = "Clear all history caches",
         tooltip = "Pressing this button will delete all stored guild history data and reload the UI.",

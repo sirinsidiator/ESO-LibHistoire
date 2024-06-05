@@ -30,6 +30,7 @@ internal.class.GuildHistoryAdapter = GuildHistoryAdapter
 function GuildHistoryAdapter:Initialize(saveData)
     self.machineWideSaveData = saveData
     self.accountSaveData = saveData[GetDisplayName()]
+    self.activeKeys = {}
 end
 
 function GuildHistoryAdapter:GetOrCreateCacheSaveData(key)
@@ -40,6 +41,7 @@ function GuildHistoryAdapter:GetOrCreateCacheSaveData(key)
     end
     local saveData = self.accountSaveData[key] or {}
     self.accountSaveData[key] = saveData
+    self.activeKeys[key] = true
 
     if saveData.lastListenerRegisteredTime then
         saveData.lastProcessorRegisteredTime = saveData.lastListenerRegisteredTime
@@ -67,6 +69,22 @@ function GuildHistoryAdapter:GetOrCreateCacheSaveData(key)
     end
 
     return saveData
+end
+
+function GuildHistoryAdapter:DeleteInactiveCacheSaveData()
+    local keys = {}
+    for key in pairs(self.accountSaveData) do
+        if key:find("^" .. internal.WORLD_NAME) then
+            keys[#keys + 1] = key
+        end
+    end
+
+    for _, key in ipairs(keys) do
+        if not self.activeKeys[key] then
+            self.accountSaveData[key] = nil
+            logger:Info("Removed inactive cache save data for", key)
+        end
+    end
 end
 
 function GuildHistoryAdapter:InitializeDeferred(history, cache)
@@ -187,3 +205,12 @@ end
 function GuildHistoryAdapter:GetGuildHistoryServerMaxTime(category)
     return self:GetGuildHistoryServerMaxDays(category) * SECONDS_PER_DAY
 end
+
+function GuildHistoryAdapter:IsAutoDeleteLeftGuildsEnabled()
+    return GetCVar("GuildHistoryCacheAutoDeleteLeftGuilds") == "1"
+end
+
+function GuildHistoryAdapter:SetAutoDeleteLeftGuildsEnabled(enabled)
+    SetCVar("GuildHistoryCacheAutoDeleteLeftGuilds", enabled and "1" or "0")
+end
+
