@@ -299,7 +299,8 @@ function ZO_GuildHistoryEventCategoryData:GetEventsInIndexRange(newestIndex, old
     meta.__index = function(_, index)
         if type(index) ~= "number" or index < newestIndex or index > oldestIndex then return end
         if not events[index] then
-            local event = self.events:AcquireObject(index)
+            local eventIndex = newestIndex + index - 1
+            local event = self.events:AcquireObject(eventIndex)
             events[index] = event
         end
         return events[index]
