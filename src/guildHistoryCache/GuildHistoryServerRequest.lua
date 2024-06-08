@@ -20,7 +20,7 @@ function GuildHistoryServerRequest:Initialize(cache, newestTime, oldestTime)
 end
 
 function GuildHistoryServerRequest:GetNewestTime()
-    return self.newestTime or GetTimeStamp() + 3600
+    return self.newestTime or GetTimeStamp()
 end
 
 function GuildHistoryServerRequest:GetOldestTime()
@@ -72,7 +72,7 @@ function GuildHistoryServerRequest:SetQueued(queued)
 end
 
 function GuildHistoryServerRequest:ShouldContinue()
-    if self.oldestTime == 0 or self.cache:IsManagedRangeConnectedToPresent() or not self.cache:IsAutoRequesting() then
+    if self:IsInitialRequest() or self.cache:IsManagedRangeConnectedToPresent() or not self.cache:IsAutoRequesting() then
         return false
     end
 
@@ -96,8 +96,6 @@ function GuildHistoryServerRequest:Send()
     if not self.request then
         local guildId = self.cache:GetGuildId()
         local category = self.cache:GetCategory()
-        self.newestTime = self:GetNewestTime()
-        self.oldestTime = self:GetOldestTime()
         self.request = ZO_GuildHistoryRequest:New(guildId, category, self.newestTime, self.oldestTime)
     end
 
@@ -112,7 +110,7 @@ function GuildHistoryServerRequest:Destroy()
         return true
     end
     self.destroyed = true
-    if self.request then
+    if self.request and not self:IsInitialRequest() then
         local id = self.request:GetRequestId()
         if not DestroyGuildHistoryRequest(id) then
             logger:Warn("Failed to destroy request", id)

@@ -6,7 +6,7 @@ local lib = LibHistoire
 local internal = lib.internal
 local logger = internal.logger
 
-local MISSING_EVENT_COUNT_THRESHOLD = 2000
+local MISSING_EVENT_COUNT_THRESHOLD = 4000
 local NO_PROCESSOR_THRESHOLD = 3 * 24 * 3600           -- 3 days
 local INITIAL_REQUEST_RESEND_THRESHOLD = 7 * 24 * 3600 -- 7 days
 local BASE_PRIORITY = {
@@ -136,7 +136,7 @@ function GuildHistoryCacheCategory:RequestMissingData()
         if oldestGaplessEventIndex then
             self:OnCategoryUpdated()
         elseif self:ShouldSendInitialRequest(oldestManagedEventId) then
-            self.requestManager:QueueRequest(self:CreateRequest())
+            self:QueueInitialRequest()
         end
         return
     end
@@ -153,15 +153,21 @@ function GuildHistoryCacheCategory:RequestMissingData()
             return
         end
     else
-        oldestGaplessEventTime = GetTimeStamp()
-        logger:Verbose("no oldestGaplessEventIndex - use current time", oldestGaplessEventTime)
+        logger:Verbose("no oldestGaplessEventIndex")
     end
 
     local requestNewestTime, requestOldestTime = self:OptimizeRequestTimeRange(oldestManagedEventTime,
         newestManagedEventTime, oldestGaplessEventTime)
-    if requestNewestTime and requestOldestTime then
+    if requestOldestTime then
         self.requestManager:QueueRequest(self:CreateRequest(requestNewestTime, requestOldestTime))
     end
+end
+
+function GuildHistoryCacheCategory:QueueInitialRequest()
+    if self.request then
+        self:DestroyRequest()
+    end
+    self.requestManager:QueueRequest(self:CreateRequest())
 end
 
 function GuildHistoryCacheCategory:ContinueExistingRequest()
@@ -229,13 +235,17 @@ end
 
 function GuildHistoryCacheCategory:OptimizeRequestTimeRange(oldestManagedEventTime, newestManagedEventTime,
                                                             oldestGaplessEventTime)
-    if oldestGaplessEventTime <= newestManagedEventTime then
+    if oldestGaplessEventTime and oldestGaplessEventTime <= newestManagedEventTime then
         logger:Warn("Time range optimization failed - Invalid time range")
         return nil, nil
     end
 
     local requestOldestTime = newestManagedEventTime - 1
-    local requestNewestTime = oldestGaplessEventTime + 1
+    local requestNewestTime = nil
+    if oldestGaplessEventTime then
+        requestNewestTime = oldestGaplessEventTime + 1
+        logger:Verbose("Has gapless event time")
+    end
     local guildId, category = self.guildId, self.category
     logger:Debug("Optimize request time range for", self.key)
 
@@ -248,19 +258,22 @@ function GuildHistoryCacheCategory:OptimizeRequestTimeRange(oldestManagedEventTi
 
     local numEvents = oldestIndex - newestIndex + 1
     local managedRangeSeconds = newestManagedEventTime - oldestManagedEventTime
-    local requestRangeSeconds = requestNewestTime - requestOldestTime
+    local requestRangeSeconds = (requestNewestTime or GetTimeStamp()) - requestOldestTime
 
     local estimatedMissingEvents = numEvents * requestRangeSeconds / managedRangeSeconds
     logger:Verbose("estimatedMissingEvents", estimatedMissingEvents, numEvents, requestRangeSeconds, managedRangeSeconds)
     if estimatedMissingEvents > MISSING_EVENT_COUNT_THRESHOLD then
         logger:Debug("Limit request time range")
-        requestNewestTime = requestOldestTime + 1 + (managedRangeSeconds / numEvents) * MISSING_EVENT_COUNT_THRESHOLD / 2
+        local optimizedRequestNewestTime = newestManagedEventTime +
+            (managedRangeSeconds / numEvents) * MISSING_EVENT_COUNT_THRESHOLD / 2
+        if optimizedRequestNewestTime > requestOldestTime then
+            requestNewestTime = optimizedRequestNewestTime
+        else
+            logger:Warn("Time range optimization failed - request range is invalid")
+        end
     end
 
-    if requestNewestTime <= requestOldestTime then
-        logger:Warn("Time range optimization failed - request range is invalid")
-        requestNewestTime = oldestGaplessEventTime + 1
-    end
+    logger:Verbose("Optimized request time range", requestNewestTime, requestOldestTime)
     return requestNewestTime, requestOldestTime
 end
 

@@ -36,8 +36,8 @@ end
 function GuildHistoryServerRequestManager:QueueRequest(request, skipRequestSendNext)
     if not request then return end
 
-    logger:Debug("Queue request", request.cache.key, request:GetRequestId(), request:GetNewestTime(),
-        request:GetOldestTime())
+    logger:Debug("Queue request", request.cache.key, request:GetRequestId(), request.newestTime,
+        request.oldestTime)
     table.insert(self.requestQueue, request)
     request:SetQueued(true)
 
