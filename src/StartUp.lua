@@ -119,6 +119,22 @@ function internal:InitializeCaches()
             local numVisibleEvents = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(history.guildId,
                 history.selectedEventCategory) or 1
             local page = zo_ceil(numVisibleEvents / ENTRIES_PER_PAGE)
+
+            local startIndex = (page - 1) * ENTRIES_PER_PAGE + 1
+            local endIndex = startIndex + ENTRIES_PER_PAGE - 1
+            for i = 1, #history.redactedEvents do
+                local eventIndex = history.redactedEvents[i]:GetEventIndex()
+                if eventIndex <= startIndex then
+                    startIndex = startIndex + 1
+                    endIndex = endIndex + 1
+                elseif eventIndex <= endIndex then
+                    endIndex = endIndex + 1
+                end
+            end
+            history.cachedEventIndicesByPage[page] = {
+                startIndex = startIndex,
+                endIndex = endIndex
+            }
             history:SetCurrentPage(page)
             return true
         end

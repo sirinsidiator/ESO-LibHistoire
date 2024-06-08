@@ -288,3 +288,33 @@ internal.ConvertEventToLegacyFormat = ConvertEvent
 internal.GetCategoriesForLegacyCategory = GetCategoriesForLegacyCategory
 internal.GetCachesForLegacyCategory = GetCachesForLegacyCategory
 
+-- TODO remove once ingame performance issue is resolved
+function ZO_GuildHistoryEventCategoryData:GetEventsInIndexRange(newestIndex, oldestIndex)
+    local numEvents = self:GetNumEvents()
+    assert((newestIndex <= oldestIndex) and (oldestIndex <= numEvents))
+
+    local events = {}
+    local eventProxy = newproxy(true)
+    local meta = getmetatable(eventProxy)
+    meta.__index = function(_, index)
+        if type(index) ~= "number" or index < newestIndex or index > oldestIndex then return end
+        if not events[index] then
+            local event = self.events:AcquireObject(index)
+            events[index] = event
+        end
+        return events[index]
+    end
+    meta.__len = function()
+        return oldestIndex - newestIndex + 1
+    end
+
+    local guildId = self:GetGuildData():GetId()
+    local category = self:GetEventCategory()
+    local redactedEvents = {}
+    for eventIndex = newestIndex, oldestIndex do
+        if IsGuildHistoryEventRedacted(guildId, category, eventIndex) then
+            redactedEvents[#redactedEvents + 1] = eventProxy[eventIndex]
+        end
+    end
+    return eventProxy, redactedEvents
+end
