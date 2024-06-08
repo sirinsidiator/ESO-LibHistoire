@@ -117,7 +117,7 @@ function internal:InitializeCaches()
     ZO_PreHook(ZO_GuildHistory_Shared, "ShowNextPage", function(history)
         if IsShiftKeyDown() then
             local numVisibleEvents = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(history.guildId,
-                history.selectedEventCategory)
+                history.selectedEventCategory) or 1
             local page = zo_ceil(numVisibleEvents / ENTRIES_PER_PAGE)
             history:SetCurrentPage(page)
             return true
