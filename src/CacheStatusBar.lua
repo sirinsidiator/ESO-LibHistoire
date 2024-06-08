@@ -15,6 +15,7 @@ local GRADIENT_GAPLESS_RANGE_BEFORE_MANAGED_RANGE_INACTIVE = { ZO_ColorDef:New("
 local GRADIENT_GAPLESS_RANGE_BEFORE_MANAGED_RANGE_ACTIVE = { ZO_ColorDef:New("FF611F00"), ZO_ColorDef:New("FFA33400") }
 local GRADIENT_GAPLESS_RANGE_MANAGED_RANGE_INACTIVE = { ZO_ColorDef:New("FF4D4D4D"), ZO_ColorDef:New("FF5E5E5E") }
 local GRADIENT_GAPLESS_RANGE_MANAGED_RANGE_ACTIVE = { ZO_ColorDef:New("FF005521"), ZO_ColorDef:New("FF008031") }
+local GRADIENT_GAPLESS_RANGE_MANAGED_RANGE_ACTIVE_UNLINKED = { ZO_ColorDef:New("FF381200"), ZO_ColorDef:New("FF5E1E00") }
 local GRADIENT_CACHE_SEGMENT_BEFORE_MANAGED_RANGE = { ZO_ColorDef:New("FF929292"), ZO_ColorDef:New("FFACACAC") }
 local GRADIENT_CACHE_SEGMENT_MANAGED_RANGE_ACTIVE = { ZO_ColorDef:New("FF0074C2"), ZO_ColorDef:New("FF0099FF") }
 local GRADIENT_CACHE_SEGMENT_MANAGED_RANGE_INACTIVE = { ZO_ColorDef:New("FFC1C1C1"), ZO_ColorDef:New("FFD3D3D3") }
@@ -127,9 +128,12 @@ function CacheStatusBar:Update(cache)
         elseif gaplessRangeStartTime > newestManagedEventTime then
             data.color = isActive and GRADIENT_GAPLESS_RANGE_AFTER_MANAGED_RANGE_ACTIVE or
                 GRADIENT_GAPLESS_RANGE_AFTER_MANAGED_RANGE_INACTIVE
+        elseif isActive then
+            local isLinked = cache:IsManagedRangeConnectedToPresent()
+            data.color = isLinked and GRADIENT_GAPLESS_RANGE_MANAGED_RANGE_ACTIVE or
+                GRADIENT_GAPLESS_RANGE_MANAGED_RANGE_ACTIVE_UNLINKED
         else
-            data.color = isActive and GRADIENT_GAPLESS_RANGE_MANAGED_RANGE_ACTIVE or
-                GRADIENT_GAPLESS_RANGE_MANAGED_RANGE_INACTIVE
+            data.color = GRADIENT_GAPLESS_RANGE_MANAGED_RANGE_INACTIVE
         end
         self:AddSegment(data)
     end
