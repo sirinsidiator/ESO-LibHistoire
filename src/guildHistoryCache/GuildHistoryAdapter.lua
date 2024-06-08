@@ -40,8 +40,8 @@ end
 
 function GuildHistoryAdapter:InitializeGapRows()
     logger:Info("Initializing gap row marker feature")
+    local GUILD_EVENT_DATA = 1
     local GUILD_EVENT_GAP_DATA = 2
-    local activeRows = {}
 
     SecurePostHook(ZO_GuildHistory_Shared, "InitializeSortFilterList", function(self, rowTemplate, rowHeight)
         if rowTemplate == "ZO_GuildHistoryRow_Keyboard" then
@@ -51,21 +51,14 @@ function GuildHistoryAdapter:InitializeGapRows()
         else
             return
         end
-        ZO_ScrollList_AddDataType(self.list, GUILD_EVENT_GAP_DATA, rowTemplate, rowHeight,
-            function(control)
-                control:SetHidden(false)
-                activeRows[#activeRows + 1] = control
-            end)
+        ZO_ScrollList_AddDataType(self.list, GUILD_EVENT_GAP_DATA, rowTemplate, rowHeight, nil, ZO_ObjectPool_DefaultResetControl)
+
+        local dataType = ZO_ScrollList_GetDataTypeTable(self.list, GUILD_EVENT_DATA)
+        dataType.hideCallback = ZO_ObjectPool_DefaultResetControl
     end)
 
     SecurePostHook(ZO_GuildHistory_Shared, "FilterScrollList", function(self)
         local scrollData = ZO_ScrollList_GetDataList(self.list)
-
-        -- no idea why this is necessary, but the scroll list doesn't seem to clean up properly when there are different row types
-        for i = #activeRows, 1, -1 do
-            activeRows[i]:SetHidden(true)
-            activeRows[i] = nil
-        end
 
         if #scrollData < 2 then return end
 
