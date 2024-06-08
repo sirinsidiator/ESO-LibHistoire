@@ -10,14 +10,21 @@ local logger = internal.logger
 function internal:InitializeSaveData()
     self.logger:Verbose("Initializing save data")
 
-    LibHistoire_Settings = LibHistoire_Settings or {
-        version = 1,
+    local settings = LibHistoire_Settings or {
+        version = 2,
         statusWindow = {
             enabled = true,
             locked = true
-        }
+        },
+        markGapsInHistory = true,
     }
 
+    if settings.version < 2 then
+        settings.version = 2
+        settings.markGapsInHistory = true
+    end
+
+    LibHistoire_Settings = settings
     LibHistoire_GuildHistoryCache = LibHistoire_GuildHistoryCache or {}
     local account = GetDisplayName()
     LibHistoire_GuildHistoryCache[account] = LibHistoire_GuildHistoryCache[account] or {}
@@ -59,6 +66,20 @@ function internal:InitializeSettingsMenu()
         end,
         setFunc = function(value)
             adapter:SetGuildHistoryLoggingEnabled(value)
+        end,
+    }
+
+    optionsData[#optionsData + 1] = {
+        type = "checkbox",
+        name = "Mark gaps in history list",
+        tooltip =
+        "When enabled, LibHistoire will inject additional rows into the ingame guild history to mark gaps in the history.",
+        requiresReload = true,
+        getFunc = function()
+            return adapter:IsMarkGapsFeatureEnabled()
+        end,
+        setFunc = function(value)
+            adapter:SetMarkGapsFeatureEnabled(value)
         end,
     }
 

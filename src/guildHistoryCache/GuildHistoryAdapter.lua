@@ -27,10 +27,71 @@ MAX_SERVER_DAYS_FOR_CATEGORY[GUILD_HISTORY_EVENT_CATEGORY_ROSTER] = 180
 local GuildHistoryAdapter = ZO_InitializingObject:Subclass()
 internal.class.GuildHistoryAdapter = GuildHistoryAdapter
 
-function GuildHistoryAdapter:Initialize(saveData)
+function GuildHistoryAdapter:Initialize(saveData, settings)
     self.machineWideSaveData = saveData
     self.accountSaveData = saveData[GetDisplayName()]
+    self.settings = settings
     self.activeKeys = {}
+
+    if settings.markGapsInHistory then
+        self:InitializeGapRows()
+    end
+end
+
+function GuildHistoryAdapter:InitializeGapRows()
+    logger:Info("Initializing gap row marker feature")
+    local GUILD_EVENT_GAP_DATA = 2
+    local activeRows = {}
+
+    SecurePostHook(ZO_GuildHistory_Shared, "InitializeSortFilterList", function(self, rowTemplate, rowHeight)
+        if rowTemplate == "ZO_GuildHistoryRow_Keyboard" then
+            rowTemplate = "LibHistoire_GuildHistoryGapRow_Keyboard"
+        elseif rowTemplate == "ZO_GuildHistoryRow_Gamepad" then
+            rowTemplate = "LibHistoire_GuildHistoryGapRow_Gamepad"
+        else
+            return
+        end
+        ZO_ScrollList_AddDataType(self.list, GUILD_EVENT_GAP_DATA, rowTemplate, rowHeight,
+            function(control)
+                control:SetHidden(false)
+                activeRows[#activeRows + 1] = control
+            end)
+    end)
+
+    SecurePostHook(ZO_GuildHistory_Shared, "FilterScrollList", function(self)
+        local scrollData = ZO_ScrollList_GetDataList(self.list)
+
+        -- no idea why this is necessary, but the scroll list doesn't seem to clean up properly when there are different row types
+        for i = #activeRows, 1, -1 do
+            activeRows[i]:SetHidden(true)
+            activeRows[i] = nil
+        end
+
+        if #scrollData < 2 then return end
+
+        local guildId = self.guildId
+        local category = self.selectedEventCategory
+        local hasGaplessRange = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(guildId, category) ~= nil
+        local gapIndices = {}
+        for i = 1, #scrollData do
+            local entryData = scrollData[i]
+            if not hasGaplessRange or entryData:GetEventIndex() > 1 then
+                local eventId = entryData.data:GetEventId()
+                local rangeIndex = GetGuildHistoryEventRangeIndexForEventId(guildId, category, eventId)
+                local _, _, newestEventId = GetGuildHistoryEventRangeInfo(guildId, category, rangeIndex)
+                if eventId == newestEventId or IsGuildHistoryEventRedacted(guildId, category, newestEventId) then
+                    gapIndices[#gapIndices + 1] = i
+                end
+            end
+        end
+
+        for i = #gapIndices, 1, -1 do
+            local gapIndex = gapIndices[i]
+            local gapData = self.entryDataPool:AcquireObject()
+            gapData:SetupAsScrollListDataEntry(GUILD_EVENT_GAP_DATA)
+            table.insert(scrollData, gapIndex, gapData)
+        end
+    end)
 end
 
 function GuildHistoryAdapter:GetOrCreateCacheSaveData(key)
@@ -220,4 +281,12 @@ end
 
 function GuildHistoryAdapter:SetGuildHistoryLoggingEnabled(enabled)
     SetCVar("EnableGuildHistoryLogging", enabled and "1" or "0")
+end
+
+function GuildHistoryAdapter:IsMarkGapsFeatureEnabled()
+    return self.settings.markGapsInHistory
+end
+
+function GuildHistoryAdapter:SetMarkGapsFeatureEnabled(enabled)
+    self.settings.markGapsInHistory = enabled
 end

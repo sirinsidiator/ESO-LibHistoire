@@ -95,7 +95,7 @@ end
 function internal:InitializeCaches()
     local logger = self.logger
     logger:Verbose("Initializing Caches")
-    self.historyAdapter = self.class.GuildHistoryAdapter:New(LibHistoire_GuildHistoryCache)
+    self.historyAdapter = self.class.GuildHistoryAdapter:New(LibHistoire_GuildHistoryCache, LibHistoire_Settings)
     self.historyCache = self.class.GuildHistoryCache:New(self.historyAdapter, GUILD_HISTORY_MANAGER)
     SecurePostHook(ZO_GuildHistory_Keyboard, "OnDeferredInitialize", function(history)
         if self.statusWindow then return end
