@@ -455,7 +455,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
     local guildId, category = self.guildId, self.category
     logger:Info("Start processing events for guild %d category %d", guildId, category)
     local rangeIndex = self:FindRangeIndexForEventId(newestManagedEventId)
-    if not rangeIndex then
+    if not rangeIndex or not oldestManagedEventId then
         logger:Warn("Could not find managed range for guild %d category %d", guildId, category)
         self:RequestMissingData()
         return
@@ -787,6 +787,7 @@ function GuildHistoryCacheCategory:GetRangeInfo(index)
 end
 
 function GuildHistoryCacheCategory:FindRangeIndexForEventId(eventId)
+    if not eventId then return end
     for i = 1, self:GetNumRanges() do
         local _, _, newestEventId, oldestEventId = self:GetRangeInfo(i)
         if eventId >= oldestEventId and eventId <= newestEventId then
