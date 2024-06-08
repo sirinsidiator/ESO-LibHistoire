@@ -11,8 +11,7 @@
         <Button name="LibHistoireGuildHistoryStatusWindowToggleButtonTemplate"
             mouseOverBlendMode="ADD" inherits="ZO_ButtonBehaviorClickSound" virtual="true">
             <Dimensions x="32" y="32" />
-            <Anchor point="BOTTOMLEFT" relativeTo="ZO_GuildHistory" relativePoint="BOTTOMLEFT"
-                offsetX="5" offsetY="10" />
+            <Anchor point="BOTTOMLEFT" offsetX="5" offsetY="10" />
             <Textures normal="LibHistoire/image/histy_up.dds"
                 pressed="LibHistoire/image/histy_down.dds"
                 mouseOver="LibHistoire/image/histy_over.dds" />
