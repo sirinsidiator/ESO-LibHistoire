@@ -128,6 +128,12 @@ function GuildHistoryCacheCategory:RequestMissingData()
     logger:Debug("Request missing data for", self.key)
     if self:ContinueExistingRequest() or not self:IsAutoRequesting() then return end
 
+    if self:IsManagedRangeConnectedToPresent() then
+        logger:Debug("Already connected to present", self.key)
+        self:OnCategoryUpdated()
+        return
+    end
+
     local oldestManagedEventId, oldestManagedEventTime = self:GetOldestManagedEventInfo()
     local newestManagedEventId, newestManagedEventTime = self:GetNewestManagedEventInfo()
     local oldestGaplessEventIndex = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(self.guild, self
