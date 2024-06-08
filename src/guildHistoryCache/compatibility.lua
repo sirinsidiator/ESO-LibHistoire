@@ -288,12 +288,3 @@ internal.ConvertEventToLegacyFormat = ConvertEvent
 internal.GetCategoriesForLegacyCategory = GetCategoriesForLegacyCategory
 internal.GetCachesForLegacyCategory = GetCachesForLegacyCategory
 
--- TODO remove this once the vanilla function was updated
-function ZO_GuildHistoryEventCategoryData:GetEventsInTimeRange(newestTimeS, oldestTimeS)
-    local newestIndex, oldestIndex = internal.historyAdapter:GetGuildHistoryEventIndicesForTimeRange(
-        self.guildData:GetId(), self.eventCategory, newestTimeS, oldestTimeS)
-    if newestIndex then
-        return self:GetEventsInIndexRange(newestIndex, oldestIndex)
-    end
-    return {}
-end
