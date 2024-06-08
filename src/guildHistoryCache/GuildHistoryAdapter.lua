@@ -173,68 +173,26 @@ function GuildHistoryAdapter:InitializeDeferred(history, cache)
         end
     end
 
-    self.nodesByCategory = {}
-    local categoryTree = history.categoryTree
-    local root = categoryTree.rootNode
+    local root = history.categoryTree.rootNode
     for i = 1, #root.children do
         local child = root.children[i]
         if child.children then
-            self.nodesByCategory[child.data.eventCategory] = child.children[1]
             for j = 1, #child.children do
                 local leaf = child.children[j]
                 SecurePostHook(leaf, "selectionFunction", OnSelectionChanged)
             end
         else
-            self.nodesByCategory[child.data.eventCategory] = child
             SecurePostHook(child, "selectionFunction", OnSelectionChanged)
         end
     end
 end
 
-do
-    local PERMANENTLY_COMPLETED_REQUEST = { IsComplete = function() return true end }
-
-    local originalGetRequestForSelection, originalUpdateKeybinds
-
-    local function fakeGetRequestForSelection(self)
-        return setmetatable(PERMANENTLY_COMPLETED_REQUEST, { __index = originalGetRequestForSelection(self) })
-    end
-
-    local function CleanUp()
-        ZO_GuildHistory_Shared.GetRequestForSelection = originalGetRequestForSelection
-        ZO_GuildHistory_Shared.UpdateKeybinds = originalUpdateKeybinds
-    end
-
-    local function fakeUpdateKeybinds(self, ...)
-        CleanUp()
-        return self:UpdateKeybinds(...)
-    end
-
-    local function SuppressNextIngameRequest()
-        if ZO_GuildHistory_Shared.GetRequestForSelection == fakeGetRequestForSelection then return end
-        originalGetRequestForSelection = ZO_GuildHistory_Shared.GetRequestForSelection
-        originalUpdateKeybinds = ZO_GuildHistory_Shared.UpdateKeybinds
-        ZO_GuildHistory_Shared.GetRequestForSelection = fakeGetRequestForSelection
-        ZO_GuildHistory_Shared.UpdateKeybinds = fakeUpdateKeybinds
-    end
-
-    GuildHistoryAdapter.SuppressNextIngameRequest = SuppressNextIngameRequest
-    GuildHistoryAdapter.SuppressNextIngameRequestCleanUp = CleanUp
-end
-
 function GuildHistoryAdapter:SelectGuildByIndex(guildIndex)
-    self:SuppressNextIngameRequest()
-    GUILD_SELECTOR:SelectGuildByIndex(guildIndex)
-    self:SuppressNextIngameRequestCleanUp()
+    self.history:SwapToGuildIndexWithoutAutoRequest(guildIndex)
 end
 
 function GuildHistoryAdapter:SelectCategory(category)
-    local node = self.nodesByCategory[category]
-    if node then
-        self:SuppressNextIngameRequest()
-        self.history.categoryTree:SelectNode(node)
-        self:SuppressNextIngameRequestCleanUp()
-    end
+    self.history:SelectNodeForEventCategory(category, 1, true)
 end
 
 function GuildHistoryAdapter:GetSelectedCategoryCache()
