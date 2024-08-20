@@ -107,9 +107,17 @@ function internal:InitializeCaches()
             LibHistoire_Settings.statusWindow)
         logger:Verbose("User interface initialized")
     end)
+
+    local function SwitchPageWithoutRequest(history, page)
+        local wasAutoRequestEnabled = history.autoRequestEnabled
+        history.autoRequestEnabled = false
+        history:SetCurrentPage(page)
+        history.autoRequestEnabled = wasAutoRequestEnabled
+    end
+
     ZO_PreHook(ZO_GuildHistory_Shared, "ShowPreviousPage", function(history)
         if IsShiftKeyDown() then
-            history:SetCurrentPage(1)
+            SwitchPageWithoutRequest(history, 1)
             return true
         end
     end)
@@ -122,20 +130,32 @@ function internal:InitializeCaches()
 
             local startIndex = (page - 1) * ENTRIES_PER_PAGE + 1
             local endIndex = startIndex + ENTRIES_PER_PAGE - 1
-            for i = 1, #history.redactedEvents do
-                local eventIndex = history.redactedEvents[i]:GetEventIndex()
-                if eventIndex <= startIndex then
-                    startIndex = startIndex + 1
-                    endIndex = endIndex + 1
-                elseif eventIndex <= endIndex then
-                    endIndex = endIndex + 1
+
+            local guildData = GUILD_HISTORY_MANAGER:GetGuildData(history.guildId)
+            local eventCategoryData = guildData:GetEventCategoryData(history.selectedEventCategory)
+            local canHaveRedactedEvents = eventCategoryData:CanHaveRedactedEvents()
+            if canHaveRedactedEvents then
+                if page > 1 then
+                    local exactStartIndex = eventCategoryData:GetStartingIndexForPage(page, ENTRIES_PER_PAGE,
+                        history.selectedSubcategoryIndex)
+                    while page > 1 and exactStartIndex and exactStartIndex > startIndex do
+                        page = page - 1
+                        exactStartIndex = eventCategoryData:GetStartingIndexForPage(page, ENTRIES_PER_PAGE,
+                            history.selectedSubcategoryIndex)
+                    end
                 end
+                startIndex, endIndex = eventCategoryData:GetStartingAndEndingIndexForPage(page, ENTRIES_PER_PAGE,
+                    history.selectedSubcategoryIndex)
             end
-            history.cachedEventIndicesByPage[page] = {
-                startIndex = startIndex,
-                endIndex = endIndex
-            }
-            history:SetCurrentPage(page)
+
+            if startIndex and endIndex then
+                history.cachedEventIndicesByPage[page] = {
+                    startIndex = startIndex,
+                    endIndex = endIndex
+                }
+            end
+
+            SwitchPageWithoutRequest(history, page)
             return true
         end
     end)
