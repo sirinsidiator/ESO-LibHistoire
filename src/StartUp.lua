@@ -108,57 +108,7 @@ function internal:InitializeCaches()
         logger:Verbose("User interface initialized")
     end)
 
-    local function SwitchPageWithoutRequest(history, page)
-        local wasAutoRequestEnabled = history.autoRequestEnabled
-        history.autoRequestEnabled = false
-        history:SetCurrentPage(page)
-        history.autoRequestEnabled = wasAutoRequestEnabled
-    end
-
-    ZO_PreHook(ZO_GuildHistory_Shared, "ShowPreviousPage", function(history)
-        if IsShiftKeyDown() then
-            SwitchPageWithoutRequest(history, 1)
-            return true
-        end
-    end)
-    local ENTRIES_PER_PAGE = 100
-    ZO_PreHook(ZO_GuildHistory_Shared, "ShowNextPage", function(history)
-        if IsShiftKeyDown() then
-            local numVisibleEvents = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(history.guildId,
-                history.selectedEventCategory) or 1
-            local page = zo_ceil(numVisibleEvents / ENTRIES_PER_PAGE)
-
-            local startIndex = (page - 1) * ENTRIES_PER_PAGE + 1
-            local endIndex = startIndex + ENTRIES_PER_PAGE - 1
-
-            local guildData = GUILD_HISTORY_MANAGER:GetGuildData(history.guildId)
-            local eventCategoryData = guildData:GetEventCategoryData(history.selectedEventCategory)
-            local canHaveRedactedEvents = eventCategoryData:CanHaveRedactedEvents()
-            if canHaveRedactedEvents then
-                if page > 1 then
-                    local exactStartIndex = eventCategoryData:GetStartingIndexForPage(page, ENTRIES_PER_PAGE,
-                        history.selectedSubcategoryIndex)
-                    while page > 1 and exactStartIndex and exactStartIndex > startIndex do
-                        page = page - 1
-                        exactStartIndex = eventCategoryData:GetStartingIndexForPage(page, ENTRIES_PER_PAGE,
-                            history.selectedSubcategoryIndex)
-                    end
-                end
-                startIndex, endIndex = eventCategoryData:GetStartingAndEndingIndexForPage(page, ENTRIES_PER_PAGE,
-                    history.selectedSubcategoryIndex)
-            end
-
-            if startIndex and endIndex then
-                history.cachedEventIndicesByPage[page] = {
-                    startIndex = startIndex,
-                    endIndex = endIndex
-                }
-            end
-
-            SwitchPageWithoutRequest(history, page)
-            return true
-        end
-    end)
+    internal:InitializeQuickNavigation()
     logger:Verbose("Caches initialized")
 end
 

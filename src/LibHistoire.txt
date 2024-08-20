@@ -19,6 +19,7 @@ Dialogs.lua
 Settings.lua
 PerformanceTracker.lua
 CacheStatusBar.lua
+QuickNavigation.lua
 guildHistoryCache/compatibility.lua
 guildHistoryCache/controls.xml
 guildHistoryCache/GuildHistoryAdapter.lua
