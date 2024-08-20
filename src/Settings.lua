@@ -157,7 +157,7 @@ function internal:InitializeSettingsMenu()
         isExtraWide = true,
         getFunc = function()
             if IsMacUI() then
-                return "~/Documents/Elder Scrolls Online/live/CachedData/GuildHistory"
+                return "~/Documents/Elder Scrolls Online/live/GuildHistory"
             else
                 return "%UserProfile%\\Documents\\Elder Scrolls Online\\live\\GuildHistory"
             end
