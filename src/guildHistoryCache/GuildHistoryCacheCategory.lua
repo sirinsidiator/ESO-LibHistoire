@@ -745,6 +745,25 @@ function GuildHistoryCacheCategory:GetProcessingTimeRange()
     return self.processingStartTime, self.processingEndTime, self.processingCurrentTime
 end
 
+local function FindAndFilterNextOverlappingRange(ranges, guildId, category)
+    for indexA = 1, #ranges do
+        local _, _, newestIdA, oldestIdA = unpack(ranges[indexA])
+        for indexB = indexA + 1, #ranges do
+            local _, _, newestIdB, oldestIdB = unpack(ranges[indexB])
+            if not (newestIdA < oldestIdB or oldestIdA > newestIdB) then
+                logger:Warn("Found overlapping ranges in guild %d category %d", guildId, category)
+                if newestIdA > newestIdB then
+                    table.remove(ranges, indexB)
+                else
+                    table.remove(ranges, indexA)
+                end
+                return true
+            end
+        end
+    end
+    return false
+end
+
 function GuildHistoryCacheCategory:UpdateRangeInfo()
     if self.rangeInfoDirty then
         self.rangeInfoDirty = false
@@ -766,6 +785,9 @@ function GuildHistoryCacheCategory:UpdateRangeInfo()
                 end
             end
         end
+
+        -- sometimes the game fails to remove ranges after merging, so we remove overlapping ones to avoid issues when detecting the linked state
+        while FindAndFilterNextOverlappingRange(ranges, guildId, category) do end
 
         table.sort(ranges, function(a, b)
             return a[1] < b[1]
