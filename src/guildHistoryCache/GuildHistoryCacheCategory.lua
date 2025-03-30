@@ -375,7 +375,7 @@ function GuildHistoryCacheCategory:OnCategoryUpdated(flags)
             oldestManagedEventId = eventId
             isNewManagedRange = true
         else
-            logger:Warn("Could not find any unlinked events for", key)
+            logger:Warn("Could not find any unlinked events for", self.key)
         end
     end
 
