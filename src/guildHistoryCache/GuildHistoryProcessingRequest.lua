@@ -142,20 +142,20 @@ function GuildHistoryProcessingRequest:GetDebugInfo()
 
     local currentIndex = self.currentIndex
     if currentIndex then
-        local currentEventTime, currentEventId = self.processor.categoryCache:GetEventInfo(currentIndex)
+        local currentEvent = self.processor.categoryCache:GetEvent(currentIndex)
         debugInfo.currentEvent = {
-            id = currentEventId,
-            time = currentEventTime,
+            id = currentEvent:GetEventId(),
+            time = currentEvent:GetEventTimestampS(),
             index = currentIndex,
         }
     end
 
     local endIndex = self.endIndex
     if endIndex then
-        local endEventTime, endEventId = self.processor.categoryCache:GetEventInfo(endIndex)
+        local endEvent = self.processor.categoryCache:GetEvent(endIndex)
         debugInfo.endEvent = {
-            id = endEventId,
-            time = endEventTime,
+            id = endEvent:GetEventId(),
+            time = endEvent:GetEventTimestampS(),
             index = endIndex,
         }
     end

@@ -125,8 +125,8 @@ function GuildHistoryCacheCategory:ShouldSendInitialRequest(oldestManagedEventId
 end
 
 function GuildHistoryCacheCategory:RequestMissingData()
-    logger:Debug("Request missing data for", self.key)
     if self:ContinueExistingRequest() or not self:IsAutoRequesting() then return end
+    logger:Debug("Request missing data for", self.key)
 
     if self:IsManagedRangeConnectedToPresent() then
         logger:Debug("Already connected to present", self.key)
@@ -375,7 +375,7 @@ function GuildHistoryCacheCategory:OnCategoryUpdated(flags)
             oldestManagedEventId = eventId
             isNewManagedRange = true
         else
-            logger:Warn("Could not find any unlinked events for", key)
+            logger:Warn("Could not find any unlinked events for", self.key)
         end
     end
 
@@ -508,7 +508,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
             local event = unlinkedEvents[i]
             local eventId = event:GetEventId()
             if (isNewManagedRange and eventId < newestManagedEventId) or (not isNewManagedRange and eventId <= newestManagedEventId) then
-                logger:Warn("skip already processed event", guildId, category, eventId, newestManagedEventId)
+                logger:Debug("skip already processed event", guildId, category, eventId, newestManagedEventId)
             else
                 local eventTime = event:GetEventTimestampS()
                 assert(eventTime >= oldestTime and eventTime >= previousTime, "Received event with invalid timestamp")
@@ -519,6 +519,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
                 self:SetNewestManagedEventInfo(eventId, eventTime)
                 internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENT, guildId, category, event)
                 self.processingCurrentTime = eventTime
+                previousTime = eventTime
             end
         end):Then(function()
             self.progressDirty = true
@@ -548,13 +549,14 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
             local event = missedEvents[i]
             local eventId = event:GetEventId()
             if eventId >= oldestManagedEventId then
-                logger:Warn("skip already processed event")
+                logger:Debug("skip already processed event")
             else
                 local eventTime = event:GetEventTimestampS()
                 assert(eventTime >= oldestTime and eventTime <= previousTime, "Received event with invalid timestamp")
                 self:SetOldestManagedEventInfo(eventId, eventTime)
                 internal:FireCallbacks(internal.callback.PROCESS_MISSED_EVENT, guildId, category, event)
                 self.processingCurrentTime = -eventTime
+                previousTime = eventTime
             end
         end):Then(function()
             self.progressDirty = true
@@ -770,8 +772,15 @@ function GuildHistoryCacheCategory:UpdateRangeInfo()
 
         local guildId, category = self.guildId, self.category
         local ranges = {}
+        local previousNewestTimeS = GetTimeStamp() + 100
         for i = 1, GetNumGuildHistoryEventRanges(guildId, category) do
             local newestTimeS, oldestTimeS = GetGuildHistoryEventRangeInfo(guildId, category, i)
+            -- verify that each range is older than the previous one
+            if newestTimeS > previousNewestTimeS then
+                logger:Warn("Out of order range detected for guild %d category %d", guildId, category)
+            end
+            previousNewestTimeS = newestTimeS
+
             -- range info includes events that are hidden due to permissions, so we check for actually visible events here
             local newestIndex, oldestIndex = self.adapter:GetGuildHistoryEventIndicesForTimeRange(
                 guildId, category, newestTimeS, oldestTimeS)
@@ -1173,7 +1182,7 @@ function GuildHistoryCacheCategory:GetDebugInfo()
         startTime = processingStartTime,
         currentTime = processingCurrentTime,
         endTime = processingEndTime,
-        task = self.processingTask and self.processingTask:GetDebugInfo()
+        -- task = self.processingTask and self.processingTask:GetDebugInfo() TODO comes from LibAsync, so no GetDebugInfo function -> any info we want to add?
     }
 
     debugInfo.processingQueue = {}
