@@ -97,16 +97,19 @@ function internal:InitializeCaches()
     logger:Verbose("Initializing Caches")
     self.historyAdapter = self.class.GuildHistoryAdapter:New(LibHistoire_GuildHistoryCache, LibHistoire_Settings)
     self.historyCache = self.class.GuildHistoryCache:New(self.historyAdapter, GUILD_HISTORY_MANAGER)
-    SecurePostHook(ZO_GuildHistory_Keyboard, "OnDeferredInitialize", function(history)
-        if self.statusWindow then return end
-        logger:Verbose("Initializing user interface")
-        self.historyAdapter:InitializeDeferred(history, self.historyCache)
-        self.statusTooltip = self.class.GuildHistoryStatusTooltip:New()
-        self.linkedIcon = self.class.GuildHistoryStatusLinkedIcon:New(history, self.historyAdapter, self.statusTooltip)
-        self.statusWindow = self.class.GuildHistoryStatusWindow:New(self.historyAdapter, self.statusTooltip,
-            LibHistoire_Settings.statusWindow)
-        logger:Verbose("User interface initialized")
-    end)
+    if not IsConsoleUI() then
+        SecurePostHook(ZO_GuildHistory_Keyboard, "OnDeferredInitialize", function(history)
+            if self.statusWindow then return end
+            logger:Verbose("Initializing user interface")
+            self.historyAdapter:InitializeDeferred(history, self.historyCache)
+            self.statusTooltip = self.class.GuildHistoryStatusTooltip:New()
+            self.linkedIcon = self.class.GuildHistoryStatusLinkedIcon:New(history, self.historyAdapter,
+                self.statusTooltip)
+            self.statusWindow = self.class.GuildHistoryStatusWindow:New(self.historyAdapter, self.statusTooltip,
+                LibHistoire_Settings.statusWindow)
+            logger:Verbose("User interface initialized")
+        end)
+    end
 
     internal:InitializeQuickNavigation()
     logger:Verbose("Caches initialized")

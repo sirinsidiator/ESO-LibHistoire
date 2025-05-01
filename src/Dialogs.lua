@@ -132,9 +132,11 @@ end
 
 function internal:InitializeDialogs()
     local cache = self.historyCache
-    SetupDialogHook(cache, "LOG_OUT")
+    if not IsConsoleUI() then
+        SetupDialogHook(cache, "LOG_OUT")
+        SetupDialogHook(cache, "QUIT")
+    end
     SetupDialogHook(cache, "GAMEPAD_LOG_OUT")
-    SetupDialogHook(cache, "QUIT")
     SetupSlashCommandHook(cache, GetString(SI_SLASH_LOGOUT), GetString(SI_LOG_OUT_GAME_CONFIRM_KEYBIND))
     SetupSlashCommandHook(cache, GetString(SI_SLASH_CAMP), GetString(SI_LOG_OUT_GAME_CONFIRM_KEYBIND))
     SetupSlashCommandHook(cache, GetString(SI_SLASH_QUIT), GetString(SI_QUIT_GAME_CONFIRM_KEYBIND))
