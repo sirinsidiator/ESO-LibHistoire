@@ -1,3 +1,7 @@
+-- SPDX-FileCopyrightText: 2025 sirinsidiator
+--
+-- SPDX-License-Identifier: Artistic-2.0
+
 local internal = LibHistoire.internal
 
 local ENTRIES_PER_PAGE = 100

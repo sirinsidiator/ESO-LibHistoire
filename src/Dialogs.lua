@@ -1,3 +1,7 @@
+-- SPDX-FileCopyrightText: 2025 sirinsidiator
+--
+-- SPDX-License-Identifier: Artistic-2.0
+
 local internal = LibHistoire.internal
 
 local DIALOG_ID = "LibHistoire"

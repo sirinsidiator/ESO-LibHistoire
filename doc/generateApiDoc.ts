@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 sirinsidiator
+//
+// SPDX-License-Identifier: Artistic-2.0
+
 const PROJECT_PATH = "../src";
 const INCLUDED_FILES = new Set([
     "api.lua",

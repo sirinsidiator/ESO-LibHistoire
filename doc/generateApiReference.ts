@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 sirinsidiator
+//
+// SPDX-License-Identifier: Artistic-2.0
+
 import fs = require("fs");
 import path = require("path");
 import { exec } from "child_process";

@@ -1,6 +1,6 @@
--- LibHistoire & its files © sirinsidiator                      --
--- Distributed under The Artistic License 2.0 (see LICENSE)     --
-------------------------------------------------------------------
+-- SPDX-FileCopyrightText: 2025 sirinsidiator
+--
+-- SPDX-License-Identifier: Artistic-2.0
 
 local LAM = LibAddonMenu2
 local lib = LibHistoire
