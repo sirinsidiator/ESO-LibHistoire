@@ -19,6 +19,11 @@ local GuildHistoryLegacyEventListener = {}
 --- @return boolean isReady True if the library is ready to be used, false otherwise.
 function LibHistoire:IsReady() end
 
+--- This function returns false while the guild history system is unavailable. 
+--- It's currently based on hardcoded data, which may not be 100% accurate and will require the library to be updated by the user.
+--- @return boolean isDisabled True if the guild history system is disabled, false otherwise.
+function LibHistoire:IsGuildHistorySystemDisabled() end
+
 --- A convenience function to execute a callback when the library is ready. When the library is already initialized, the callback will be executed immediately.
 --- @param callback fun(lib: LibHistoire) The function to call when the library is ready. It will receive the LibHistoire object as an argument.
 --- @see Callbacks.INITIALIZED

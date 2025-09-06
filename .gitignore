@@ -6,3 +6,5 @@
 /temp
 /unused
 node_modules
+/doc/doc.*
+/doc/*.log

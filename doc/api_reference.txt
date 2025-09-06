@@ -38,7 +38,7 @@ See:
 [LIST]
 [*]
 [*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/guildHistoryCache/GuildHistoryLegacyEventListener.lua#L9']GuildHistoryLegacyEventListener[/URL]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L126']LibHistoire.CreateGuildHistoryProcessor[/URL]
+[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L133']LibHistoire.CreateGuildHistoryProcessor[/URL]
 [/LIST]
 [/INDENT]
 [/INDENT]
@@ -63,6 +63,19 @@ See:
 [/INDENT]
 [/INDENT]
 [INDENT]
+[SIZE="2"]IsGuildHistorySystemDisabled[/SIZE]
+[INDENT]
+[highlight="Lua"]
+(method) LibHistoire:IsGuildHistorySystemDisabled()
+  -> isDisabled: boolean
+[/highlight]
+ This function returns false while the guild history system is unavailable. 
+ It's currently based on hardcoded data, which may not be 100% accurate and will require the library to be updated by the user.
+
+[I]@return[/I] [B]isDisabled[/B] — True if the guild history system is disabled, false otherwise.
+[/INDENT]
+[/INDENT]
+[INDENT]
 [SIZE="2"]IsReady[/SIZE]
 [INDENT]
 [highlight="Lua"]
@@ -76,7 +89,7 @@ See:
 
 See:
 [LIST]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L44']Callbacks.INITIALIZED[/URL]
+[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L51']Callbacks.INITIALIZED[/URL]
 [/LIST]
 [/INDENT]
 [/INDENT]
@@ -93,7 +106,7 @@ See:
 See:
 [LIST]
 [*]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L44']Callbacks.INITIALIZED[/URL]
+[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L51']Callbacks.INITIALIZED[/URL]
 [*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L19']LibHistoire.IsReady[/URL]
 [/LIST]
 [/INDENT]
@@ -111,7 +124,7 @@ See:
 
 See:
 [LIST]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L35']Callbacks[/URL]
+[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L42']Callbacks[/URL]
 [/LIST]
 [/INDENT]
 [/INDENT]
@@ -128,7 +141,7 @@ See:
 
 See:
 [LIST]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L35']Callbacks[/URL]
+[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L42']Callbacks[/URL]
 [/LIST]
 [/INDENT]
 [/INDENT]
@@ -337,7 +350,7 @@ See:
 
 See:
 [LIST]
-[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L172']LibHistoire.StopReason[/URL]
+[*][URL='https://github.com/sirinsidiator/ESO-LibHistoire/blob/master/src/api.lua#L179']LibHistoire.StopReason[/URL]
 [/LIST]
 [/INDENT]
 [/INDENT]

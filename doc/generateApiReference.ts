@@ -6,8 +6,28 @@ import fs = require("fs");
 import path = require("path");
 import { exec } from "child_process";
 
-const LS_SERVER_PATH = "lua-language-server.exe";
+const HOME_PATH = process.env["USERPROFILE"];
+const VSCODE_EXTENSIONS_PATH = path.join(HOME_PATH, ".vscode", "extensions");
+const extensions = fs.readdirSync(VSCODE_EXTENSIONS_PATH).filter((ext) => ext.startsWith("sumneko.lua")).map(ext => {
+    const matches = RegExp(/sumneko\.lua-(\d+)\.(\d+)\.(\d+)-win32-x64/).exec(ext);
+    if (!matches) {
+        return null;
+    }
+    const [major, minor, patch] = matches.slice(1).map(Number);
+    return { major, minor, patch, ext };
+}).filter(ext => ext !== null).sort((a, b) => {
+    if (a.major !== b.major) {
+        return b.major - a.major;
+    } else if (a.minor !== b.minor) {
+        return b.minor - a.minor;
+    } else {
+        return b.patch - a.patch;
+    }
+}).map(ext => ext.ext);
+
+const LS_SERVER_PATH = path.join(VSCODE_EXTENSIONS_PATH, extensions[0], "server", "bin", "lua-language-server.exe");
 const PROJECT_PATH = path.resolve(process.cwd(), "../src");
+const OUTPUT_PATH = path.resolve(process.cwd(), "./");
 const PROJECT_URI = toFileUri(PROJECT_PATH);
 
 function toFileUri(filePath: string) {
@@ -16,7 +36,7 @@ function toFileUri(filePath: string) {
     return uri.replace(/file:\/\/\/(\w):/g, "file:///$1%3A");
 }
 
-const cmd = `${LS_SERVER_PATH} --doc=${PROJECT_PATH}`;
+const cmd = `${LS_SERVER_PATH} --doc=${PROJECT_PATH} --doc_out_path=${OUTPUT_PATH} --logpath=${OUTPUT_PATH}`;
 console.log(cmd);
 
 exec(cmd, (error, stdout, stderr) => {
@@ -24,15 +44,8 @@ exec(cmd, (error, stdout, stderr) => {
         console.error(error);
         return;
     }
-    const lines = stdout.split("\n");
-    const jsonPath = lines.find((l) => l.startsWith("Raw data: ["));
-    const matches = RegExp(/\[(.*)\]/).exec(jsonPath);
-    if (!matches) {
-        console.error("Could not find json path");
-        return;
-    }
 
-    const jsonFile = matches[1].replace(/\\/g, "/");
+    const jsonFile = path.join(OUTPUT_PATH, "doc.json");
     const content = fs.readFileSync(jsonFile, "utf-8");
     const data = JSON.parse(content);
 
@@ -93,7 +106,12 @@ exec(cmd, (error, stdout, stderr) => {
         "Use MANAGED_RANGE_FOUND instead."
     );
 
-    const output = [];
+    const output = [
+        '; SPDX-FileCopyrightText: 2025 sirinsidiator',
+        ';',
+        '; SPDX-License-Identifier: Artistic-2.0',
+        ''
+    ];
     const processedSymbols = new Set<string>();
     entries.forEach((entry) => {
         if (entry.defines[0].type === "tablefield") {
@@ -144,14 +162,14 @@ exec(cmd, (error, stdout, stderr) => {
 });
 
 const ALLOWED_FILES = {
-    "LibHistoire/src/api.lua": true,
-    "LibHistoire/src/guildHistoryCache/GuildHistoryEventProcessor.lua": true,
+    "api.lua": true,
+    "guildHistoryCache/GuildHistoryEventProcessor.lua": true,
 };
 function isDefinedInAnyAllowedFile(entry: DocEntry) {
     return entry.defines.some((definition) => {
-        return Object.keys(ALLOWED_FILES).some((allowedFile) =>
-            definition.file.endsWith(allowedFile)
-        );
+        return Object.keys(ALLOWED_FILES).some((allowedFile) => {
+            return definition.file?.endsWith(allowedFile)
+        });
     });
 }
 

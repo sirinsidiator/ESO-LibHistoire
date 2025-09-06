@@ -12,9 +12,9 @@ import fs = require("fs");
 import path = require("path");
 
 const output = [
-    `-- LibHistoire & its files © sirinsidiator                      --
--- Distributed under The Artistic License 2.0 (see LICENSE)     --
-------------------------------------------------------------------
+    `-- SPDX-FileCopyrightText: 2025 sirinsidiator
+--
+-- SPDX-License-Identifier: Artistic-2.0
 
 --- @meta LibHistoire
 
