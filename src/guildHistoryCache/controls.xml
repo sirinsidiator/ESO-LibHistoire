@@ -174,24 +174,47 @@ SPDX-License-Identifier: Artistic-2.0 -->
 
         <Control name="LibHistoire_GuildHistoryGapRow_Shared" virtual="true" mouseEnabled="true">
             <Controls>
-                <Texture name="$(parent)Bg" textureFile="EsoUI/Art/Miscellaneous/listItem_backdrop.dds">
+                <Texture name="$(parent)Bg"
+                    textureFile="EsoUI/Art/Miscellaneous/listItem_backdrop.dds">
                     <AnchorFill />
                     <TextureCoords left="0" right="1" top="0" bottom=".8125" />
                 </Texture>
 
-                <Label name="$(parent)Label" text="Missing data needs to be loaded" font="ZoFontHeader">
+                <Label name="$(parent)Label" text="Missing data needs to be loaded"
+                    font="ZoFontHeader">
                     <Anchor point="CENTER" />
                 </Label>
             </Controls>
         </Control>
 
-        <Control name="LibHistoire_GuildHistoryGapRow_Keyboard" inherits="LibHistoire_GuildHistoryGapRow_Shared" virtual="true">
+        <Control name="LibHistoire_GuildHistoryDisabledGapRow_Shared"
+            inherits="LibHistoire_GuildHistoryGapRow_Shared" virtual="true">
+            <Controls>
+                <Label name="$(parent)Label" override="true"
+                    text="Guild history was disabled by ZOS. Missing data is currently unavailable"
+                    font="ZoFontHeader"
+                    color="INTERFACE_COLOR_TYPE_GENERAL:INTERFACE_GENERAL_COLOR_ERROR" />
+            </Controls>
+        </Control>
+
+        <Control name="LibHistoire_GuildHistoryGapRow_Keyboard"
+            inherits="LibHistoire_GuildHistoryGapRow_Shared" virtual="true">
             <Dimensions y="ZO_GUILD_HISTORY_KEYBOARD_ROW_HEIGHT" />
         </Control>
 
-        <Control name="LibHistoire_GuildHistoryGapRow_Gamepad" inherits="LibHistoire_GuildHistoryGapRow_Shared" virtual="true">
+        <Control name="LibHistoire_GuildHistoryGapRow_Gamepad"
+            inherits="LibHistoire_GuildHistoryGapRow_Shared" virtual="true">
             <Dimensions y="ZO_GUILD_HISTORY_GAMEPAD_ROW_HEIGHT" />
         </Control>
 
+        <Control name="LibHistoire_GuildHistoryDisabledGapRow_Keyboard"
+            inherits="LibHistoire_GuildHistoryDisabledGapRow_Shared" virtual="true">
+            <Dimensions y="ZO_GUILD_HISTORY_KEYBOARD_ROW_HEIGHT" />
+        </Control>
+
+        <Control name="LibHistoire_GuildHistoryDisabledGapRow_Gamepad"
+            inherits="LibHistoire_GuildHistoryDisabledGapRow_Shared" virtual="true">
+            <Dimensions y="ZO_GUILD_HISTORY_GAMEPAD_ROW_HEIGHT" />
+        </Control>
     </Controls>
 </GuiXml>

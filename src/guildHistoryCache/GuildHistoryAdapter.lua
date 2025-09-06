@@ -43,15 +43,19 @@ function GuildHistoryAdapter:InitializeGapRows()
     local GUILD_EVENT_DATA = 1
     local GUILD_EVENT_GAP_DATA = 2
 
+    local systemDisabled = internal:IsGuildHistorySystemDisabled()
     SecurePostHook(ZO_GuildHistory_Shared, "InitializeSortFilterList", function(self, rowTemplate, rowHeight)
         if rowTemplate == "ZO_GuildHistoryRow_Keyboard" then
-            rowTemplate = "LibHistoire_GuildHistoryGapRow_Keyboard"
+            rowTemplate = systemDisabled and "LibHistoire_GuildHistoryDisabledGapRow_Keyboard" or
+                "LibHistoire_GuildHistoryGapRow_Keyboard"
         elseif rowTemplate == "ZO_GuildHistoryRow_Gamepad" then
-            rowTemplate = "LibHistoire_GuildHistoryGapRow_Gamepad"
+            rowTemplate = systemDisabled and "LibHistoire_GuildHistoryDisabledGapRow_Gamepad" or
+                "LibHistoire_GuildHistoryGapRow_Gamepad"
         else
             return
         end
-        ZO_ScrollList_AddDataType(self.list, GUILD_EVENT_GAP_DATA, rowTemplate, rowHeight, nil, ZO_ObjectPool_DefaultResetControl)
+        ZO_ScrollList_AddDataType(self.list, GUILD_EVENT_GAP_DATA, rowTemplate, rowHeight, nil,
+            ZO_ObjectPool_DefaultResetControl)
 
         local dataType = ZO_ScrollList_GetDataTypeTable(self.list, GUILD_EVENT_DATA)
         dataType.hideCallback = ZO_ObjectPool_DefaultResetControl
@@ -59,30 +63,36 @@ function GuildHistoryAdapter:InitializeGapRows()
 
     SecurePostHook(ZO_GuildHistory_Shared, "FilterScrollList", function(self)
         local scrollData = ZO_ScrollList_GetDataList(self.list)
-
-        if #scrollData < 2 then return end
-
-        local guildId = self.guildId
-        local category = self.selectedEventCategory
-        local hasGaplessRange = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(guildId, category) ~= nil
         local gapIndices = {}
-        for i = 1, #scrollData do
-            local entryData = scrollData[i]
-            if not hasGaplessRange or entryData:GetEventIndex() > 1 then
-                local eventId = entryData.data:GetEventId()
-                local rangeIndex = GetGuildHistoryEventRangeIndexForEventId(guildId, category, eventId)
-                local _, _, newestEventId = GetGuildHistoryEventRangeInfo(guildId, category, rangeIndex)
-                if eventId == newestEventId or IsGuildHistoryEventRedacted(guildId, category, newestEventId) then
-                    gapIndices[#gapIndices + 1] = i
+
+        if #scrollData >= 2 then
+            local guildId = self.guildId
+            local category = self.selectedEventCategory
+            local hasGaplessRange = GetOldestGuildHistoryEventIndexForUpToDateEventsWithoutGaps(guildId, category) ~= nil
+
+            for i = 1, #scrollData do
+                local entryData = scrollData[i]
+                if not hasGaplessRange or entryData:GetEventIndex() > 1 then
+                    local eventId = entryData.data:GetEventId()
+                    local rangeIndex = GetGuildHistoryEventRangeIndexForEventId(guildId, category, eventId)
+                    local _, _, newestEventId = GetGuildHistoryEventRangeInfo(guildId, category, rangeIndex)
+                    if eventId == newestEventId or IsGuildHistoryEventRedacted(guildId, category, newestEventId) then
+                        gapIndices[#gapIndices + 1] = i
+                    end
                 end
             end
         end
 
+        if (systemDisabled and gapIndices[1] ~= 1) then
+            table.insert(gapIndices, 1, 1)
+        end
         for i = #gapIndices, 1, -1 do
             local gapIndex = gapIndices[i]
-            local gapData = self.entryDataPool:AcquireObject()
-            gapData:SetupAsScrollListDataEntry(GUILD_EVENT_GAP_DATA)
-            table.insert(scrollData, gapIndex, gapData)
+            if (gapIndex == 1 or scrollData[gapIndex - 1].typeId ~= GUILD_EVENT_GAP_DATA) then
+                local gapData = self.entryDataPool:AcquireObject()
+                gapData:SetupAsScrollListDataEntry(GUILD_EVENT_GAP_DATA)
+                table.insert(scrollData, gapIndex, gapData)
+            end
         end
     end)
 end

@@ -49,6 +49,10 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
                 "New events will be sent on the server's sole discretion and may arrive at any time, or sometimes even never")
             SetTooltipText(InformationTooltip,
                 "If they do not show up after several hours, you may want to restart your game")
+        elseif internal:IsGuildHistorySystemDisabled() then
+            SetTooltipText(InformationTooltip, "The guild history system is currently disabled by ZOS", ZO_ERROR_COLOR)
+            SetTooltipText(InformationTooltip,
+            "LibHistoire will not be able to retrieve new data until it is enabled again")
         else
             SetTooltipText(InformationTooltip, "The history has not been linked to the stored events yet.")
             SetTooltipText(InformationTooltip, "Automatic requests are on cooldown and may take a while")
@@ -57,6 +61,9 @@ function GuildHistoryStatusWindow:Initialize(historyAdapter, statusTooltip, save
                 "You can also force history to link, but it will create a hole in the stored records")
         end
     end)
+    if internal:IsGuildHistorySystemDisabled() then
+        self.statusIcon:SetColor(ZO_ERROR_COLOR:UnpackRGBA())
+    end
     self.statusIcon:SetHandler("OnMouseExit", function()
         ClearTooltip(InformationTooltip)
     end)

@@ -205,3 +205,23 @@ function internal:IsGuildStatusVisible(guildId)
 
     return cache:GetGuildId() == guildId
 end
+
+do
+    -- https://forums.elderscrollsonline.com/en/discussion/682758/guild-history-turned-off-sept-4
+    local ESTIMATED_GUILD_HISTORY_RE_ENABLE_TIME_PC = 1757925000 -- Mon Sep 15 2025 08:30:00 GMT+0000
+    local ESTIMATED_GUILD_HISTORY_RE_ENABLE_TIME_CONSOLE = 1758011400 -- Tue Sep 16 2025 08:30:00 GMT+0000
+    local ESTIMATED_GUILD_HISTORY_RE_ENABLE_TIME = {
+        ["NA Megaserver"] = ESTIMATED_GUILD_HISTORY_RE_ENABLE_TIME_PC,
+        ["EU Megaserver"] = ESTIMATED_GUILD_HISTORY_RE_ENABLE_TIME_PC,
+        ["XB1live"] = ESTIMATED_GUILD_HISTORY_RE_ENABLE_TIME_CONSOLE,
+        ["PS4live"] = ESTIMATED_GUILD_HISTORY_RE_ENABLE_TIME_CONSOLE,
+        ["XB1live-eu"] = ESTIMATED_GUILD_HISTORY_RE_ENABLE_TIME_CONSOLE,
+        ["PS4live-eu"] = ESTIMATED_GUILD_HISTORY_RE_ENABLE_TIME_CONSOLE,
+    }
+    function internal:IsGuildHistorySystemDisabled()
+        local world = GetWorldName()
+        local reenableTime = ESTIMATED_GUILD_HISTORY_RE_ENABLE_TIME[world]
+        if not reenableTime then return false end
+        return GetTimeStamp() < reenableTime
+    end
+end

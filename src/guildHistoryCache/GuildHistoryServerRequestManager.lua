@@ -34,7 +34,7 @@ function GuildHistoryServerRequestManager:StopWatchdog()
 end
 
 function GuildHistoryServerRequestManager:QueueRequest(request, skipRequestSendNext)
-    if not request then return end
+    if not request or internal:IsGuildHistorySystemDisabled() then return end
 
     logger:Debug("Queue request", request.cache.key, request:GetRequestId(), request.newestTime,
         request.oldestTime)
@@ -107,6 +107,12 @@ function GuildHistoryServerRequestManager:SendNext()
     if not request then
         logger:Debug("No more requests to send")
         self:StopWatchdog()
+        return false
+    end
+
+    if internal:IsGuildHistorySystemDisabled() then
+        logger:Warn("Guild history system is disabled - cannot send request")
+        request:Destroy()
         return false
     end
 
