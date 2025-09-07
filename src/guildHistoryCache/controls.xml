@@ -205,6 +205,9 @@ SPDX-License-Identifier: Artistic-2.0 -->
         <Control name="LibHistoire_GuildHistoryGapRow_Gamepad"
             inherits="LibHistoire_GuildHistoryGapRow_Shared" virtual="true">
             <Dimensions y="ZO_GUILD_HISTORY_GAMEPAD_ROW_HEIGHT" />
+            <Controls>
+                <Label name="$(parent)Label" override="true" font="ZoFontGamepadCondensed34" />
+            </Controls>
         </Control>
 
         <Control name="LibHistoire_GuildHistoryDisabledGapRow_Keyboard"
@@ -215,6 +218,9 @@ SPDX-License-Identifier: Artistic-2.0 -->
         <Control name="LibHistoire_GuildHistoryDisabledGapRow_Gamepad"
             inherits="LibHistoire_GuildHistoryDisabledGapRow_Shared" virtual="true">
             <Dimensions y="ZO_GUILD_HISTORY_GAMEPAD_ROW_HEIGHT" />
+            <Controls>
+                <Label name="$(parent)Label" override="true" font="ZoFontGamepadCondensed34" />
+            </Controls>
         </Control>
     </Controls>
 </GuiXml>
