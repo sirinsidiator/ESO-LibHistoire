@@ -109,7 +109,7 @@ local function ShowShutdownWarningIfNeeded(cache, buttonText, originalCallback, 
             "LibHistoire is currently processing events! If you exit now, you may corrupt your save data.\n\n" ..
             "You are advised to check the status window and wait until all events have been processed before reloading the UI.",
             buttonText, originalCallback)
-    elseif not cache:HasLinkedAllCachesRecently() then
+    elseif not internal:IsGuildHistorySystemDisabled() and not cache:HasLinkedAllCachesRecently() then
         ShowShutdownWarningDialog(
             "LibHistoire has not been able to link the managed history range of one or more categories to present history for over a week.\n\n" ..
             "You are advised to check the status window and try to manually request missing data to avoid interruptions in the data flow for dependent addons.",
