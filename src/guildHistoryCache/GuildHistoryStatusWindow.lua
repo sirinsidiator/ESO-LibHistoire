@@ -568,6 +568,7 @@ function GuildHistoryStatusWindow:ShowDebugInfo()
     debugInfo.zoomMode = self:GetZoomMode()
     debugInfo.version = "v@FULL_VERSION_NUMBER@"
     debugInfo.created = GetTimeStamp()
+    debugInfo.systemDisabled = internal:IsGuildHistorySystemDisabled()
     debugInfo = ToJSON(debugInfo, 0)
     logger:Info(debugInfo)
 
@@ -578,4 +579,6 @@ function GuildHistoryStatusWindow:ShowDebugInfo()
     ZO_ERROR_FRAME.suppressKeybind:SetHidden(true)
     ZO_ERROR_FRAME.copyErrorCodeButton:SetHidden(true)
     ZO_ERROR_FRAME.copyKeybind:SetHidden(false)
+
+    DumpGuildHistoryChunkInformation()
 end
