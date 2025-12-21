@@ -252,8 +252,7 @@ local function SetLabel(rowControl, entry)
         if mode == internal.REQUEST_MODE_ON then
             label = label .. zo_iconFormat(REQUEST_MODE_FORCE_ON_ICON, REQUEST_MODE_ICON_SIZE, REQUEST_MODE_ICON_SIZE)
         elseif mode == internal.REQUEST_MODE_OFF then
-            label = label ..
-                zo_iconTextFormat(REQUEST_MODE_FORCE_OFF_ICON, REQUEST_MODE_ICON_SIZE, REQUEST_MODE_ICON_SIZE)
+            label = label .. zo_iconFormat(REQUEST_MODE_FORCE_OFF_ICON, REQUEST_MODE_ICON_SIZE, REQUEST_MODE_ICON_SIZE)
         end
     end
 

@@ -35,7 +35,7 @@ function GuildHistoryStatusTooltip:SetupForCategory(cache)
 
     if cache:IsAutoRequesting() then
         SetTooltipText(tooltip,
-            zo_strformat("Loaded managed events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumLoadedManagedEvents())))
+            zo_strformat("Loaded managed events: |cffffff<<1>>|r", ZO_CommaDelimitDecimalNumber(cache:GetNumLoadedManagedEvents())))
         local _, oldestManagedEventTime = cache:GetOldestManagedEventInfo()
         if oldestManagedEventTime then
             local date, time = FormatAchievementLinkTimestamp(oldestManagedEventTime)
@@ -80,7 +80,7 @@ function GuildHistoryStatusTooltip:SetupForCategory(cache)
     else
         SetTooltipText(tooltip, "History has not linked to present events yet", 1, 0, 0)
         SetTooltipText(tooltip,
-            zo_strformat("Unlinked events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumUnlinkedEvents())))
+            zo_strformat("Unlinked events: |cffffff<<1>>|r", ZO_CommaDelimitDecimalNumber(cache:GetNumUnlinkedEvents())))
 
         local oldestUnlinkedEventTime = cache:GetOldestUnlinkedEventTime()
         if oldestUnlinkedEventTime then
@@ -121,7 +121,7 @@ function GuildHistoryStatusTooltip:SetupForGuild(cache)
     local tooltip = self.control
 
     SetTooltipText(tooltip,
-        zo_strformat("Loaded managed events: |cffffff<<1>>|r", ZO_LocalizeDecimalNumber(cache:GetNumLoadedManagedEvents())))
+        zo_strformat("Loaded managed events: |cffffff<<1>>|r", ZO_CommaDelimitDecimalNumber(cache:GetNumLoadedManagedEvents())))
     local _, oldestManagedEventTime = cache:GetOldestManagedEventInfo()
     if oldestManagedEventTime then
         local date, time = FormatAchievementLinkTimestamp(oldestManagedEventTime)
