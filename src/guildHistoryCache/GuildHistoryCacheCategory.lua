@@ -230,17 +230,22 @@ end
 function GuildHistoryCacheCategory:DestroyRequest(request)
     if not self.request or (request and self.request ~= request) then return end
     logger:Debug("destroy server request", self.key)
-    local request = self.request
+    local currentRequest = self.request
     self.request = nil
-    if not request:Destroy() then return end
-    if request:IsRequestQueued() then
-        self.requestManager:RemoveRequest(request)
+    if not currentRequest:Destroy() then return end
+    if currentRequest:IsRequestQueued() then
+        self.requestManager:RemoveRequest(currentRequest)
     end
-    internal:FireCallbacks(internal.callback.REQUEST_DESTROYED, request)
+    internal:FireCallbacks(internal.callback.REQUEST_DESTROYED, currentRequest)
 end
 
 function GuildHistoryCacheCategory:OptimizeRequestTimeRange(oldestManagedEventTime, newestManagedEventTime,
                                                             oldestGaplessEventTime)
+    if not newestManagedEventTime or not oldestManagedEventTime then
+        logger:Warn("Time range optimization failed - Missing managed event times")
+        return nil, nil
+    end
+
     if oldestGaplessEventTime and oldestGaplessEventTime <= newestManagedEventTime then
         logger:Warn("Time range optimization failed - Invalid time range")
         return nil, nil
@@ -331,6 +336,14 @@ function GuildHistoryCacheCategory:GetNewestManagedEventInfo()
     local eventId = self.saveData.newestManagedEventId
     local eventTime = self.saveData.newestManagedEventTime
     if eventId ~= 0 then
+        if eventId and not eventTime then
+            local index = GetGuildHistoryEventIndex(self.guildId, self.category, eventId)
+            if index then
+                eventTime = GetGuildHistoryEventTimestamp(self.guildId, self.category, index)
+                logger:Warn("Recovered missing newestManagedEventTime", eventTime)
+                self.saveData.newestManagedEventTime = eventTime
+            end
+        end
         return eventId, eventTime
     end
 end
@@ -339,6 +352,14 @@ function GuildHistoryCacheCategory:GetOldestManagedEventInfo()
     local eventId = self.saveData.oldestManagedEventId
     local eventTime = self.saveData.oldestManagedEventTime
     if eventId ~= 0 then
+        if eventId and not eventTime then
+            local index = GetGuildHistoryEventIndex(self.guildId, self.category, eventId)
+            if index then
+                eventTime = GetGuildHistoryEventTimestamp(self.guildId, self.category, index)
+                logger:Warn("Recovered missing oldestManagedEventTime", eventTime)
+                self.saveData.oldestManagedEventTime = eventTime
+            end
+        end
         return eventId, eventTime
     end
 end
@@ -785,10 +806,10 @@ function GuildHistoryCacheCategory:UpdateRangeInfo()
             local newestIndex, oldestIndex = self.adapter:GetGuildHistoryEventIndicesForTimeRange(
                 guildId, category, newestTimeS, oldestTimeS)
             if newestIndex and oldestIndex then
-                local newestEventId, newestTimeS = GetGuildHistoryEventBasicInfo(guildId, category, newestIndex)
-                local oldestEventId, oldestTimeS = GetGuildHistoryEventBasicInfo(guildId, category, oldestIndex)
+                local newestEventId, newestEventTimeS = GetGuildHistoryEventBasicInfo(guildId, category, newestIndex)
+                local oldestEventId, oldestEventTimeS = GetGuildHistoryEventBasicInfo(guildId, category, oldestIndex)
                 if newestEventId and oldestEventId then
-                    ranges[#ranges + 1] = { newestTimeS, oldestTimeS, newestEventId, oldestEventId }
+                    ranges[#ranges + 1] = { newestEventTimeS, oldestEventTimeS, newestEventId, oldestEventId }
                 else
                     logger:Warn("Could not get event info for range")
                 end
@@ -858,8 +879,8 @@ function GuildHistoryCacheCategory:FindFirstAvailableEventIdForEventId(eventId)
         return nil
     end
 
-    local eventId = self:SearchEventIdInInterval(eventId, newestIndex, oldestIndex)
-    return eventId
+    local foundEventId = self:SearchEventIdInInterval(eventId, newestIndex, oldestIndex)
+    return foundEventId
 end
 
 function GuildHistoryCacheCategory:GetManagedRangeIndices()
@@ -953,8 +974,8 @@ function GuildHistoryCacheCategory:FindLastAvailableEventIdForEventId(eventId)
         return nil
     end
 
-    local eventId = self:SearchEventIdInInterval(eventId, newestIndex, oldestIndex)
-    return eventId
+    local foundEventId = self:SearchEventIdInInterval(eventId, newestIndex, oldestIndex)
+    return foundEventId
 end
 
 function GuildHistoryCacheCategory:FindFirstAvailableEventIdForEventTime(eventTime)

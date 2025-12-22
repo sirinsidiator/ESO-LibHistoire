@@ -35,6 +35,10 @@ function GuildHistoryServerRequest:IsInitialRequest()
     return not self.oldestTime or self.oldestTime == 0
 end
 
+function GuildHistoryServerRequest:IsDestroyed()
+    return self.destroyed
+end
+
 function GuildHistoryServerRequest:IsValid()
     if self.destroyed then
         return false
@@ -84,8 +88,18 @@ function GuildHistoryServerRequest:ShouldContinue()
 end
 
 function GuildHistoryServerRequest:ShouldSend()
-    if not self:IsValid() or self:IsComplete() then
-        logger:Warn("Found invalid or completed request in queue")
+    if self.destroyed then
+        logger:Debug("Found destroyed request in queue - removing")
+        return false
+    end
+
+    if not self:IsValid() then
+        logger:Debug("Found invalid request in queue - removing")
+        return false
+    end
+
+    if self:IsComplete() then
+        logger:Debug("Found completed request in queue - removing")
         return false
     end
 

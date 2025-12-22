@@ -161,7 +161,7 @@ function CacheStatusBar:Update(cache)
             segmentEndTime = rangeEndTime,
         }
 
-        if not oldestManagedEventTime or rangeStartTime > newestManagedEventTime then
+        if not oldestManagedEventTime or not newestManagedEventTime or rangeStartTime > newestManagedEventTime then
             if isActive then
                 data.color = GRADIENT_CACHE_SEGMENT_AFTER_MANAGED_RANGE_ACTIVE
             else
@@ -178,7 +178,7 @@ function CacheStatusBar:Update(cache)
         self:AddSegment(data)
     end
 
-    if oldestManagedEventTime and cache:HasLinked() then
+    if oldestManagedEventTime and newestManagedEventTime and cache:HasLinked() then
         local data = {
             startTime = startTime,
             endTime = endTime,

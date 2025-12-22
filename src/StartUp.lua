@@ -6,8 +6,11 @@ local LIB_IDENTIFIER = "LibHistoire"
 
 assert(not _G[LIB_IDENTIFIER], LIB_IDENTIFIER .. " is already loaded")
 
+--- @class LibHistoire
 local lib = {}
-_G[LIB_IDENTIFIER] = lib
+
+--- @class LibHistoire
+LibHistoire = lib
 
 local nextNamespaceId = 1
 
@@ -67,13 +70,13 @@ local internal = lib.internal
 internal.UI_LOAD_TIME = GetTimeStamp()
 internal.WORLD_NAME = GetWorldName()
 
-internal.REQUEST_MODE_AUTO = 'auto'
-internal.REQUEST_MODE_OFF = 'off'
-internal.REQUEST_MODE_ON = 'on'
+internal.REQUEST_MODE_AUTO = "auto"
+internal.REQUEST_MODE_OFF = "off"
+internal.REQUEST_MODE_ON = "on"
 
-internal.ZOOM_MODE_AUTO = 'auto'
-internal.ZOOM_MODE_FULL_RANGE = 'full'
-internal.ZOOM_MODE_MISSING_RANGE = 'missing'
+internal.ZOOM_MODE_AUTO = "auto"
+internal.ZOOM_MODE_FULL_RANGE = "full"
+internal.ZOOM_MODE_MISSING_RANGE = "missing"
 
 internal.STOP_REASON_MANUAL_STOP = "manualStop"
 internal.STOP_REASON_LAST_CACHED_EVENT_REACHED = "lastCachedEventReached"

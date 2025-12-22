@@ -56,7 +56,7 @@ function GuildHistoryProcessingRequest:StartProcessing(endId)
         local event = processor.categoryCache:GetEvent(i)
         local eventId = event:GetEventId()
         if eventId < startId or eventId > endId then
-            logger:Debug("event out of range", eventId, startId, endId)
+            logger:Verbose("event out of processing range", eventId, startId, endId, i)
             return
         end
         self.onEvent(processor, event)

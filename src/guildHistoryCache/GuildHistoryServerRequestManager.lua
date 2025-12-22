@@ -36,8 +36,12 @@ end
 function GuildHistoryServerRequestManager:QueueRequest(request, skipRequestSendNext)
     if not request or internal:IsGuildHistorySystemDisabled() then return end
 
-    logger:Debug("Queue request", request.cache.key, request:GetRequestId(), request.newestTime,
-        request.oldestTime)
+    if request:IsDestroyed() then
+        logger:Warn("Attempted to queue destroyed request")
+        return
+    end
+
+    logger:Debug("Queue request", request.cache.key, request:GetRequestId(), request.newestTime, request.oldestTime)
     table.insert(self.requestQueue, request)
     request:SetQueued(true)
 
