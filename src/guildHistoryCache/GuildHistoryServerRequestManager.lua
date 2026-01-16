@@ -155,7 +155,7 @@ function GuildHistoryServerRequestManager:LogTimeSinceLastRequest(wasSent)
     local now = GetTimeStamp()
     if self.lastRequestSendTime then
         local diff = now - self.lastRequestSendTime
-        logger:Info("Time since last automated request", diff, "seconds", diff > 120 and "- is overdue" or "")
+        logger:Info("Time since last automated request", diff, "seconds", diff > 240 and "- is overdue" or "")
     end
     if wasSent then
         self.lastRequestSendTime = now

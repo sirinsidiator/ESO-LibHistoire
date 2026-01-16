@@ -516,20 +516,21 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
         if numUnlinkedEvents > 0 then
             self.processingStartTime = unlinkedEvents[numUnlinkedEvents]:GetEventTimestampS()
             self.processingEndTime = unlinkedEvents[1]:GetEventTimestampS()
-            logger:Info("set processing time range", guildId, category, self
+            logger:Debug("set processing time range", guildId, category, self
                 .processingStartTime, self.processingEndTime)
             internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENTS_STARTED, guildId, category, numUnlinkedEvents)
         end
 
         local previousTime = oldestTime
         local shouldSetOldestEventInfo = isNewManagedRange
+        local skipped = 0
         task:For(numUnlinkedEvents, 1, -1):Do(function(i)
             self.progressDirty = true
             self:IncrementPendingEventMetrics()
             local event = unlinkedEvents[i]
             local eventId = event:GetEventId()
             if (isNewManagedRange and eventId < newestManagedEventId) or (not isNewManagedRange and eventId <= newestManagedEventId) then
-                logger:Debug("skip already processed event", guildId, category, eventId, newestManagedEventId)
+                skipped = skipped + 1
             else
                 local eventTime = event:GetEventTimestampS()
                 if eventTime < oldestTime then
@@ -554,6 +555,10 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
         end):Then(function()
             self.progressDirty = true
             logger:Debug("Finished processing unlinked events", guildId, category)
+            if skipped > 0 then
+                logger:Debug("Skipped", skipped, "already processed unlinked events")
+            end
+            skipped = 0
             if isNewManagedRange then
                 internal:FireCallbacks(internal.callback.MANAGED_RANGE_FOUND, guildId, category)
             end
@@ -564,7 +569,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
             if numMissedEvents > 0 then
                 self.processingStartTime = missedEvents[numMissedEvents]:GetEventTimestampS()
                 self.processingEndTime = missedEvents[1]:GetEventTimestampS()
-                logger:Info("set processing time range", guildId, category, self.processingStartTime,
+                logger:Debug("set processing time range", guildId, category, self.processingStartTime,
                     self.processingEndTime)
                 internal:FireCallbacks(internal.callback.PROCESS_MISSED_EVENTS_STARTED, guildId, category,
                     numMissedEvents)
@@ -579,7 +584,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
             local event = missedEvents[i]
             local eventId = event:GetEventId()
             if eventId >= oldestManagedEventId then
-                logger:Debug("skip already processed event")
+                skipped = skipped + 1
             else
                 local eventTime = event:GetEventTimestampS()
                 if eventTime < oldestTime then
@@ -604,7 +609,10 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
             self.processingStartTime = nil
             self.processingEndTime = nil
             self.processingCurrentTime = nil
-            logger:Info("Finished processing missed events", guildId, category)
+            logger:Debug("Finished processing missed events", guildId, category)
+            if skipped > 0 then
+                logger:Debug("Skipped", skipped, "already processed missed events")
+            end
             internal:FireCallbacks(internal.callback.PROCESS_MISSED_EVENTS_FINISHED, guildId, category)
             self:ProcessNextRequest()
         end)

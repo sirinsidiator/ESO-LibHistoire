@@ -231,8 +231,6 @@ function CacheStatusBar:Update(cache)
             self:AddSegment(data)
         end
     end
-
-    logger:Debug("updated cache status bar", cache:GetGuildId(), cache:GetCategory())
 end
 
 function CacheStatusBar:AddSegment(data)
