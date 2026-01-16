@@ -521,7 +521,7 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
             internal:FireCallbacks(internal.callback.PROCESS_LINKED_EVENTS_STARTED, guildId, category, numUnlinkedEvents)
         end
 
-        local previousTime = 0
+        local previousTime = oldestTime
         local shouldSetOldestEventInfo = isNewManagedRange
         task:For(numUnlinkedEvents, 1, -1):Do(function(i)
             self.progressDirty = true
@@ -532,7 +532,16 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
                 logger:Debug("skip already processed event", guildId, category, eventId, newestManagedEventId)
             else
                 local eventTime = event:GetEventTimestampS()
-                assert(eventTime >= oldestTime and eventTime >= previousTime, "Received event with invalid timestamp")
+                if eventTime < oldestTime then
+                    logger:Warn("Event time is outside the expected range (%d < %d)", eventTime, oldestTime)
+                    self:RestartProcessingTask()
+                    return
+                elseif eventTime < previousTime then
+                    logger:Warn("Event time is out of order (%d < %d)", eventTime, previousTime)
+                    self:RestartProcessingTask()
+                    return
+                end
+
                 if shouldSetOldestEventInfo then
                     self:SetOldestManagedEventInfo(eventId, eventTime)
                     shouldSetOldestEventInfo = false
@@ -573,7 +582,16 @@ function GuildHistoryCacheCategory:StartProcessingEvents(newestManagedEventId, o
                 logger:Debug("skip already processed event")
             else
                 local eventTime = event:GetEventTimestampS()
-                assert(eventTime >= oldestTime and eventTime <= previousTime, "Received event with invalid timestamp")
+                if eventTime < oldestTime then
+                    logger:Warn("Event time is outside the expected range (%d < %d)", eventTime, oldestTime)
+                    self:RestartProcessingTask()
+                    return
+                elseif eventTime > previousTime then
+                    logger:Warn("Event time is out of order (%d > %d)", eventTime, previousTime)
+                    self:RestartProcessingTask()
+                    return
+                end
+
                 self:SetOldestManagedEventInfo(eventId, eventTime)
                 internal:FireCallbacks(internal.callback.PROCESS_MISSED_EVENT, guildId, category, event)
                 self.processingCurrentTime = -eventTime
