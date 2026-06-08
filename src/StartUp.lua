@@ -100,7 +100,7 @@ function internal:InitializeCaches()
     logger:Verbose("Initializing Caches")
     self.historyAdapter = self.class.GuildHistoryAdapter:New(LibHistoire_GuildHistoryCache, LibHistoire_Settings)
     self.historyCache = self.class.GuildHistoryCache:New(self.historyAdapter, GUILD_HISTORY_MANAGER)
-    if not IsConsoleUI() then
+    if IsKeyboardUISupported() then
         SecurePostHook(ZO_GuildHistory_Keyboard, "OnDeferredInitialize", function(history)
             if self.statusWindow then return end
             logger:Verbose("Initializing user interface")

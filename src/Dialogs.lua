@@ -136,7 +136,7 @@ end
 
 function internal:InitializeDialogs()
     local cache = self.historyCache
-    if not IsConsoleUI() then
+    if IsKeyboardUISupported() then
         SetupDialogHook(cache, "LOG_OUT")
         SetupDialogHook(cache, "QUIT")
     end
