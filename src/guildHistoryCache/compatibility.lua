@@ -287,28 +287,3 @@ end
 internal.ConvertEventToLegacyFormat = ConvertEvent
 internal.GetCategoriesForLegacyCategory = GetCategoriesForLegacyCategory
 internal.GetCachesForLegacyCategory = GetCachesForLegacyCategory
-
--- TODO: remove once the fix is in the game client
-function ZO_GuildHistoryEventCategoryData:GetStartingAndEndingIndexForPage(page, numEventsPerPage, uiSubcategory)
-    local startingIndex = self:GetStartingIndexForPage(page, numEventsPerPage, uiSubcategory);
-    if startingIndex then
-        local numEvents = self:GetNumEvents();
-        local countOnPage = 1;
-        local guildId = self.guildData:GetId();
-        local eventCategory = self:GetEventCategory();
-        local lastGoodIndex = startingIndex;
-        for i = startingIndex + 1, numEvents do
-            local _, _, isRedacted, eventType = GetGuildHistoryEventBasicInfo(guildId, eventCategory, i);
-            -- Redacted events or events from other subcategories won't show up on any pages and don't count toward counts
-            if not isRedacted and ZO_GuildHistory_Manager.ComputeEventSubcategory(eventCategory, eventType) == uiSubcategory then
-                countOnPage = countOnPage + 1;
-                lastGoodIndex = i;
-                if countOnPage == numEventsPerPage then
-                    break;
-                end;
-            end;
-        end;
-        return startingIndex, lastGoodIndex;
-    end;
-    return nil, nil; -- No events on this page
-end;
